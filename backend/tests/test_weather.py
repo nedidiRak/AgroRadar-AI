@@ -8,6 +8,7 @@ from app import main
 def test_demo_conditions_are_clearly_marked(monkeypatch, tmp_path):
     monkeypatch.delenv('OPENWEATHER_API_KEY', raising=False)
     monkeypatch.setattr(main, 'GEOMETRY_FILE', tmp_path / 'geometry.json')
+    monkeypatch.setattr(main, 'CATALOG_FILE', tmp_path / 'fields.json')
     main._CACHE.clear()
     client = TestClient(main.app)
     assert client.get('/api/health').json()['weather_mode'] == 'demo'
@@ -23,6 +24,7 @@ def test_demo_conditions_are_clearly_marked(monkeypatch, tmp_path):
 def test_openweather_forecast_points_and_risk(monkeypatch, tmp_path):
     monkeypatch.setenv('OPENWEATHER_API_KEY', 'FAKE_TEST_TOKEN')
     monkeypatch.setattr(main, 'GEOMETRY_FILE', tmp_path / 'geometry.json')
+    monkeypatch.setattr(main, 'CATALOG_FILE', tmp_path / 'fields.json')
     main._CACHE.clear()
     now = int(time.time())
 

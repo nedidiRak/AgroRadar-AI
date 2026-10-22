@@ -18,10 +18,13 @@ type Props = {
   onSelect: (id: number) => void;
   geojson: FeatureCollection<GeoPolygon> | null;
   onSaveGeometry: (fieldId: number, points: [number, number][]) => Promise<boolean>;
+  onCreateOutline: (points: [number, number][]) => void;
 }
 type LayerName = 'satellite' | 'hybrid' | 'map'
 type LatLon = [number, number]
 const colors: Record<Risk, string> = { high: '#f87171', medium: '#f6c65b', low: '#62dbad' }
+// Yandex's hintContent is HTML; never interpolate unescaped user-provided names.
+const escapeHint = (value: string | number) => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char] ?? char))
 const layers: Record<LayerName, string> = {
   satellite: 'yandex#satellite', hybrid: 'yandex#hybrid', map: 'yandex#map',
 }
@@ -79,7 +82,7 @@ function boundsOf(fields: Field[]): LatLon[] | null {
   return [[minLat - latPad, minLon - lonPad], [maxLat + latPad, maxLon + lonPad]]
 }
 
-export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSaveGeometry }: Props) {
+export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSaveGeometry, onCreateOutline }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const drawnObjectsRef = useRef<any>(null)
@@ -91,7 +94,8 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
   const [layerError, setLayerError] = useState('')
   const [layer, setLayer] = useState<LayerName>('satellite')
   const [showContours, setShowContours] = useState(true)
-  const [drawing, setDrawing] = useState(false)
+  const [drawingMode, setDrawingMode] = useState<'new' | 'edit' | null>(null)
+  const drawing = drawingMode !== null
   const [points, setPoints] = useState<LatLon[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -215,7 +219,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
           .map(([lon, lat]) => [lat, lon] as LatLon)
         if (coords.length < 3) continue
         const polygon = new api.Polygon([coords], {
-          hintContent: `${field.name} · ${field.crop} · ${field.area_ha} га`,
+          hintContent: `${escapeHint(field.name)} · ${escapeHint(field.crop)} · ${escapeHint(field.area_ha)} га`,
         }, {
           strokeColor: colors[field.risk.level],
           fillColor: colors[field.risk.level],
@@ -229,7 +233,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
     }
     fields.forEach(field => {
       const placemark = new api.Placemark([field.lat, field.lon], {
-        hintContent: `${field.name} · ${field.crop} · ${field.area_ha} га`,
+        hintContent: `${escapeHint(field.name)} · ${escapeHint(field.crop)} · ${escapeHint(field.area_ha)} га`,
       }, {
         preset: 'islands#circleIcon',
         iconColor: colors[field.risk.level],
@@ -295,21 +299,29 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
     map.setZoom(Math.max(2, Math.min(21, zoom + delta)), { checkZoomRange: true, duration: 180 })
   }
 
-  function beginDrawing() {
-    if (!activeId) return
+  function beginDrawing(mode: 'new' | 'edit') {
+    if (mode === 'edit' && !activeId) return
     setPoints([])
-    setDrawing(true)
+    setDrawingMode(mode)
     drawingRef.current = true
     setError('')
   }
   function cancelDrawing() {
-    setDrawing(false)
+    setDrawingMode(null)
     drawingRef.current = false
     setPoints([])
     setError('')
   }
   async function saveDrawing() {
-    if (!activeId || points.length < 3 || saving) return
+    if (points.length < 3 || saving) return
+    if (drawingMode === 'new') {
+      // Creating a field is NOT the same as replacing the currently selected polygon.
+      // Open the metadata form; POST /api/fields will generate a new unique field ID.
+      onCreateOutline([...points])
+      cancelDrawing()
+      return
+    }
+    if (!activeId) return
     setSaving(true); setError('')
     try {
       const ok = await onSaveGeometry(activeId, points)
@@ -352,8 +364,11 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
           <button type="button" className={`agr-map-action ${showContours ? 'is-toggled' : ''}`} onClick={() => setShowContours(x => !x)} disabled={!loaded || drawing} aria-pressed={showContours} title={showContours ? 'Скрыть контуры' : 'Показать контуры'}>
             <Layers size={16} strokeWidth={1.9} /><span>Контуры</span>
           </button>
-          {!drawing && <button type="button" className="agr-map-action agr-map-action--primary" onClick={beginDrawing} disabled={!loaded || !activeId} title="Нарисовать границу выбранного поля">
-            <Pencil size={16} strokeWidth={1.9} /><span>Обвести</span>
+          {!drawing && <button type="button" className="agr-map-action agr-map-action--primary" onClick={() => beginDrawing('new')} disabled={!loaded} title="Нарисовать новый участок и создать отдельное поле">
+            <Plus size={16} strokeWidth={1.9} /><span>Новое поле</span>
+          </button>}
+          {!drawing && <button type="button" className="agr-map-action" onClick={() => beginDrawing('edit')} disabled={!loaded || !activeId} title="Изменить границы выбранного существующего поля">
+            <Pencil size={16} strokeWidth={1.9} /><span>Изменить контур</span>
           </button>}
         </div>
         <span className="agr-map-toolbar__divider" aria-hidden="true" />
@@ -370,12 +385,12 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
     {drawing && <div className="agr-map-drawbar">
       <div className="agr-map-drawbar__summary">
         <Crosshair size={18} strokeWidth={1.9}/>
-        <div><strong>Обводим: {activeField?.name}</strong><span>Отмечай углы поля на снимке · {points.length} точек</span></div>
+        <div><strong>{drawingMode === 'new' ? 'Создание нового поля' : `Редактирование: ${activeField?.name}`}</strong><span>Отмечай углы участка на снимке · {points.length} точек</span></div>
       </div>
       <div className="agr-map-drawbar__buttons">
         <button type="button" onClick={() => setPoints(p => p.slice(0, -1))} disabled={!points.length || saving} title="Удалить последнюю точку"><Undo2 size={16} /><span>Назад</span></button>
         <button type="button" onClick={cancelDrawing} disabled={saving}><X size={16} /><span>Отмена</span></button>
-        <button type="button" className="agr-map-drawbar__save" onClick={() => void saveDrawing()} disabled={points.length < 3 || saving}><Check size={16} /><span>{saving ? 'Сохранение…' : 'Сохранить контур'}</span></button>
+        <button type="button" className="agr-map-drawbar__save" onClick={() => void saveDrawing()} disabled={points.length < 3 || saving}><Check size={16} /><span>{saving ? 'Сохранение…' : drawingMode === 'new' ? 'Далее: название и культура' : 'Сохранить контур'}</span></button>
       </div>
     </div>}
 
@@ -390,7 +405,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
     <div className="agr-map-status" aria-live="polite">
       <div className="agr-map-status__primary"><span className="agr-map-status__pulse" /> <span>Яндекс Карты</span><span className="agr-map-status__separator">/</span><span>{loaded ? 'Карта подключена' : 'Подключение…'}</span></div>
       <div className="agr-map-status__details">
-        {!loaded ? 'Ожидаем загрузку подложки' : drawing ? `Редактирование · ${points.length} точек` : activeField ? <><span className={`agr-map-risk agr-map-risk--${activeField.risk.level}`} /> <b>{activeField.name}</b><span className="agr-map-status__separator">·</span><span>{activeField.geometry_source === 'user_drawn' ? 'Граница сохранена' : 'Контур демонстрационный'}</span></> : 'Выбери поле для просмотра'}
+        {!loaded ? 'Ожидаем загрузку подложки' : drawing ? `${drawingMode === 'new' ? 'Новое поле' : 'Редактирование контура'} · ${points.length} точек` : activeField ? <><span className={`agr-map-risk agr-map-risk--${activeField.risk.level}`} /> <b>{activeField.name}</b><span className="agr-map-status__separator">·</span><span>{activeField.geometry_source === 'user_drawn' ? 'Граница сохранена' : 'Контур демонстрационный'}</span></> : 'Выбери поле для просмотра'}
       </div>
     </div>
   </div>

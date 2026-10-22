@@ -8,17 +8,19 @@ import json
 import math
 import os
 import time
+import threading
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
-app = FastAPI(title='AgroRadar AI API', version='0.8.0')
+app = FastAPI(title='AgroRadar AI API', version='1.0.0')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
@@ -35,9 +37,76 @@ FIELDS = [
 
 # Saved user-traced polygons are persisted separately from demo geometry.
 GEOMETRY_FILE = Path(__file__).resolve().parents[1] / 'data' / 'field_geometries.json'
+CATALOG_FILE = Path(__file__).resolve().parents[1] / 'data' / 'fields.json'
+CATALOG_LOCK = threading.RLock()
 
 class GeometryUpdate(BaseModel):
     coordinates: list[list[float]]
+
+
+class FieldMetadata(BaseModel):
+    name: str
+    crop: str
+    description: str = ''
+
+
+class FieldCreate(FieldMetadata):
+    # GeoJSON coordinate order: longitude, latitude.
+    coordinates: list[list[float]]
+
+
+def normalise_metadata(payload: FieldMetadata) -> dict:
+    name = payload.name.strip()
+    crop = payload.crop.strip()
+    description = payload.description.strip()
+    if not 1 <= len(name) <= 100:
+        raise HTTPException(422, 'Название поля должно содержать от 1 до 100 символов')
+    if not 1 <= len(crop) <= 80:
+        raise HTTPException(422, 'Укажи культуру (до 80 символов)')
+    if len(description) > 2000:
+        raise HTTPException(422, 'Описание не должно превышать 2000 символов')
+    return {'name': name, 'crop': crop, 'description': description}
+
+
+def read_catalog() -> dict:
+    # Backward-compatible: do not erase old four fields or old saved GeoJSON.
+    # Once fields.json exists, it is authoritative, including deletions.
+    if not CATALOG_FILE.exists():
+        return {'version': 1, 'next_id': 5,
+                'fields': [{**field, 'description': '', 'kind': 'demo'} for field in FIELDS]}
+    try:
+        catalog = json.loads(CATALOG_FILE.read_text(encoding='utf-8'))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise HTTPException(500, 'Каталог полей повреждён. Восстанови fields.json из резервной копии.') from exc
+    if (not isinstance(catalog, dict) or not isinstance(catalog.get('fields'), list)
+            or not isinstance(catalog.get('next_id'), int)):
+        raise HTTPException(500, 'Неверный формат каталога fields.json')
+    return catalog
+
+
+def save_catalog(catalog: dict) -> None:
+    CATALOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temporary = CATALOG_FILE.with_name(CATALOG_FILE.name + '.' + uuid.uuid4().hex + '.tmp')
+    try:
+        temporary.write_text(json.dumps(catalog, ensure_ascii=False, indent=2), encoding='utf-8')
+        temporary.replace(CATALOG_FILE)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def assert_unique_name(fields: list[dict], name: str, exclude_id: int | None = None) -> None:
+    if any(field['id'] != exclude_id and field['name'].casefold() == name.casefold()
+           for field in fields):
+        raise HTTPException(409, 'Поле с таким названием уже существует')
+
+
+def all_geometries() -> dict:
+    # Prefer canonical new catalog geometry, preserve legacy v0.5 saved overrides.
+    stored = stored_geometries()
+    for field in read_catalog()['fields']:
+        if field.get('coordinates'):
+            stored[str(field['id'])] = {'coordinates': field['coordinates']}
+    return stored
 
 
 def stored_geometries() -> dict:
@@ -119,10 +188,13 @@ def validate_ring(coords: list[list[float]]) -> list[list[float]]:
 
 
 def effective_fields() -> list[dict]:
-    stored = stored_geometries()
+    stored = all_geometries()
     result = []
-    for f in FIELDS:
-        field = f.copy()
+    for record in read_catalog()['fields']:
+        # The polygon is exported only as GeoJSON, not repeated in weather dashboard.
+        field = {key: value for key, value in record.items() if key != 'coordinates'}
+        field.setdefault('description', '')
+        field.setdefault('kind', 'demo')
         override = stored.get(str(field['id']))
         if override:
             ring = override['coordinates']
@@ -175,9 +247,10 @@ def _approx_demo_ring(field: dict, variation: int) -> list[list[float]]:
 
 def make_feature(field: dict, index: int, stored: dict) -> dict:
     own = stored.get(str(field['id']))
-    ring = own['coordinates'] if own else _approx_demo_ring(field, index)
+    ring = own['coordinates'] if own else _approx_demo_ring(field, index % 4)
     return {'type': 'Feature', 'id': field['id'], 'properties': {
         'field_id': field['id'], 'name': field['name'], 'crop': field['crop'],
+        'description': field.get('description', ''), 'kind': field.get('kind', 'demo'),
         'area_ha': field['area_ha'], 'geometry_source': 'user_drawn' if own else 'demo_generated',
         'geometry_accuracy': 'user_traced_not_surveyed' if own else 'illustrative_not_surveyed',
     }, 'geometry': {'type': 'Polygon', 'coordinates': [ring]}}
@@ -198,8 +271,9 @@ def risk_from_temperature(min_temp_c: float, basis: str) -> dict:
 
 def _demo_data(field: dict) -> dict:
     # Synthetic time-series is visibly tagged DEMO throughout the UI; it is not a weather prediction.
-    current = DEMO_WEATHER[field['id']]['temperature_c']
-    minimum = DEMO_FORECAST_MINIMUM[field['id']]
+    sample = DEMO_WEATHER.get(field['id'], {'temperature_c': 8.0, 'humidity_pct': 65, 'wind_ms': 3.0})
+    current = sample['temperature_c']
+    minimum = DEMO_FORECAST_MINIMUM.get(field['id'], 4.2)
     offsets = [0, .2, .5, .85, 1, .65, .38, .14]
     now = int(datetime.now(timezone.utc).timestamp())
     start = (now // 10800 + 1) * 10800  # align 3-hourly example timestamps
@@ -208,7 +282,7 @@ def _demo_data(field: dict) -> dict:
                'precipitation_probability_pct': None,
                'rain_mm_3h': None}
               for index, factor in enumerate(offsets)]
-    return {'weather': {**DEMO_WEATHER[field['id']], 'source': 'demo', 'observed_at': None},
+    return {'weather': {**sample, 'source': 'demo', 'observed_at': None},
             'forecast': {'min_temperature_next_24h_c': minimum,
                          'source': 'demo', 'sample_count': len(points),
                          'period_hours': 24, 'points': points}}
@@ -290,7 +364,7 @@ async def compose_field(field: dict) -> dict:
 
 @app.get('/api/health')
 def health():
-    return {'status': 'ok', 'version': '0.8.0',
+    return {'status': 'ok', 'version': '1.0.0',
             'weather_mode': 'live' if os.getenv('OPENWEATHER_API_KEY', '').strip() else 'demo'}
 
 
@@ -301,7 +375,7 @@ def fields():
 
 @app.get('/api/fields.geojson')
 def fields_geojson():
-    stored = stored_geometries()
+    stored = all_geometries()
     return {'type': 'FeatureCollection',
             'features': [make_feature(field, index, stored)
                          for index, field in enumerate(effective_fields())],
@@ -340,24 +414,86 @@ async def dashboard():
             'mode': 'demo' if not os.getenv('OPENWEATHER_API_KEY', '').strip() else 'live_forecast'}
 
 
+@app.post('/api/fields', status_code=status.HTTP_201_CREATED)
+def create_field(payload: FieldCreate):
+    meta = normalise_metadata(payload)
+    ring = validate_ring(payload.coordinates)
+    area, lat, lon = polygon_area_center(ring)
+    with CATALOG_LOCK:
+        catalog = read_catalog()
+        assert_unique_name(catalog['fields'], meta['name'])
+        field_id = max(catalog['next_id'], max((f['id'] for f in catalog['fields']), default=0) + 1)
+        catalog['next_id'] = field_id + 1
+        catalog['fields'].append({
+            'id': field_id, **meta, 'kind': 'user', 'area_ha': round(area, 2),
+            'lat': round(lat, 6), 'lon': round(lon, 6), 'coordinates': ring,
+        })
+        save_catalog(catalog)
+        _CACHE.clear()
+    return {'created': True, 'field': find_field(field_id)}
+
+
+@app.put('/api/fields/{field_id}')
+def edit_field(field_id: int, payload: FieldMetadata):
+    meta = normalise_metadata(payload)
+    with CATALOG_LOCK:
+        catalog = read_catalog()
+        assert_unique_name(catalog['fields'], meta['name'], exclude_id=field_id)
+        target = next((f for f in catalog['fields'] if f['id'] == field_id), None)
+        if target is None:
+            raise HTTPException(404, 'Поле не найдено')
+        target.update(meta)
+        save_catalog(catalog)
+    return {'saved': True, 'field': find_field(field_id)}
+
+
+@app.delete('/api/fields/{field_id}')
+def delete_field(field_id: int):
+    with CATALOG_LOCK:
+        catalog = read_catalog()
+        if not any(f['id'] == field_id for f in catalog['fields']):
+            raise HTTPException(404, 'Поле не найдено')
+        catalog['fields'] = [f for f in catalog['fields'] if f['id'] != field_id]
+        save_catalog(catalog)  # authoritative: deletion survives a server restart
+        # Legacy geometries are safe even if they remain orphaned, since IDs are never reused.
+        _CACHE.clear()
+    return {'deleted': True, 'field_id': field_id}
+
+
 @app.put('/api/fields/{field_id}/geometry')
 def update_field_geometry(field_id: int, payload: GeometryUpdate):
-    find_field(field_id)
     ring = validate_ring(payload.coordinates)
-    stored = stored_geometries()
-    stored[str(field_id)] = {'coordinates': ring, 'source': 'user_drawn',
-                             'updated_at': datetime.now(timezone.utc).isoformat()}
-    save_geometries(stored)
-    _CACHE.clear()  # Weather coordinates may change after drawing a field.
-    return {'saved': True, 'field_id': field_id, 'feature':
-            make_feature(find_field(field_id), field_id-1, stored)}
+    with CATALOG_LOCK:
+        catalog = read_catalog()
+        target = next((f for f in catalog['fields'] if f['id'] == field_id), None)
+        if target is None:
+            raise HTTPException(404, 'Поле не найдено')
+        area, lat, lon = polygon_area_center(ring)
+        target.update(coordinates=ring, area_ha=round(area, 2),
+                      lat=round(lat, 6), lon=round(lon, 6))
+        save_catalog(catalog)
+        _CACHE.clear()
+    return {'saved': True, 'field_id': field_id,
+            'feature': make_feature(find_field(field_id), 0, all_geometries())}
 
 
 @app.delete('/api/fields/{field_id}/geometry')
 def reset_field_geometry(field_id: int):
-    find_field(field_id)
-    stored = stored_geometries()
-    stored.pop(str(field_id), None)
-    save_geometries(stored)
-    _CACHE.clear()
+    with CATALOG_LOCK:
+        catalog = read_catalog()
+        target = next((f for f in catalog['fields'] if f['id'] == field_id), None)
+        if target is None:
+            raise HTTPException(404, 'Поле не найдено')
+        if target.get('kind') == 'user':
+            raise HTTPException(409, 'У созданного поля нет демонстрационной границы. Используй «Изменить контур».')
+        target.pop('coordinates', None)
+        original = next((f for f in FIELDS if f['id'] == field_id), None)
+        if original:
+            target.update(lat=original['lat'], lon=original['lon'], area_ha=original['area_ha'])
+        save_catalog(catalog)
+        legacy = stored_geometries()
+        if str(field_id) in legacy:
+            legacy.pop(str(field_id))
+            save_geometries(legacy)
+        _CACHE.clear()
     return {'restored_demo_geometry': True, 'field_id': field_id}

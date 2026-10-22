@@ -21,3 +21,6 @@ frontend/.env.*.local
 # User-created field boundaries (may contain sensitive coordinates)
 backend/data/field_geometries.json
 backend/data/*.tmp
+
+# v1.0 persistent field catalog (includes custom field descriptions & geometries)
+backend/data/fields.json
