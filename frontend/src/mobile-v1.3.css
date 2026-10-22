@@ -1,0 +1,650 @@
+/* AgroRadar AI v1.3 — Mobile Field Workspace
+   A targeted responsive layer on top of v1.2. No map tiles, copyright,
+   Leaflet/Yandex attribution or API integration styles are hidden. */
+
+/* Tablet portrait: no squashed map next to a tall field list. */
+@media (min-width: 651px) and (max-width: 1100px) {
+  .agr-content { padding-left: 24px; padding-right: 24px; }
+  .agr-map-workspace { grid-template-columns: minmax(0, 1fr); }
+  .agr-main-map .map-wrap { height: clamp(440px, 55vh, 650px); }
+  .agr-map-sidebar { max-height: none; }
+  .agr-map-field-list { max-height: 300px; }
+  .agr-overview-columns { grid-template-columns: minmax(0, 1fr); }
+  .agr-forecast-card .timeline-data {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Phone: familiar bottom tabs keep map and chat one tap away.
+   Bottom tabs are outside the scrollable main content. */
+@media (max-width: 650px) {
+  .agr-shell { min-width: 0; min-height: 100dvh; }
+  .agr-sidebar {
+    position: relative;
+    top: auto;
+    z-index: 1000;
+    width: 100%;
+    height: 57px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background: #11231e;
+    border-bottom: 1px solid #315343;
+    backdrop-filter: none;
+  }
+  .agr-brand { margin: 0; gap: 10px; }
+  .agr-brand .brand-icon { width: 35px; height: 35px; padding: 7px; border-radius: 11px; }
+  .agr-brand .brand-icon svg { width: 20px; height: 20px; }
+  .agr-brand > div:last-child { display: block; }
+  .agr-brand strong { font-size: 15px; letter-spacing: -.45px; }
+  .agr-brand small { display: block; margin-top: 1px; font-size: 9px; }
+  .agr-sidebar .agr-navigation {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(70px + env(safe-area-inset-bottom, 0px));
+    padding: 7px max(9px, env(safe-area-inset-left, 0px)) calc(7px + env(safe-area-inset-bottom, 0px)) max(9px, env(safe-area-inset-right, 0px));
+    margin: 0;
+    background: #10231ef5;
+    border-top: 1px solid #385747;
+    box-shadow: 0 -8px 30px #030b087d;
+    backdrop-filter: blur(15px);
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    z-index: 9000;
+  }
+  .agr-sidebar .agr-nav-item,
+  .agr-sidebar button.agr-nav-item {
+    width: 100%;
+    min-width: 0;
+    min-height: 52px;
+    padding: 5px 5px;
+    border-radius: 11px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    line-height: 1.15;
+    color: #a9bfb2;
+  }
+  .agr-sidebar .agr-nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .agr-sidebar .agr-nav-item span {
+    display: block;
+    max-width: 100%;
+    color: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .agr-sidebar .agr-nav-item.active {
+    box-shadow: inset 0 0 0 1px #386c52;
+    background: #204c38;
+  }
+  .agr-content {
+    width: 100%;
+    padding: 18px 12px calc(100px + env(safe-area-inset-bottom, 0px));
+    margin: 0;
+    min-width: 0;
+  }
+  .agr-header { gap: 10px; margin-bottom: 14px; }
+  .agr-header h1 { font-size: clamp(23px, 6vw, 29px); margin: 7px 0 4px; letter-spacing: -.65px; }
+  .agr-header p { font-size: 12px; line-height: 1.5; }
+  .agr-header .eyebrow { font-size: 9px; }
+  .agr-header-actions { width: 100%; justify-content: space-between; gap: 8px; }
+  .agr-source-status { font-size: 10px; min-height: 38px; }
+  .agr-shell button.agr-refresh { min-height: 42px; padding: 8px 12px; }
+
+  /* Touch affordances: 44px targets, legible text without iOS auto-zoom. */
+  .agr-shell button:not(.agr-nav-item) { touch-action: manipulation; }
+  .agr-field-picker,
+  .agr-search input,
+  .agr-shell input:not([type='file']),
+  .agr-shell select,
+  .agr-shell textarea { font-size: 16px; }
+  .agr-field-picker { min-height: 44px; max-width: 100%; }
+  .agr-shell button.agr-field-row,
+  .agr-shell button.agr-map-field { min-height: 55px; }
+  .agr-shell button.agr-map-field { padding: 12px; }
+  .agr-shell button.agr-selected-card__ask,
+  .agr-shell .agr-selected-card__actions button { min-height: 44px; }
+  .agr-shell .agr-disclosure summary { min-height: 46px; }
+
+  /* Overview: slim KPI cards and one clear reading column. */
+  .agr-stats { gap: 8px; margin-bottom: 13px; }
+  .agr-stat { min-height: 125px; padding: 14px; }
+  .agr-stat:nth-child(3) { min-height: 100px; }
+  .agr-stat > strong { font-size: 30px; }
+  .agr-overview-columns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .agr-card-heading { gap: 9px; padding: 15px; }
+  .agr-card-heading h2 { font-size: 16px; }
+  .agr-card-heading .agr-text-link { min-height: 42px; }
+  .agr-forecast-card .agr-card-heading { align-items: stretch; }
+  .agr-forecast-card .agr-card-heading > div:first-child { flex: 1 1 auto; }
+  .agr-weather-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .agr-weather-summary strong { font-size: 14px; white-space: normal; overflow-wrap: anywhere; }
+  .agr-forecast-card .forecast-timeline { margin: 9px 12px 0; overflow: hidden; }
+  .agr-forecast-card .timeline-chart { width: 100%; }
+  .agr-forecast-card .timeline-data {
+    display: grid;
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(76px, 1fr);
+    gap: 5px;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #376e51 transparent;
+    padding-bottom: 7px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .agr-forecast-card .timeline-data > * { min-width: 0; }
+
+  /* GIS: the map gets priority. Field cards follow below it. */
+  .agr-map-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .agr-main-map .map-wrap { height: clamp(330px, 52dvh, 520px); min-height: 330px; }
+  .agr-main-map .panel-head { padding: 12px 13px; }
+  .agr-main-map .panel-head span { font-size: 10px; }
+  .agr-main-map .map-foot { gap: 11px; padding: 11px 13px; font-size: 10px; flex-wrap: wrap; }
+  .agr-map-sidebar { max-height: none; }
+  .agr-map-sidebar__head { padding: 14px; }
+  .agr-map-field-list { max-height: 230px; overflow-y: auto; }
+  .agr-selected-card { padding: 14px; }
+  .agr-geo-tools { margin-top: 12px; }
+  .agr-geo-tools__inner { padding: 0 14px 14px; }
+  .agr-geo-tools__inner .gis-actions { display: flex; flex-wrap: wrap; gap: 8px; max-width: 100%; }
+  .agr-geo-tools__inner .gis-actions button,
+  .agr-geo-tools__inner .gis-actions .file-btn { min-height: 44px; }
+
+  /* The Yandex logo, attribution and map-open link remain visible. */
+  .agr-map-shell .agr-map-toolbar { gap: 8px; }
+  .agr-map-shell .agr-map-segments__button { min-height: 44px; font-size: 12px; }
+  .agr-map-shell .agr-map-action { min-height: 44px; font-size: 11px; padding: 10px; }
+  .agr-map-shell .agr-map-action--square { min-width: 44px; width: 44px; }
+  .agr-map-shell .agr-map-toolbar__set { flex-wrap: wrap; }
+  .agr-map-shell .agr-map-toolbar__actions { gap: 6px; flex-wrap: wrap; }
+  .agr-map-shell .agr-map-drawbar__buttons { width: 100%; }
+  .agr-map-shell .agr-map-drawbar__buttons button { min-height: 44px; }
+  .geo-map.agr-map-shell.agr-map-shell--expanded {
+    inset: 0;
+    border-radius: 0;
+    border: 0;
+    height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Chat: readable context, comfortable composer, no tiny send button. */
+  .agr-ai-context-switch { gap: 10px; padding: 12px; }
+  .agr-ai-context-switch > div { margin-right: 0; }
+  .agr-ai-context-switch .agr-field-picker { flex: 1 1 180px; }
+  .agr-page--ai .agro-ai__heading { padding: 15px; }
+  .agr-page--ai .agro-ai__context { padding: 14px; }
+  .agr-page--ai .agro-ai__context-title { margin-bottom: 8px; }
+  .agr-page--ai .agro-ai__crop { margin-bottom: 6px; }
+  .agr-page--ai .agro-ai__notice { margin-top: 8px; }
+  .agr-page--ai .agro-ai__messages {
+    height: clamp(290px, 44dvh, 500px);
+    max-height: none;
+    padding: 14px 12px;
+    overscroll-behavior: contain;
+  }
+  .agr-page--ai .agro-ai__composer { align-items: flex-end; gap: 8px; }
+  .agr-page--ai .agro-ai__composer textarea { font-size: 16px; min-height: 51px; }
+  .agr-page--ai .agro-ai__composer button { min-width: 48px; min-height: 48px; }
+  .agr-page--ai .agro-ai__message { max-width: 100%; line-height: 1.6; }
+  .agr-page--ai .agro-ai__markdown { font-size: 14px; }
+
+  /* Editing on small screens is a bottom sheet, not a tiny desktop modal. */
+  .field-modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+    z-index: 11000;
+  }
+  .field-modal {
+    width: 100%;
+    max-width: none;
+    max-height: min(91dvh, 800px);
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .field-modal form { padding: 21px 17px 16px; }
+  .field-modal input,
+  .field-modal textarea { font-size: 16px; }
+  .field-modal__footer { position: sticky; bottom: 0; background: #152b23; padding: 12px 0; }
+  .field-modal__footer button { min-height: 44px; }
+  .agr-footer { padding-bottom: 4px; }
+}
+
+/* Very narrow phones should still show field names and readable buttons. */
+@media (max-width: 365px) {
+  .agr-content { padding-left: 9px; padding-right: 9px; }
+  .agr-stats { grid-template-columns: minmax(0, 1fr); }
+  .agr-stat:nth-child(3) { grid-column: auto; }
+  .agr-stat { min-height: 92px; }
+  .agr-stat > strong { margin-top: 8px; }
+  .agr-weather-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .agr-weather-summary > div:last-child { grid-column: 1 / -1; }
+  .agr-main-map .map-wrap { height: clamp(300px, 45dvh, 410px); min-height: 300px; }
+  .agr-sidebar .agr-nav-item span { font-size: 10px; }
+}
+
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .agr-main-map .map-wrap { height: 68dvh; min-height: 260px; }
+  .geo-map.agr-map-shell.agr-map-shell--expanded { inset: 0; height: 100dvh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agr-sidebar .agr-nav-item { transition: none; }
+}
+
+
+/* v1.3.1 — Chat viewport repair. Do NOT apply this to overview or GIS pages.
+   The old chat lived after a tall context block, while the nested message pane
+   trapped touch scrolling. Here the composer remains visible above bottom nav. */
+.agro-ai__context-toggle { display: none; }
+.agro-ai__context-content { display: contents; }
+.agro-ai__footer-short { display: none; }
+
+@media (max-width: 650px) {
+  .agr-shell--assistant {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .agr-shell--assistant .agr-sidebar {
+    flex: 0 0 57px;
+    min-height: 57px;
+    position: relative;
+  }
+  .agr-shell--assistant .agr-content {
+    width: 100%;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px calc(79px + env(safe-area-inset-bottom, 0px));
+  }
+  .agr-shell--assistant .agr-header,
+  .agr-shell--assistant .agr-footer { display: none; }
+  .agr-shell--assistant .agr-page--ai:not([hidden]) {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: none;
+  }
+  .agr-shell--assistant .agr-ai-context-switch {
+    flex: 0 0 auto;
+    min-width: 0;
+    gap: 8px;
+    padding: 7px;
+    margin-bottom: 8px;
+    flex-wrap: nowrap;
+  }
+  .agr-shell--assistant .agr-ai-context-switch > div:first-child { display: none; }
+  .agr-shell--assistant .agr-ai-context-switch .agr-field-picker {
+    flex: 1 1 0;
+    min-width: 0;
+    width: 0;
+    max-width: none;
+    min-height: 42px;
+  }
+  .agr-shell--assistant .agr-ai-context-switch .agr-text-link {
+    flex: 0 0 auto;
+    font-size: 12px;
+    min-height: 42px;
+    padding: 7px 9px;
+  }
+  .agr-shell--assistant .agro-ai {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin: 0;
+    border-radius: 13px;
+  }
+  .agr-shell--assistant .agro-ai__heading {
+    flex: 0 0 auto;
+    min-height: 52px;
+    padding: 8px 10px;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+  .agr-shell--assistant .agro-ai__brand { gap: 8px; min-width: 0; }
+  .agr-shell--assistant .agro-ai__brand > div:last-child { min-width: 0; }
+  .agr-shell--assistant .agro-ai__logo {
+    width: 33px;
+    height: 33px;
+    border-radius: 10px;
+  }
+  .agr-shell--assistant .agro-ai__logo svg { width: 19px; height: 19px; }
+  .agr-shell--assistant .agro-ai__kicker,
+  .agr-shell--assistant .agro-ai__heading p { display: none; }
+  .agr-shell--assistant .agro-ai__heading h2 {
+    font-size: 15px;
+    line-height: 1.2;
+    margin: 0;
+  }
+  .agr-shell--assistant .agro-ai__status {
+    flex: 0 0 auto;
+    font-size: 9px;
+    line-height: 1.25;
+    max-width: 108px;
+    padding: 6px 7px;
+    white-space: normal;
+  }
+  .agr-shell--assistant .agro-ai__signal { flex: 0 0 7px; }
+  .agr-shell--assistant .agro-ai__layout {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  /* Collapsed context remains accessible with one tap, and can scroll if expanded. */
+  .agr-shell--assistant .agro-ai__context {
+    display: block;
+    flex: 0 0 auto;
+    min-height: 0;
+    padding: 0;
+    border-right: 0;
+    border-bottom: 1px solid #2e4d40;
+  }
+  .agr-shell--assistant .agro-ai__context-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 40px;
+    border: 0;
+    border-radius: 0;
+    background: #142a20;
+    padding: 8px 12px;
+    font-size: 11px;
+    color: #a9daba;
+  }
+  .agr-shell--assistant .agro-ai__context-toggle span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .agr-shell--assistant .agro-ai__context-toggle strong {
+    color: #e5fbee;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .agr-shell--assistant .agro-ai__context-toggle > svg {
+    flex: 0 0 auto;
+    transition: transform .18s ease;
+  }
+  .agr-shell--assistant .agro-ai__context--open .agro-ai__context-toggle > svg {
+    transform: rotate(180deg);
+  }
+  .agr-shell--assistant .agro-ai__context-content { display: none; }
+  .agr-shell--assistant .agro-ai__context--open .agro-ai__context-content {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px 9px;
+    padding: 10px 12px 12px;
+    max-height: min(34dvh, 260px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .agr-shell--assistant .agro-ai__context-title,
+  .agr-shell--assistant .agro-ai__field-name,
+  .agr-shell--assistant .agro-ai__crop,
+  .agr-shell--assistant .agro-ai__data-source,
+  .agr-shell--assistant .agro-ai__notice { grid-column: 1 / -1; }
+  .agr-shell--assistant .agro-ai__context-title { margin: 0; }
+  .agr-shell--assistant .agro-ai__field-name { font-size: 15px; }
+  .agr-shell--assistant .agro-ai__crop { margin: 0 0 5px; }
+  .agr-shell--assistant .agro-ai__metric { padding: 7px 0; }
+  .agr-shell--assistant .agro-ai__metric span { font-size: 10px; }
+  .agr-shell--assistant .agro-ai__metric b { margin-top: 4px; }
+  .agr-shell--assistant .agro-ai__data-source { margin-top: 0; }
+  .agr-shell--assistant .agro-ai__notice { margin-top: 0; }
+  .agr-shell--assistant .agro-ai__chat {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .agr-shell--assistant .agro-ai__chat-top {
+    flex: 0 0 auto;
+    min-height: 39px;
+    padding: 7px 11px;
+  }
+  .agr-shell--assistant .agro-ai__clear {
+    min-height: 33px;
+    padding: 5px 9px;
+  }
+  .agr-shell--assistant .agro-ai__messages {
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    padding: 12px;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+  }
+  .agr-shell--assistant .agro-ai__welcome { margin: auto; }
+  .agr-shell--assistant .agro-ai__suggestions { grid-template-columns: 1fr; }
+  .agr-shell--assistant .agro-ai__suggestions button { min-height: 43px; }
+  .agr-shell--assistant .agro-ai__message { max-width: 100%; }
+  .agr-shell--assistant .agro-ai__composer {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 8px;
+    gap: 7px;
+    border-top: 1px solid #335746;
+    background: #162e25;
+  }
+  .agr-shell--assistant .agro-ai__composer textarea {
+    flex: 1 1 auto;
+    min-height: 50px;
+    max-height: 110px;
+    font-size: 16px;
+    padding: 10px 11px;
+    resize: none;
+  }
+  .agr-shell--assistant .agro-ai__composer button {
+    width: 50px;
+    min-width: 50px;
+    height: 50px;
+    min-height: 50px;
+    font-size: 0;
+    padding: 0;
+    justify-content: center;
+  }
+  .agr-shell--assistant .agro-ai__footer {
+    flex: 0 0 auto;
+    padding: 5px 9px 7px;
+    font-size: 9px;
+    line-height: 1.3;
+    color: #90b4a0;
+  }
+  .agr-shell--assistant .agro-ai__footer-long { display: none; }
+  .agr-shell--assistant .agro-ai__footer-short { display: inline; }
+}
+
+@media (max-width: 650px) and (max-height: 540px) {
+  .agr-shell--assistant .agro-ai__heading p,
+  .agr-shell--assistant .agro-ai__kicker { display: none; }
+  .agr-shell--assistant .agro-ai__context--open .agro-ai__context-content {
+    max-height: 25dvh;
+  }
+}
+
+/* Tablet portrait and compact laptop: the assistant keeps its composer visible,
+   while long answers scroll inside the conversation rather than trapping the page. */
+@media (min-width: 651px) and (max-width: 1050px) {
+  .agr-shell--assistant { height: 100dvh; overflow: hidden; }
+  .agr-shell--assistant .agr-content {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    padding-top: 16px;
+    padding-bottom: 12px;
+  }
+  .agr-shell--assistant .agr-header { flex: 0 0 auto; margin-bottom: 12px; }
+  .agr-shell--assistant .agr-footer { display: none; }
+  .agr-shell--assistant .agr-page--ai:not([hidden]) {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .agr-shell--assistant .agr-ai-context-switch { flex: 0 0 auto; margin-bottom: 8px; }
+  .agr-shell--assistant .agro-ai {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .agr-shell--assistant .agro-ai__heading { flex: 0 0 auto; padding: 12px 16px; }
+  .agr-shell--assistant .agro-ai__layout {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .agr-shell--assistant .agro-ai__context {
+    display: block;
+    flex: 0 0 auto;
+    padding: 0;
+    border-right: 0;
+    border-bottom: 1px solid #2e4d40;
+  }
+  .agr-shell--assistant .agro-ai__context-toggle {
+    display: flex;
+    width: 100%;
+    min-height: 42px;
+    align-items: center;
+    justify-content: space-between;
+    border: 0;
+    border-radius: 0;
+    background: #142a20;
+    font-size: 12px;
+    color: #b4e4c8;
+  }
+  .agr-shell--assistant .agro-ai__context-toggle span {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .agr-shell--assistant .agro-ai__context-toggle > svg { transition: transform .18s ease; }
+  .agr-shell--assistant .agro-ai__context--open .agro-ai__context-toggle > svg { transform: rotate(180deg); }
+  .agr-shell--assistant .agro-ai__context-content { display: none; }
+  .agr-shell--assistant .agro-ai__context--open .agro-ai__context-content {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px 12px;
+    padding: 12px 16px;
+    max-height: min(27dvh, 235px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .agr-shell--assistant .agro-ai__context-title,
+  .agr-shell--assistant .agro-ai__field-name,
+  .agr-shell--assistant .agro-ai__crop,
+  .agr-shell--assistant .agro-ai__data-source,
+  .agr-shell--assistant .agro-ai__notice { grid-column: 1 / -1; }
+  .agr-shell--assistant .agro-ai__field-name { font-size: 16px; }
+  .agr-shell--assistant .agro-ai__crop,
+  .agr-shell--assistant .agro-ai__context-title { margin: 0; }
+  .agr-shell--assistant .agro-ai__notice { margin-top: 0; }
+  .agr-shell--assistant .agro-ai__chat {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .agr-shell--assistant .agro-ai__chat-top { flex: 0 0 auto; padding: 9px 14px; }
+  .agr-shell--assistant .agro-ai__messages {
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+    overflow-y: auto;
+    touch-action: pan-y;
+  }
+  .agr-shell--assistant .agro-ai__composer { flex: 0 0 auto; }
+  .agr-shell--assistant .agro-ai__footer { flex: 0 0 auto; }
+}
+
+/* When the software keyboard takes most of a phone screen, prioritize writing. */
+@media (max-width: 650px) {
+  .agr-shell--assistant:has(.agro-ai__composer textarea:focus) .agr-navigation {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .agr-shell--assistant:has(.agro-ai__composer textarea:focus) .agr-content {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (max-width: 650px) and (max-height: 500px) {
+  .agr-shell--assistant .agr-sidebar {
+    flex: 0 0 0;
+    height: 0;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+  }
+  .agr-shell--assistant .agr-brand,
+  .agr-shell--assistant .agr-ai-context-switch,
+  .agr-shell--assistant .agro-ai__heading,
+  .agr-shell--assistant .agro-ai__context,
+  .agr-shell--assistant .agro-ai__chat-top,
+  .agr-shell--assistant .agro-ai__footer { display: none; }
+  .agr-shell--assistant .agr-content { padding-top: 4px; }
+  .agr-shell--assistant .agro-ai__composer { padding: 5px; }
+  .agr-shell--assistant .agro-ai__composer textarea { min-height: 44px; height: 44px; }
+  .agr-shell--assistant .agro-ai__composer button { width: 44px; min-width: 44px; min-height: 44px; height: 44px; }
+}
+
+/* In landscape tablet/small laptop windows the normal page scroll is safer
+   than forcing the entire dialogue into a 300px-high fixed column. */
+@media (min-width: 651px) and (max-width: 1050px) and (max-height: 550px) {
+  .agr-shell--assistant { height: auto; min-height: 100dvh; overflow: visible; }
+  .agr-shell--assistant .agr-content { height: auto; min-height: 0; display: block; overflow: visible; }
+  .agr-shell--assistant .agr-page--ai:not([hidden]) { display: block; min-height: 0; overflow: visible; }
+  .agr-shell--assistant .agro-ai { display: block; overflow: visible; }
+  .agr-shell--assistant .agro-ai__layout { display: block; min-height: 0; overflow: visible; }
+  .agr-shell--assistant .agro-ai__chat { display: block; overflow: visible; }
+  .agr-shell--assistant .agro-ai__messages {
+    height: 190px;
+    min-height: 120px;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: auto;
+  }
+}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bot, Leaf, RotateCcw, Send, Sparkles, ShieldCheck } from 'lucide-react'
+import { Bot, ChevronDown, Leaf, RotateCcw, Send, Sparkles, ShieldCheck } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import './AiAgronom.css'
@@ -59,6 +59,7 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
   const [prompt, setPrompt] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [contextOpen, setContextOpen] = useState(false)
   const messagesRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -117,7 +118,12 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
     </div>
 
     <div className="agro-ai__layout">
-      <aside className="agro-ai__context">
+      <aside className={`agro-ai__context ${contextOpen ? 'agro-ai__context--open' : ''}`}>
+        <button type="button" className="agro-ai__context-toggle" aria-expanded={contextOpen} onClick={() => setContextOpen(open => !open)}>
+          <span><Leaf size={15}/> Данные поля <strong>{field?.name ?? 'не выбрано'}</strong></span>
+          <ChevronDown size={16} aria-hidden="true" />
+        </button>
+        <div className="agro-ai__context-content">
         <div className="agro-ai__context-title"><Leaf size={17}/> КОНТЕКСТ ДЛЯ АНАЛИЗА</div>
         {field ? <>
           <strong className="agro-ai__field-name">{field.name}</strong>
@@ -128,6 +134,7 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
           <div className="agro-ai__data-source">{live ? '● OpenWeather LIVE' : '◌ Демо-погода'}<br/>+ локальные справочные заметки</div>
         </> : <p>Сначала выбери или создай поле.</p>}
         <div className="agro-ai__notice"><ShieldCheck size={16}/> Советы ИИ не заменяют проверку на месте. Данных о влажности почвы и фазе развития пока нет.</div>
+        </div>
       </aside>
 
       <div className="agro-ai__chat">
@@ -154,7 +161,10 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
           <textarea aria-label="Вопрос ИИ-агроному" placeholder={field ? `Спроси о поле «${field.name}»…` : 'Сначала выбери поле'} value={prompt} maxLength={2000} rows={2} disabled={!field || !status?.configured || busy} onChange={e => setPrompt(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(prompt) } }} />
           <button type="submit" title="Отправить вопрос" disabled={!prompt.trim() || !field || !status?.configured || busy}><Send size={17}/> Отправить</button>
         </form>
-        <div className="agro-ai__footer">DeepSeek · {status?.model ?? 'ожидание'} · Контекст запрашивается у FastAPI перед каждым ответом · Внешний ИИ-сервис получает данные выбранного поля и историю отправляемого диалога.</div>
+        <div className="agro-ai__footer">
+          <span className="agro-ai__footer-long">DeepSeek · {status?.model ?? 'ожидание'} · Контекст запрашивается у FastAPI перед каждым ответом · Внешний ИИ-сервис получает данные выбранного поля и историю отправляемого диалога.</span>
+          <span className="agro-ai__footer-short">DeepSeek получает сведения поля и историю отправленного диалога.</span>
+        </div>
       </div>
     </div>
   </section>

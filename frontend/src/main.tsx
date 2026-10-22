@@ -7,6 +7,7 @@ import type { FeatureCollection, Polygon } from 'geojson'
 import './style.css'
 import './FieldsManager.css'
 import './layout-v1.2.css'
+import './mobile-v1.3.css'
 
 type Weather = { temperature_c:number;humidity_pct:number;wind_ms:number;source:string;observed_at:string|null }
 type ForecastPoint = {timestamp:number;temperature_c:number;precipitation_probability_pct:number|null;rain_mm_3h:number|null}
@@ -213,12 +214,12 @@ function App() {
     {!active && <option value="">Нет полей</option>}
     {data?.fields.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
   </select>
-  return <div className="shell agr-shell">
+  return <div className={`shell agr-shell ${view === 'assistant' ? 'agr-shell--assistant' : ''}`}>
     <aside className="sidebar agr-sidebar">
       <div className="brand agr-brand"><div className="brand-icon"><Leaf size={23}/></div><div><strong>AgroRadar <span>AI</span></strong><small>Аналитика сельхозполей</small></div></div>
       <div className="menu-title">НАВИГАЦИЯ</div>
       <nav aria-label="Разделы приложения" className="agr-navigation">
-        {navigation.map(({id,label,Icon})=><button key={id} type="button" className={`menu agr-nav-item ${view===id?'active':''}`} aria-current={view===id?'page':undefined} onClick={()=>navigate(id)}><Icon size={19}/><span>{label}</span></button>)}
+        {navigation.map(({id,label,Icon})=><button key={id} type="button" className={`menu agr-nav-item ${view===id?'active':''}`} aria-label={label} title={label} aria-current={view===id?'page':undefined} onClick={()=>navigate(id)}><Icon size={19}/><span>{label}</span></button>)}
       </nav>
       <div className="agr-sidebar-meta"><div className="agr-sidebar-meta__dot"/> AgroRadar · IT-спринт<br/><span>Русагро / MVP 1.2</span></div>
     </aside>
