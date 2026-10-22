@@ -1,0 +1,246 @@
+/* AgroRadar AI - GIS toolbar redesign v0.9.
+   All controls live OUTSIDE the Yandex map. The map retains the Yandex
+   copyright notice, logo and mandatory link. The CSS is scoped to our component. */
+.geo-map.agr-map-shell {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: #101e1b;
+  color: #e2f5eb;
+  font-family: Inter, 'Segoe UI', Arial, sans-serif;
+}
+
+/* A single clean control deck above the imagery. */
+.agr-map-shell .agr-map-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 12px 14px;
+  background: linear-gradient(120deg, #142923 0%, #11231e 70%);
+  border-bottom: 1px solid #2e4c41;
+}
+.agr-map-shell .agr-map-toolbar__mode,
+.agr-map-shell .agr-map-toolbar__actions,
+.agr-map-shell .agr-map-toolbar__set {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+.agr-map-shell .agr-map-toolbar__actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.agr-map-shell .agr-map-toolbar__label {
+  color: #80a99a;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 1.3px;
+  white-space: nowrap;
+}
+.agr-map-shell .agr-map-segments {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #315247;
+  border-radius: 10px;
+  background: #0b1c18;
+}
+.agr-map-shell button {
+  justify-content: center;
+  flex: 0 0 auto;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color .17s ease, border-color .17s ease, color .17s ease;
+}
+.agr-map-shell button:focus-visible { outline: 2px solid #90e6bc; outline-offset: 2px; }
+.agr-map-shell button:disabled { cursor: not-allowed; opacity: .43; }
+.agr-map-shell .agr-map-segments__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #9db6ab;
+  padding: 9px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+.agr-map-shell .agr-map-segments__button:hover:not(:disabled) { background: #1d3b30; color: #effff5; }
+.agr-map-shell .agr-map-segments__button.is-active {
+  background: linear-gradient(145deg, #226b50, #1b5643);
+  color: #e4fff0;
+  border-color: #39866b;
+  box-shadow: 0 1px 5px #08171055;
+}
+.agr-map-shell .agr-map-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 10px;
+  background: #182f27;
+  border: 1px solid #38584b;
+  border-radius: 8px;
+  color: #b8d6c8;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+}
+.agr-map-shell .agr-map-action:hover:not(:disabled) { background: #28483a; border-color: #64aa85; color: #ecfff4; }
+.agr-map-shell .agr-map-action.is-toggled { background: #173a2d; border-color: #35795b; color: #75dfae; }
+.agr-map-shell .agr-map-action--primary {
+  background: #1f7757;
+  border-color: #2f9e76;
+  color: #ebfff2;
+}
+.agr-map-shell .agr-map-action--primary:hover:not(:disabled) { background: #288c67; }
+.agr-map-shell .agr-map-action--square { min-width: 35px; width: 35px; padding: 8px; }
+.agr-map-shell .agr-map-toolbar__set--compact { gap: 4px; }
+.agr-map-shell .agr-map-toolbar__divider { height: 23px; width: 1px; background: #345447; margin: 0 2px; }
+
+/* No decorative labels or action buttons obscure the satellite imagery. */
+.agr-map-shell .agr-map-viewport {
+  flex: 1 1 auto;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: #18312a;
+  overflow: hidden;
+}
+.agr-map-shell .agr-map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.agr-map-shell .agr-map-alert {
+  position: absolute;
+  z-index: 650;
+  top: 14px;
+  left: 14px;
+  max-width: min(420px, calc(100% - 28px));
+  padding: 11px 13px;
+  border: 1px solid #a85a50;
+  border-radius: 9px;
+  background: #542c29eb;
+  color: #ffe4d9;
+  box-shadow: 0 10px 25px #0005;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.agr-map-shell .agr-map-alert--draw { top: 76px; }
+
+/* Editable geometry gets a clear, non-overlay secondary toolbar. */
+.agr-map-shell .agr-map-drawbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  gap: 10px 16px;
+  padding: 11px 14px;
+  background: #173b2d;
+  border-bottom: 1px solid #40906c;
+}
+.agr-map-shell .agr-map-drawbar__summary { display: flex; align-items: center; gap: 10px; color: #8de8b9; }
+.agr-map-shell .agr-map-drawbar__summary strong { color: #e7fff0; font-size: 12px; display: block; }
+.agr-map-shell .agr-map-drawbar__summary span { color: #a6ccbb; font-size: 11px; margin-top: 3px; display: block; }
+.agr-map-shell .agr-map-drawbar__buttons { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+.agr-map-shell .agr-map-drawbar__buttons button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 11px;
+  border: 1px solid #3e735e;
+  border-radius: 7px;
+  background: #234637;
+  color: #d2f5e1;
+  font-size: 11px;
+}
+.agr-map-shell .agr-map-drawbar__buttons button:hover:not(:disabled) { background: #305a45; }
+.agr-map-shell .agr-map-drawbar__buttons .agr-map-drawbar__save { background: #248b64; border-color: #3eaf82; color: white; font-weight: 750; }
+
+/* A modest, readable data bar replaces the floating demonstration box. */
+.agr-map-shell .agr-map-status {
+  flex: 0 0 auto;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 18px;
+  flex-wrap: wrap;
+  padding: 9px 14px;
+  background: #10231d;
+  border-top: 1px solid #2a4a3c;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.agr-map-shell .agr-map-status__primary,
+.agr-map-shell .agr-map-status__details { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.agr-map-shell .agr-map-status__primary { color: #9ec7b1; }
+.agr-map-shell .agr-map-status__details { color: #93b9a5; justify-content: flex-end; }
+.agr-map-shell .agr-map-status__details b { color: #e4f5e8; font-weight: 700; }
+.agr-map-shell .agr-map-status__separator { color: #4d7867; margin: 0 3px; }
+.agr-map-shell .agr-map-status__pulse {
+  display: inline-block;
+  height: 7px; width: 7px; margin-right: 2px;
+  border-radius: 50%; background: #66d9a8;
+  box-shadow: 0 0 0 3px #66d9a821;
+}
+.agr-map-shell .agr-map-risk { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 3px; }
+.agr-map-shell .agr-map-risk--high { background: #f87171; }
+.agr-map-shell .agr-map-risk--medium { background: #f6c65b; }
+.agr-map-shell .agr-map-risk--low { background: #62dbad; }
+
+/* Fullscreen takes the *whole* GIS component, not only the map canvas. */
+.geo-map.agr-map-shell.agr-map-shell--expanded {
+  position: fixed;
+  z-index: 9999;
+  inset: 12px;
+  width: auto;
+  height: auto;
+  border: 1px solid #3f6d59;
+  border-radius: 12px;
+  box-shadow: 0 0 0 30px #08130fe8, 0 25px 90px #000b;
+}
+
+/* Keep optional marketing controls out of the way. Never hide Yandex
+   copyright, company logo, or the link to open the map in Yandex. */
+.agr-map-shell .agr-map-canvas [class*="gototech"] { display: none !important; }
+.agr-map-shell .agr-map-canvas a[href*="taxi"],
+.agr-map-shell .agr-map-canvas a[href*="go.yandex"] { display: none !important; }
+
+@media (max-width: 900px) {
+  .agr-map-shell .agr-map-toolbar { gap: 10px; }
+  .agr-map-shell .agr-map-toolbar__mode,
+  .agr-map-shell .agr-map-toolbar__actions { justify-content: space-between; width: 100%; }
+  .agr-map-shell .agr-map-toolbar__actions { justify-content: flex-start; }
+}
+@media (max-width: 540px) {
+  .agr-map-shell .agr-map-toolbar { padding: 9px; gap: 8px; }
+  .agr-map-shell .agr-map-toolbar__label { display: none; }
+  .agr-map-shell .agr-map-segments { width: 100%; justify-content: space-between; }
+  .agr-map-shell .agr-map-segments__button { flex: 1; justify-content: center; padding: 9px 7px; }
+  .agr-map-shell .agr-map-toolbar__mode { width: 100%; }
+  .agr-map-shell .agr-map-toolbar__actions { justify-content: space-between; gap: 5px; }
+  .agr-map-shell .agr-map-toolbar__set { gap: 4px; }
+  .agr-map-shell .agr-map-action { min-height: 33px; font-size: 10px; padding: 7px; }
+  .agr-map-shell .agr-map-action--square { min-width: 30px; width: 30px; }
+  .agr-map-shell .agr-map-toolbar__divider { display: none; }
+  .agr-map-shell .agr-map-status { font-size: 9px; padding: 7px 9px; }
+  .agr-map-shell .agr-map-drawbar { padding: 9px; }
+}
+@media (max-width: 390px) {
+  .agr-map-shell .agr-map-action span { display: none; }
+  .agr-map-shell .agr-map-action--primary span { display: inline; }
+}

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection, Polygon as GeoPolygon } from 'geojson'
+import { Check, Crosshair, Expand, Focus, Layers, Map as MapIcon, Minus, Pencil, Plus, Satellite, Shrink, Undo2, X } from 'lucide-react'
+import './GeoFieldsMap.css'
 
 // API 2.1 provides high-resolution satellite / hybrid / street map layers.
 // It is loaded via the official Yandex script, without an extra React adapter.
@@ -94,6 +96,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [overviewTick, setOverviewTick] = useState(0)
+  const [expanded, setExpanded] = useState(false)
   const activeField = fields.find(f => f.id === activeId)
   const fieldById = useMemo(() => new Map(fields.map(f => [f.id, f])), [fields])
   const centersKey = fields.map(f => `${f.id}:${f.lat}:${f.lon}`).join('|')
@@ -109,14 +112,13 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
       try {
         const map = new ymaps.Map(host.current, {
           center: [50.60, 36.58], zoom: 11, type: layers.satellite,
-          controls: ['zoomControl'],
+          controls: [],
         }, { suppressMapOpenBlock: false })
         mapRef.current = map
         fieldsObjectsRef.current = new ymaps.GeoObjectCollection()
         drawnObjectsRef.current = new ymaps.GeoObjectCollection()
         map.geoObjects.add(fieldsObjectsRef.current)
         map.geoObjects.add(drawnObjectsRef.current)
-        map.controls.get('zoomControl')?.options.set({ position: { left: 12, bottom: 95 } })
         map.events.add('click', (event: any) => {
           if (!drawingRef.current) return
           const coord: number[] | undefined = event.get('coords')
@@ -135,6 +137,35 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
       drawnObjectsRef.current = null
     }
   }, [])
+
+  // Map viewport changes when the toolbar wraps or fullscreen mode is toggled.
+  useEffect(() => {
+    if (!loaded || !mapRef.current || !host.current) return
+    const map = mapRef.current
+    let frame = 0
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        try { map.container.fitToViewport() } catch (e) { console.warn('Карта: пересчёт размера', e) }
+      })
+    })
+    observer.observe(host.current)
+    return () => { observer.disconnect(); cancelAnimationFrame(frame) }
+  }, [loaded])
+
+  useEffect(() => {
+    if (!expanded) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExpanded(false)
+    }
+    window.addEventListener('keydown', onEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onEscape)
+    }
+  }, [expanded])
 
   // The initial map type was already set in the constructor. Calling setType
   // again on mount can produce a rejected API promise even when satellite tiles
@@ -257,6 +288,13 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [overviewTick, loaded])
 
+  function zoomBy(delta: number) {
+    const map = mapRef.current
+    if (!loaded || !map) return
+    const zoom = map.getZoom()
+    map.setZoom(Math.max(2, Math.min(21, zoom + delta)), { checkZoomRange: true, duration: 180 })
+  }
+
   function beginDrawing() {
     if (!activeId) return
     setPoints([])
@@ -284,49 +322,76 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
     }
   }
 
-  return <div className={`geo-map ${drawing ? 'geo-map--drawing' : ''}`} aria-label="Карта полей Яндекс">
-    <div ref={host} className="geo-leaflet-map" aria-label="Яндекс Карта с полями" />
-    {/* Не трогаем обязательные элементы Яндекса: логотип, атрибуцию и переход в Карты.
-        CSS ниже убирает лишь необязательные рекламные ссылки «Создать свою карту»
-        и «Такси», если Яндекс выводит их отдельными ссылками.
-        Имена классов Яндекса могут меняться при обновлениях API. */}
-    <style>{`
-      .geo-map [class*="gototech"] {
-        display: none !important;
-      }
-      .geo-map .geo-leaflet-map a[href*="taxi"],
-      .geo-map .geo-leaflet-map a[href*="go.yandex"] {
-        display: none !important;
-      }
-    `}</style>
+  const modes: { id: LayerName; title: string; Icon: typeof Satellite }[] = [
+    { id: 'satellite', title: 'Спутник', Icon: Satellite },
+    { id: 'hybrid', title: 'Гибрид', Icon: Layers },
+    { id: 'map', title: 'Схема', Icon: MapIcon },
+  ]
 
-    {!loaded && !loadError && <div className="yandex-map-loading">Загрузка Яндекс Карт…</div>}
-    {loadError && <div className="map-network-warning">{loadError}<br/>Проверь доступ к JavaScript API 2.1 и разрешённый HTTP Referer <b>localhost</b>.</div>}
-    {!loadError && layerError && <div className="map-network-warning">{layerError}</div>}
-    <div className="map-topbar">
-      <div className="map-source-tag"><span className="map-source-dot" /> ЯНДЕКС КАРТЫ · GIS</div>
-      <div className="map-layer-switch" role="group" aria-label="Режим отображения карты">
-        <button type="button" onClick={() => setLayer('satellite')} className={layer === 'satellite' ? 'chosen' : ''}>Спутник</button>
-        <button type="button" onClick={() => setLayer('hybrid')} className={layer === 'hybrid' ? 'chosen' : ''}>Гибрид</button>
-        <button type="button" onClick={() => setLayer('map')} className={layer === 'map' ? 'chosen' : ''}>Схема</button>
+  return <div className={`geo-map agr-map-shell ${drawing ? 'geo-map--drawing' : ''} ${expanded ? 'agr-map-shell--expanded' : ''}`} aria-label="Карта полей Яндекс">
+    <div className="agr-map-toolbar" role="toolbar" aria-label="Управление геокартой">
+      <div className="agr-map-toolbar__mode" aria-label="Картографическая подложка">
+        <span className="agr-map-toolbar__label">ПОДЛОЖКА</span>
+        <div className="agr-map-segments" role="group" aria-label="Режим карты">
+          {modes.map(({ id, title, Icon }) => <button
+            key={id}
+            type="button"
+            aria-pressed={layer === id}
+            className={`agr-map-segments__button ${layer === id ? 'is-active' : ''}`}
+            onClick={() => setLayer(id)}
+            disabled={!loaded || drawing}
+            title={title}
+          ><Icon size={15} strokeWidth={1.8} /><span>{title}</span></button>)}
+        </div>
+      </div>
+      <div className="agr-map-toolbar__actions">
+        <div className="agr-map-toolbar__set" role="group" aria-label="Работа с полями">
+          <button type="button" className="agr-map-action" onClick={() => setOverviewTick(x => x + 1)} disabled={!loaded || drawing} title="Показать все поля">
+            <Focus size={16} strokeWidth={1.9} /><span>Все поля</span>
+          </button>
+          <button type="button" className={`agr-map-action ${showContours ? 'is-toggled' : ''}`} onClick={() => setShowContours(x => !x)} disabled={!loaded || drawing} aria-pressed={showContours} title={showContours ? 'Скрыть контуры' : 'Показать контуры'}>
+            <Layers size={16} strokeWidth={1.9} /><span>Контуры</span>
+          </button>
+          {!drawing && <button type="button" className="agr-map-action agr-map-action--primary" onClick={beginDrawing} disabled={!loaded || !activeId} title="Нарисовать границу выбранного поля">
+            <Pencil size={16} strokeWidth={1.9} /><span>Обвести</span>
+          </button>}
+        </div>
+        <span className="agr-map-toolbar__divider" aria-hidden="true" />
+        <div className="agr-map-toolbar__set agr-map-toolbar__set--compact" role="group" aria-label="Масштаб и экран">
+          <button type="button" className="agr-map-action agr-map-action--square" onClick={() => zoomBy(-1)} disabled={!loaded} aria-label="Уменьшить масштаб" title="Уменьшить"><Minus size={17} /></button>
+          <button type="button" className="agr-map-action agr-map-action--square" onClick={() => zoomBy(1)} disabled={!loaded} aria-label="Увеличить масштаб" title="Увеличить"><Plus size={17} /></button>
+          <button type="button" className={`agr-map-action agr-map-action--square ${expanded ? 'is-toggled' : ''}`} onClick={() => setExpanded(v => !v)} disabled={!loaded} aria-label={expanded ? 'Свернуть карту' : 'Развернуть карту'} title={expanded ? 'Свернуть карту (Esc)' : 'Во весь экран'}>
+            {expanded ? <Shrink size={16} /> : <Expand size={16} />}
+          </button>
+        </div>
       </div>
     </div>
-    <div className="map-side-controls">
-      <button type="button" onClick={() => setOverviewTick(x => x + 1)} disabled={!loaded}>⊞ <span>Все поля</span></button>
-      <button type="button" onClick={() => setShowContours(x => !x)} className={showContours ? 'selected' : ''} disabled={!loaded}>{showContours ? '◈' : '◇'} <span>Контуры</span></button>
-      {!drawing && <button type="button" onClick={beginDrawing} disabled={!loaded || !activeId}>✎ <span>Обвести поле</span></button>}
-    </div>
-    {drawing && <div className="map-draw-bar">
-      <div><strong>Рисуем: {activeField?.name}</strong><span>Отмечай углы поля нажатием на карту (минимум 3 точки).</span></div>
-      <div className="map-draw-actions">
-        <button type="button" onClick={() => setPoints(p => p.slice(0, -1))} disabled={!points.length || saving}>↶ Отменить точку</button>
-        <button type="button" onClick={cancelDrawing} disabled={saving}>Отмена</button>
-        <button type="button" className="map-save" onClick={() => void saveDrawing()} disabled={points.length < 3 || saving}>{saving ? 'Сохраняем…' : `✓ Сохранить (${points.length})`}</button>
+
+    {drawing && <div className="agr-map-drawbar">
+      <div className="agr-map-drawbar__summary">
+        <Crosshair size={18} strokeWidth={1.9}/>
+        <div><strong>Обводим: {activeField?.name}</strong><span>Отмечай углы поля на снимке · {points.length} точек</span></div>
+      </div>
+      <div className="agr-map-drawbar__buttons">
+        <button type="button" onClick={() => setPoints(p => p.slice(0, -1))} disabled={!points.length || saving} title="Удалить последнюю точку"><Undo2 size={16} /><span>Назад</span></button>
+        <button type="button" onClick={cancelDrawing} disabled={saving}><X size={16} /><span>Отмена</span></button>
+        <button type="button" className="agr-map-drawbar__save" onClick={() => void saveDrawing()} disabled={points.length < 3 || saving}><Check size={16} /><span>{saving ? 'Сохранение…' : 'Сохранить контур'}</span></button>
       </div>
     </div>}
-    {error && <div className="map-draw-error">{error}</div>}
-    {!drawing && loaded && <div className="map-hint">{activeField?.geometry_source === 'user_drawn'
-      ? 'Контур выбранного поля сохранён в FastAPI.'
-      : 'Пунктир — демонстрационный контур. Для реальной геометрии обведи поле.'}</div>}
+
+    <div className="agr-map-viewport">
+      <div ref={host} className="geo-leaflet-map agr-map-canvas" aria-label="Интерактивная Яндекс Карта с полями" />
+      {!loaded && !loadError && <div className="yandex-map-loading">Загрузка Яндекс Карт…</div>}
+      {loadError && <div className="agr-map-alert" role="alert">{loadError}<br/>Проверь доступ к JavaScript API 2.1 и HTTP Referer <b>localhost</b>.</div>}
+      {!loadError && layerError && <div className="agr-map-alert" role="alert">{layerError}</div>}
+      {error && <div className="agr-map-alert agr-map-alert--draw" role="alert">{error}</div>}
+    </div>
+
+    <div className="agr-map-status" aria-live="polite">
+      <div className="agr-map-status__primary"><span className="agr-map-status__pulse" /> <span>Яндекс Карты</span><span className="agr-map-status__separator">/</span><span>{loaded ? 'Карта подключена' : 'Подключение…'}</span></div>
+      <div className="agr-map-status__details">
+        {!loaded ? 'Ожидаем загрузку подложки' : drawing ? `Редактирование · ${points.length} точек` : activeField ? <><span className={`agr-map-risk agr-map-risk--${activeField.risk.level}`} /> <b>{activeField.name}</b><span className="agr-map-status__separator">·</span><span>{activeField.geometry_source === 'user_drawn' ? 'Граница сохранена' : 'Контур демонстрационный'}</span></> : 'Выбери поле для просмотра'}
+      </div>
+    </div>
   </div>
 }
