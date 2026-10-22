@@ -86,6 +86,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
   const drawingRef = useRef(false)
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState('')
+  const [layerError, setLayerError] = useState('')
   const [layer, setLayer] = useState<LayerName>('satellite')
   const [showContours, setShowContours] = useState(true)
   const [drawing, setDrawing] = useState(false)
@@ -135,11 +136,34 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
     }
   }, [])
 
+  // The initial map type was already set in the constructor. Calling setType
+  // again on mount can produce a rejected API promise even when satellite tiles
+  // are displayed correctly. Switch only when the requested type really differs.
   useEffect(() => {
     const map = mapRef.current
     if (!loaded || !map) return
-    const result = map.setType(layers[layer])
-    if (result?.catch) result.catch(() => setLoadError('Не удалось переключить тип карты. Проверь доступ к слоям Яндекса.'))
+    const requestedType = layers[layer]
+    if (map.getType() === requestedType) {
+      setLayerError('')
+      return
+    }
+    let disposed = false
+    try {
+      const transition = map.setType(requestedType)
+      // Yandex API 2.1 returns a vow.Promise, not a native Promise.
+      transition.then(
+        () => { if (!disposed) setLayerError('') },
+        (reason: unknown) => {
+          if (disposed) return
+          console.error('Yandex Maps: setType failed:', reason)
+          setLayerError('Не удалось переключить режим карты. Проверь вкладку Console (F12).')
+        },
+      )
+    } catch (reason) {
+      console.error('Yandex Maps: setType threw:', reason)
+      setLayerError('Ошибка переключения карты. Проверь вкладку Console (F12).')
+    }
+    return () => { disposed = true }
   }, [loaded, layer])
 
   useEffect(() => {
@@ -264,6 +288,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
     <div ref={host} className="geo-leaflet-map" aria-label="Яндекс Карта с полями" />
     {!loaded && !loadError && <div className="yandex-map-loading">Загрузка Яндекс Карт…</div>}
     {loadError && <div className="map-network-warning">{loadError}<br/>Проверь доступ к JavaScript API 2.1 и разрешённый HTTP Referer <b>localhost</b>.</div>}
+    {!loadError && layerError && <div className="map-network-warning">{layerError}</div>}
     <div className="map-topbar">
       <div className="map-source-tag"><span className="map-source-dot" /> ЯНДЕКС КАРТЫ · GIS</div>
       <div className="map-layer-switch" role="group" aria-label="Режим отображения карты">
