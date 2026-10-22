@@ -110,7 +110,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
         const map = new ymaps.Map(host.current, {
           center: [50.60, 36.58], zoom: 11, type: layers.satellite,
           controls: ['zoomControl'],
-        }, { suppressMapOpenBlock: true })
+        }, { suppressMapOpenBlock: false })
         mapRef.current = map
         fieldsObjectsRef.current = new ymaps.GeoObjectCollection()
         drawnObjectsRef.current = new ymaps.GeoObjectCollection()
@@ -286,6 +286,20 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
 
   return <div className={`geo-map ${drawing ? 'geo-map--drawing' : ''}`} aria-label="Карта полей Яндекс">
     <div ref={host} className="geo-leaflet-map" aria-label="Яндекс Карта с полями" />
+    {/* Не трогаем обязательные элементы Яндекса: логотип, атрибуцию и переход в Карты.
+        CSS ниже убирает лишь необязательные рекламные ссылки «Создать свою карту»
+        и «Такси», если Яндекс выводит их отдельными ссылками.
+        Имена классов Яндекса могут меняться при обновлениях API. */}
+    <style>{`
+      .geo-map [class*="gototech"] {
+        display: none !important;
+      }
+      .geo-map .geo-leaflet-map a[href*="taxi"],
+      .geo-map .geo-leaflet-map a[href*="go.yandex"] {
+        display: none !important;
+      }
+    `}</style>
+
     {!loaded && !loadError && <div className="yandex-map-loading">Загрузка Яндекс Карт…</div>}
     {loadError && <div className="map-network-warning">{loadError}<br/>Проверь доступ к JavaScript API 2.1 и разрешённый HTTP Referer <b>localhost</b>.</div>}
     {!loadError && layerError && <div className="map-network-warning">{layerError}</div>}

@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
-app = FastAPI(title='AgroRadar AI API', version='0.5.0')
+app = FastAPI(title='AgroRadar AI API', version='0.8.0')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
@@ -197,9 +197,21 @@ def risk_from_temperature(min_temp_c: float, basis: str) -> dict:
 
 
 def _demo_data(field: dict) -> dict:
+    # Synthetic time-series is visibly tagged DEMO throughout the UI; it is not a weather prediction.
+    current = DEMO_WEATHER[field['id']]['temperature_c']
+    minimum = DEMO_FORECAST_MINIMUM[field['id']]
+    offsets = [0, .2, .5, .85, 1, .65, .38, .14]
+    now = int(datetime.now(timezone.utc).timestamp())
+    start = (now // 10800 + 1) * 10800  # align 3-hourly example timestamps
+    points = [{'timestamp': start + index * 10800,
+               'temperature_c': round(current + (minimum - current) * factor, 1),
+               'precipitation_probability_pct': None,
+               'rain_mm_3h': None}
+              for index, factor in enumerate(offsets)]
     return {'weather': {**DEMO_WEATHER[field['id']], 'source': 'demo', 'observed_at': None},
-            'forecast': {'min_temperature_next_24h_c': DEMO_FORECAST_MINIMUM[field['id']],
-                         'source': 'demo', 'sample_count': 0, 'period_hours': 24}}
+            'forecast': {'min_temperature_next_24h_c': minimum,
+                         'source': 'demo', 'sample_count': len(points),
+                         'period_hours': 24, 'points': points}}
 
 
 async def _openweather_request(endpoint: str, field: dict, key: str) -> dict:
@@ -229,10 +241,24 @@ async def field_conditions(field: dict) -> dict:
         now = datetime.now(timezone.utc).timestamp()
         timestamps = [entry for entry in future['list']
                       if now <= float(entry['dt']) <= now + 24 * 3600]
-        # 3-hour forecast covers future windows; use next available data if no sample in interval.
+        # Values are from three-hour forecast intervals; they are NOT field observations.
         if not timestamps:
             raise ValueError('В прогнозе нет точек на ближайшие 24 часа')
+        timestamps.sort(key=lambda entry: entry['dt'])
         minimum = round(min(float(entry['main']['temp_min']) for entry in timestamps), 1)
+        points = []
+        for entry in timestamps:
+            probability = entry.get('pop')
+            rain = entry.get('rain') or {}
+            points.append({
+                'timestamp': int(entry['dt']),
+                'temperature_c': round(float(entry['main']['temp']), 1),
+                'precipitation_probability_pct': (
+                    round(max(0, min(1, float(probability))) * 100)
+                    if probability is not None else None
+                ),
+                'rain_mm_3h': round(float(rain.get('3h', 0)), 2),
+            })
         return {
             'weather': {
                 'temperature_c': round(float(current['main']['temp']), 1),
@@ -243,7 +269,8 @@ async def field_conditions(field: dict) -> dict:
             },
             'forecast': {'min_temperature_next_24h_c': minimum,
                          'source': 'openweather_forecast_3h',
-                         'sample_count': len(timestamps), 'period_hours': 24},
+                         'sample_count': len(timestamps), 'period_hours': 24,
+                         'points': points},
         }
     except (httpx.HTTPError, ValueError, KeyError, TypeError, IndexError) as exc:
         # Never silently invent live weather when the provider returns an error.
@@ -263,7 +290,7 @@ async def compose_field(field: dict) -> dict:
 
 @app.get('/api/health')
 def health():
-    return {'status': 'ok', 'version': '0.5.0',
+    return {'status': 'ok', 'version': '0.8.0',
             'weather_mode': 'live' if os.getenv('OPENWEATHER_API_KEY', '').strip() else 'demo'}
 
 

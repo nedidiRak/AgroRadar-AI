@@ -55,3 +55,19 @@
 /* v0.7 — native Yandex Maps 2.1 satellite/hybrid/map layer. */
 .yandex-map-loading {position:absolute;z-index:550;top:50%;left:50%;transform:translate(-50%,-50%);padding:14px 19px;border-radius:10px;background:#132f28e8;border:1px solid #47987a;color:#d2ffea;font-size:13px;pointer-events:none}
 .geo-map--drawing .geo-leaflet-map, .geo-map--drawing .geo-leaflet-map * {cursor:crosshair!important}
+
+/* v0.8: real OpenWeather three-hour temperature forecast timeline. */
+.forecast-timeline{margin:0 20px 17px;padding:14px;border-radius:12px;border:1px solid #305746;background:#122a24}
+.timeline-header{display:flex;justify-content:space-between;align-items:start;gap:8px;flex-wrap:wrap}
+.timeline-header strong{display:block;font-size:13px;color:#e7f7eb}
+.timeline-header span{display:block;font-size:10px;margin-top:3px;color:#9bbbac}
+.timeline-header .timeline-demo{color:#f0d38e;border:1px solid #6e6236;border-radius:5px;padding:4px 6px;font-size:9px;white-space:nowrap}
+.timeline-header .timeline-live{color:#82e3b6;border:1px solid #3f8b66;border-radius:5px;padding:4px 6px;font-size:9px;white-space:nowrap}
+.timeline-chart{display:block;width:100%;height:auto;max-height:150px;margin-top:5px;overflow:visible}
+.timeline-data{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.timeline-data>div{border:1px solid #2b5544;border-radius:7px;padding:6px 4px;text-align:center;background:#19372c}
+.timeline-data small,.timeline-data span{display:block;color:#98b8a7;font-size:10px}
+.timeline-data strong{display:block;color:#e5f9ed;font-size:13px;padding:4px 0}
+.timeline-disclaimer{font-size:10px;line-height:1.55;color:#8faf9f;margin:12px 0 0}
+.timeline-empty{padding:10px;font-size:12px;color:#adc8b8}
+@media(min-width:1400px){.timeline-data{grid-template-columns:repeat(8,minmax(0,1fr))}}
