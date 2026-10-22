@@ -95,7 +95,7 @@ function App() {
       <div className="menu-title">РАБОЧЕЕ ПРОСТРАНСТВО</div>
       <div className="menu active"><Activity size={19}/> Обзор полей</div>
       <div className="menu"><MapPinned size={19}/> Карта хозяйства</div>
-      <div className="sidebar-bottom">IT-спринт · Русагро<br/>Прототип v0.5</div>
+      <div className="sidebar-bottom">IT-спринт · Русагро<br/>Прототип v0.7</div>
     </aside>
     <main className="content">
       <header><div><div className="eyebrow">МОНИТОРИНГ / ОБЗОР</div><h1>Обзор хозяйства</h1><p>Метеоусловия и прогноз температурных рисков на 24 часа</p></div><button onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={17}/>{loading?'Обновление…':'Обновить'}</button></header>
@@ -103,8 +103,8 @@ function App() {
       {actionMessage && <div className="action-message">{actionMessage}</div>}
       {geoError && <div className="error">{geoError}. Точечные маркеры продолжат работать, если есть данные полей.</div>}
       <div className="notice">{demo
-        ? 'ДЕМОРЕЖИМ · Погода и исходные поля примерные; спутниковая подложка настоящая (архивный снимок). Настрой OPENWEATHER_API_KEY для реальной погоды.'
-        : data ? 'OPENWEATHER LIVE · Текущая погода и прогноз 3-часовыми шагами. Спутниковые снимки реальные; не обведённые поля демонстрационные.'
+        ? 'ДЕМОРЕЖИМ · Погода и исходные поля примерные; спутниковая подложка Яндекс Карт онлайн. Настрой OPENWEATHER_API_KEY для реальной погоды.'
+        : data ? 'OPENWEATHER LIVE · Текущая погода и прогноз 3-часовыми шагами. Карта Яндекс онлайн; не обведённые поля демонстрационные.'
         : 'Загрузка данных…'} Риск — температурное правило, не агрономический диагноз.</div>
       <section className="stats">
         <div className="stat"><div className="stat-label"><MapPinned size={18}/> Всего полей</div><strong>{data?.count??'—'}</strong><small>Демонстрационное хозяйство</small></div>

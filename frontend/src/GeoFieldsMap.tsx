@@ -1,134 +1,293 @@
-import { useEffect, useMemo, useState } from 'react'
-import { CircleMarker, GeoJSON, MapContainer, Polygon, Polyline, ScaleControl, ZoomControl, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
-import type { Feature, FeatureCollection, Polygon as GeoPolygon } from 'geojson'
-import type { Layer } from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { FeatureCollection, Polygon as GeoPolygon } from 'geojson'
 
-type Field = { id:number; name:string; crop:string; area_ha:number; lat:number; lon:number; geometry_source?:string; risk:{level:'high'|'medium'|'low';label:string} }
+// API 2.1 provides high-resolution satellite / hybrid / street map layers.
+// It is loaded via the official Yandex script, without an extra React adapter.
+// No Leaflet or third-party tile source is used by this component.
+type Risk = 'high' | 'medium' | 'low'
+type Field = {
+  id: number; name: string; crop: string; area_ha: number;
+  lat: number; lon: number; geometry_source?: string;
+  risk: { level: Risk; label: string }
+}
 type Props = {
-  fields:Field[]; activeId?:number; onSelect:(id:number)=>void;
-  geojson:FeatureCollection<GeoPolygon>|null;
-  onSaveGeometry:(fieldId:number, points:[number,number][])=>Promise<boolean>;
+  fields: Field[];
+  activeId?: number;
+  onSelect: (id: number) => void;
+  geojson: FeatureCollection<GeoPolygon> | null;
+  onSaveGeometry: (fieldId: number, points: [number, number][]) => Promise<boolean>;
 }
-const colors = { high:'#f87171', medium:'#f6c65b', low:'#62dbad' }
-const IMAGE_2024 = 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg'
-const IMAGE_2016 = 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg'
-const attribution = (year:number) => `EOxCloudless <a href="https://cloudless.eox.at" target="_blank" rel="noopener noreferrer">cloudless.eox.at</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data ${year === 2024 ? '2024' : '2016 & 2017'})`
+type LayerName = 'satellite' | 'hybrid' | 'map'
+type LatLon = [number, number]
+const colors: Record<Risk, string> = { high: '#f87171', medium: '#f6c65b', low: '#62dbad' }
+const layers: Record<LayerName, string> = {
+  satellite: 'yandex#satellite', hybrid: 'yandex#hybrid', map: 'yandex#map',
+}
+const key = (import.meta.env.VITE_YANDEX_MAPS_API_KEY as string | undefined)?.trim() ?? ''
 
-function ViewController({fields, activeId, drawing, overviewTick}:{fields:Field[],activeId?:number,drawing:boolean,overviewTick:number}) {
-  const map = useMap()
-  useEffect(() => {
-    if (fields.length) map.fitBounds(fields.map(f => [f.lat,f.lon] as [number,number]), {padding:[65,65], maxZoom:13})
-  }, [fields,map])
-  useEffect(() => {
-    if (drawing) map.doubleClickZoom.disable()
-    else map.doubleClickZoom.enable()
-  }, [drawing,map])
-  useEffect(() => {
-    if (drawing) return
-    const active = fields.find(f => f.id === activeId)
-    if (active) map.flyTo([active.lat,active.lon], 14, {animate:true, duration:0.7})
-  }, [activeId, fields, map, drawing])
-  useEffect(() => {
-    if (overviewTick>0 && fields.length) {
-      map.fitBounds(fields.map(f=>[f.lat,f.lon] as [number,number]),{padding:[65,65],maxZoom:13})
+// Yandex Maps 2.1 does not ship TypeScript types with this project.
+// The dynamic API is deliberately isolated in this one file.
+declare global { interface Window { ymaps?: any } }
+let apiPromise: Promise<any> | null = null
+function loadYandexMaps(): Promise<any> {
+  if (window.ymaps?.Map) return new Promise((resolve, reject) => {
+    window.ymaps.ready(() => resolve(window.ymaps), (e: unknown) => reject(e))
+  })
+  if (apiPromise) return apiPromise
+  apiPromise = new Promise((resolve, reject) => {
+    if (!key) { reject(new Error('Нет ключа VITE_YANDEX_MAPS_API_KEY в frontend/.env.local')); return }
+    const script = document.createElement('script')
+    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(key)}&lang=ru_RU`
+    script.async = true
+    script.dataset.agroradarYandex = '1'
+    let settled = false
+    const timeout = window.setTimeout(() => fail('Превышено время ожидания Яндекс Карт'), 20000)
+    function fail(message: string) {
+      if (settled) return
+      settled = true
+      window.clearTimeout(timeout)
+      script.remove()
+      reject(new Error(message))
     }
-  },[overviewTick,map])
-  return null
+    script.onerror = () => fail('Не удалось загрузить JavaScript API 2.1. Проверь сеть и вкладку Network (api-maps.yandex.ru/2.1).')
+    script.onload = () => {
+      if (settled) return
+      if (!window.ymaps?.ready) { fail('Ответ получен, но объект ymaps не создан. Проверь ответ API в Network.'); return }
+      window.ymaps.ready(() => {
+        if (settled) return
+        settled = true
+        window.clearTimeout(timeout)
+        resolve(window.ymaps)
+      }, (e: unknown) => fail(`Яндекс Карты не инициализировались: ${String(e)}`))
+    }
+    document.head.appendChild(script)
+  }).catch((error) => { apiPromise = null; throw error })
+  return apiPromise
 }
 
-function DrawEvents({drawing,onPoint}:{drawing:boolean,onPoint:(point:[number,number])=>void}) {
-  useMapEvents({click(event) { if (drawing) onPoint([event.latlng.lat,event.latlng.lng]) }})
-  return null
+function boundsOf(fields: Field[]): LatLon[] | null {
+  const valid = fields.filter(f => Number.isFinite(f.lat) && Number.isFinite(f.lon))
+  if (!valid.length) return null
+  const latitudes = valid.map(f => f.lat)
+  const longitudes = valid.map(f => f.lon)
+  const minLat = Math.min(...latitudes), maxLat = Math.max(...latitudes)
+  const minLon = Math.min(...longitudes), maxLon = Math.max(...longitudes)
+  const latPad = Math.max((maxLat - minLat) * 0.15, 0.003)
+  const lonPad = Math.max((maxLon - minLon) * 0.15, 0.005)
+  return [[minLat - latPad, minLon - lonPad], [maxLat + latPad, maxLon + lonPad]]
 }
 
-export default function GeoFieldsMap({fields,activeId,onSelect,geojson,onSaveGeometry}:Props) {
-  const [year,setYear] = useState<2016|2024>(2024)
-  const [showContours,setShowContours] = useState(true)
-  const [drawing,setDrawing] = useState(false)
-  const [points,setPoints] = useState<[number,number][]>([])
-  const [saving,setSaving] = useState(false)
-  const [overviewTick,setOverviewTick] = useState(0)
-  const [tileStatus,setTileStatus] = useState<'loading'|'ready'|'error'>('loading')
-  const [error,setError] = useState('')
-  const byId = useMemo(() => new Map(fields.map(f => [f.id,f])),[fields])
-  const activeField = fields.find(f => f.id===activeId)
-  const layerKey = fields.map(f=>`${f.id}:${f.risk.level}:${f.geometry_source}`).join('|') + ':' + activeId
+export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSaveGeometry }: Props) {
+  const host = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<any>(null)
+  const drawnObjectsRef = useRef<any>(null)
+  const fieldsObjectsRef = useRef<any>(null)
+  const onSelectRef = useRef(onSelect)
+  const drawingRef = useRef(false)
+  const [loaded, setLoaded] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const [layer, setLayer] = useState<LayerName>('satellite')
+  const [showContours, setShowContours] = useState(true)
+  const [drawing, setDrawing] = useState(false)
+  const [points, setPoints] = useState<LatLon[]>([])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [overviewTick, setOverviewTick] = useState(0)
+  const activeField = fields.find(f => f.id === activeId)
+  const fieldById = useMemo(() => new Map(fields.map(f => [f.id, f])), [fields])
+  const centersKey = fields.map(f => `${f.id}:${f.lat}:${f.lon}`).join('|')
+  onSelectRef.current = onSelect
+  drawingRef.current = drawing
 
-  function chooseYear(value:2016|2024) {
-    setYear(value); setTileStatus('loading')
-  }
+  // Initialize the real map exactly once per component mount.
+  useEffect(() => {
+    if (!host.current) return
+    let cancelled = false
+    loadYandexMaps().then(ymaps => {
+      if (cancelled || !host.current) return
+      try {
+        const map = new ymaps.Map(host.current, {
+          center: [50.60, 36.58], zoom: 11, type: layers.satellite,
+          controls: ['zoomControl'],
+        }, { suppressMapOpenBlock: true })
+        mapRef.current = map
+        fieldsObjectsRef.current = new ymaps.GeoObjectCollection()
+        drawnObjectsRef.current = new ymaps.GeoObjectCollection()
+        map.geoObjects.add(fieldsObjectsRef.current)
+        map.geoObjects.add(drawnObjectsRef.current)
+        map.controls.get('zoomControl')?.options.set({ position: { left: 12, bottom: 95 } })
+        map.events.add('click', (event: any) => {
+          if (!drawingRef.current) return
+          const coord: number[] | undefined = event.get('coords')
+          if (coord?.length === 2) setPoints(prev => prev.length < 500 ? [...prev, [coord[0], coord[1]]] : prev)
+        })
+        setLoadError('')
+        setLoaded(true)
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : 'Не удалось создать карту Яндекса')
+      }
+    }).catch(e => { if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Ошибка загрузки API') })
+    return () => {
+      cancelled = true
+      if (mapRef.current) { mapRef.current.destroy(); mapRef.current = null }
+      fieldsObjectsRef.current = null
+      drawnObjectsRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!loaded || !map) return
+    const result = map.setType(layers[layer])
+    if (result?.catch) result.catch(() => setLoadError('Не удалось переключить тип карты. Проверь доступ к слоям Яндекса.'))
+  }, [loaded, layer])
+
+  useEffect(() => {
+    if (!loaded || !mapRef.current) return
+    const map = mapRef.current
+    const api = window.ymaps
+    if (!api || !fieldsObjectsRef.current) return
+    const collection = fieldsObjectsRef.current
+    collection.removeAll()
+    if (showContours && geojson) {
+      for (const feature of geojson.features) {
+        if (feature.geometry?.type !== 'Polygon') continue
+        const id = Number(feature.properties?.field_id)
+        const field = fieldById.get(id)
+        if (!field) continue
+        const coords = feature.geometry.coordinates[0]
+          .filter(c => c.length >= 2 && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+          .map(([lon, lat]) => [lat, lon] as LatLon)
+        if (coords.length < 3) continue
+        const polygon = new api.Polygon([coords], {
+          hintContent: `${field.name} · ${field.crop} · ${field.area_ha} га`,
+        }, {
+          strokeColor: colors[field.risk.level],
+          fillColor: colors[field.risk.level],
+          strokeWidth: field.id === activeId ? 4 : 2.5,
+          fillOpacity: field.id === activeId ? 0.34 : 0.18,
+          strokeStyle: feature.properties?.geometry_source === 'demo_generated' ? 'dash' : 'solid',
+        })
+        polygon.events.add('click', () => { if (!drawingRef.current) onSelectRef.current(id) })
+        collection.add(polygon)
+      }
+    }
+    fields.forEach(field => {
+      const placemark = new api.Placemark([field.lat, field.lon], {
+        hintContent: `${field.name} · ${field.crop} · ${field.area_ha} га`,
+      }, {
+        preset: 'islands#circleIcon',
+        iconColor: colors[field.risk.level],
+        zIndex: field.id === activeId ? 100 : 10,
+      })
+      placemark.events.add('click', () => { if (!drawingRef.current) onSelectRef.current(field.id) })
+      collection.add(placemark)
+    })
+    // Disable geometry interactions while drawing; clicks reach the map itself.
+    collection.options.set('interactivityModel', drawing ? 'default#silent' : 'default#geoObject')
+    // Keep the map in control of its own copyrights and attribution.
+    void map
+  }, [loaded, fields, geojson, showContours, activeId, fieldById, drawing])
+
+  useEffect(() => {
+    if (!loaded || !mapRef.current || !drawnObjectsRef.current || !window.ymaps) return
+    const collection = drawnObjectsRef.current
+    const api = window.ymaps
+    collection.removeAll()
+    if (drawing && points.length > 0) {
+      const line = new api.Polyline(points, {}, { strokeColor: '#48e6aa', strokeWidth: 4, strokeStyle: 'dash' })
+      collection.add(line)
+      if (points.length >= 3) {
+        collection.add(new api.Polygon([points], {}, {
+          strokeColor: '#48e6aa', strokeWidth: 2, fillColor: '#48e6aa', fillOpacity: 0.22,
+        }))
+      }
+      // Small vertex marks help with precise boundary drawing.
+      points.forEach(p => collection.add(new api.Circle([p, 7], {}, {
+        fillColor: '#48e6aa', fillOpacity: 1, strokeColor: '#ffffff', strokeWidth: 1.5,
+      })))
+    }
+    collection.options.set('interactivityModel', 'default#silent')
+  }, [loaded, drawing, points])
+
+  useEffect(() => {
+    if (!loaded || !mapRef.current || !centersKey || drawing) return
+    const bounds = boundsOf(fields)
+    if (bounds) mapRef.current.setBounds(bounds, { checkZoomRange: true, zoomMargin: 70 })
+  // Fit when field coordinates change, not when refreshed weather changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, centersKey])
+
+  useEffect(() => {
+    if (!loaded || !mapRef.current || !activeId || drawing) return
+    const field = fields.find(f => f.id === activeId)
+    if (field) mapRef.current.setCenter([field.lat, field.lon], 15, { duration: 230 })
+  // Move on selection, not when risk/weather changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, activeId])
+
+  useEffect(() => {
+    if (!loaded || !mapRef.current || !overviewTick) return
+    const bounds = boundsOf(fields)
+    if (bounds) mapRef.current.setBounds(bounds, { checkZoomRange: true, zoomMargin: 70 })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overviewTick, loaded])
+
   function beginDrawing() {
     if (!activeId) return
-    setPoints([]);setDrawing(true);setError('')
+    setPoints([])
+    setDrawing(true)
+    drawingRef.current = true
+    setError('')
   }
-  function stopDrawing() {setPoints([]);setDrawing(false);setError('')}
+  function cancelDrawing() {
+    setDrawing(false)
+    drawingRef.current = false
+    setPoints([])
+    setError('')
+  }
   async function saveDrawing() {
     if (!activeId || points.length < 3 || saving) return
-    setSaving(true);setError('')
+    setSaving(true); setError('')
     try {
-      const ok = await onSaveGeometry(activeId,points)
-      if (ok) { setDrawing(false);setPoints([]) }
-      else setError('Сохранение не удалось. Проверьте сообщение в интерфейсе.')
-    } catch(e) { setError(e instanceof Error?e.message:'Ошибка сохранения') }
-    finally {setSaving(false)}
+      const ok = await onSaveGeometry(activeId, points)
+      if (ok) cancelDrawing()
+      else setError('Не удалось сохранить границу поля. Проверь сообщение сервера.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ошибка сохранения контура')
+    } finally {
+      setSaving(false)
+    }
   }
-  return <div className={`geo-map ${drawing?'geo-map--drawing':''}`} aria-label="Спутниковая карта сельхозполей">
-    <MapContainer center={[50.60,36.58]} zoom={11} minZoom={3} maxZoom={17} zoomControl={false} attributionControl className="geo-leaflet-map">
-      <TileLayer key={year} url={year===2024?IMAGE_2024:IMAGE_2016} maxNativeZoom={14} maxZoom={17}
-        attribution={attribution(year)} eventHandlers={{
-          tileload:()=>setTileStatus(old=>old==='ready'?old:'ready'),
-          tileerror:()=>setTileStatus(old=>old==='ready'?old:'error')
-        }}/>
-      <ViewController fields={fields} activeId={activeId} drawing={drawing} overviewTick={overviewTick}/>
-      <DrawEvents drawing={drawing} onPoint={point=>setPoints(previous=>previous.length>=500?previous:[...previous,point])}/>
-      {geojson && showContours && <GeoJSON key={layerKey} data={geojson} interactive={!drawing}
-        style={(feature) => {
-          const f=byId.get(Number(feature?.properties?.field_id))
-          const color=colors[f?.risk.level??'low']
-          const demo=feature?.properties?.geometry_source==='demo_generated'
-          return {color,weight:f?.id===activeId?3.5:2.3, fillColor:color,
-            fillOpacity:f?.id===activeId?0.24:0.12, dashArray:demo?'7 6':undefined}
-        }} onEachFeature={(feature:Feature,layer:Layer)=>{
-          const id=Number(feature.properties?.field_id)
-          const f=byId.get(id)
-          if(f){
-            layer.on('click',()=>onSelect(id))
-            layer.bindTooltip(`<strong>${f.name}</strong><br/>${f.crop} · ${f.area_ha} га<br/>${feature.properties?.geometry_source==='demo_generated'?'Примерный контур':'Контур пользователя'}`,{sticky:true})
-          }
-        }}/>} 
-      {fields.map(f=><CircleMarker key={f.id} center={[f.lat,f.lon]} radius={f.id===activeId?10:7}
-        interactive={!drawing}
-        pathOptions={{color:'#ffffff',weight:2.2,fillColor:colors[f.risk.level],fillOpacity:1}}
-        eventHandlers={{click:()=>onSelect(f.id)}}>
-        <Tooltip direction="top" offset={[0,-10]}>{f.name} · {f.crop}</Tooltip>
-      </CircleMarker>)}
-      {drawing && points.length>0 && <Polyline positions={points} interactive={false} pathOptions={{color:'#4fffb8',weight:3,dashArray:'6 5'}}/>}
-      {drawing && points.length>=3 && <Polygon positions={points} interactive={false} pathOptions={{color:'#4fffb8',fillColor:'#4fffb8',fillOpacity:0.17,weight:2}}/>}
-      {drawing && points.map((p,i)=><CircleMarker key={i} center={p} radius={4.5} interactive={false} pathOptions={{color:'#ffffff',weight:1.5,fillColor:'#4fffb8',fillOpacity:1}}/>)}
-      <ZoomControl position="bottomleft"/><ScaleControl position="bottomleft" metric imperial={false}/>
-    </MapContainer>
+
+  return <div className={`geo-map ${drawing ? 'geo-map--drawing' : ''}`} aria-label="Карта полей Яндекс">
+    <div ref={host} className="geo-leaflet-map" aria-label="Яндекс Карта с полями" />
+    {!loaded && !loadError && <div className="yandex-map-loading">Загрузка Яндекс Карт…</div>}
+    {loadError && <div className="map-network-warning">{loadError}<br/>Проверь доступ к JavaScript API 2.1 и разрешённый HTTP Referer <b>localhost</b>.</div>}
     <div className="map-topbar">
-      <div className="map-source-tag"><span className="map-source-dot"/> СПУТНИК · SENTINEL‑2</div>
-      <div className="map-layer-switch" role="group" aria-label="Слои спутниковой карты">
-        <button className={year===2024?'chosen':''} onClick={()=>chooseYear(2024)} type="button">Снимки 2024</button>
-        <button className={year===2016?'chosen':''} onClick={()=>chooseYear(2016)} type="button">Архив 2016</button>
+      <div className="map-source-tag"><span className="map-source-dot" /> ЯНДЕКС КАРТЫ · GIS</div>
+      <div className="map-layer-switch" role="group" aria-label="Режим отображения карты">
+        <button type="button" onClick={() => setLayer('satellite')} className={layer === 'satellite' ? 'chosen' : ''}>Спутник</button>
+        <button type="button" onClick={() => setLayer('hybrid')} className={layer === 'hybrid' ? 'chosen' : ''}>Гибрид</button>
+        <button type="button" onClick={() => setLayer('map')} className={layer === 'map' ? 'chosen' : ''}>Схема</button>
       </div>
     </div>
-    <div className="map-side-controls"><button onClick={()=>setOverviewTick(x=>x+1)} type="button" title="Показать все поля">⊞ <span>Все поля</span></button>
-      <button onClick={()=>setShowContours(x=>!x)} className={showContours?'selected':''} title="Показать или скрыть границы полей" type="button">{showContours?'◈':'◇'} <span>Контуры</span></button>
-      {!drawing && <button onClick={beginDrawing} disabled={!activeId} type="button" title="Обвести выбранное поле мышью">✎ <span>Обвести поле</span></button>}
+    <div className="map-side-controls">
+      <button type="button" onClick={() => setOverviewTick(x => x + 1)} disabled={!loaded}>⊞ <span>Все поля</span></button>
+      <button type="button" onClick={() => setShowContours(x => !x)} className={showContours ? 'selected' : ''} disabled={!loaded}>{showContours ? '◈' : '◇'} <span>Контуры</span></button>
+      {!drawing && <button type="button" onClick={beginDrawing} disabled={!loaded || !activeId}>✎ <span>Обвести поле</span></button>}
     </div>
     {drawing && <div className="map-draw-bar">
-      <div><strong>Рисуем: {activeField?.name}</strong><span>Щёлкай по углам поля на снимке. Минимум 3 точки.</span></div>
+      <div><strong>Рисуем: {activeField?.name}</strong><span>Отмечай углы поля нажатием на карту (минимум 3 точки).</span></div>
       <div className="map-draw-actions">
-        <button type="button" onClick={()=>setPoints(p=>p.slice(0,-1))} disabled={!points.length||saving}>↶ Отменить точку</button>
-        <button type="button" onClick={stopDrawing} disabled={saving}>Отмена</button>
-        <button type="button" className="map-save" onClick={()=>void saveDrawing()} disabled={points.length<3||saving}>{saving?'Сохраняем…':`✓ Сохранить (${points.length})`}</button>
+        <button type="button" onClick={() => setPoints(p => p.slice(0, -1))} disabled={!points.length || saving}>↶ Отменить точку</button>
+        <button type="button" onClick={cancelDrawing} disabled={saving}>Отмена</button>
+        <button type="button" className="map-save" onClick={() => void saveDrawing()} disabled={points.length < 3 || saving}>{saving ? 'Сохраняем…' : `✓ Сохранить (${points.length})`}</button>
       </div>
     </div>}
-    {tileStatus==='error' && <div className="map-network-warning">Не удалось загрузить часть спутниковых снимков. Проверь подключение к интернету.</div>}
     {error && <div className="map-draw-error">{error}</div>}
-    {!drawing && <div className="map-hint">{activeField?.geometry_source==='user_drawn'?'Граница поля сохранена на сервере':'Пунктир — демонстрационный контур. Обведи настоящее поле на снимке.'}</div>}
+    {!drawing && loaded && <div className="map-hint">{activeField?.geometry_source === 'user_drawn'
+      ? 'Контур выбранного поля сохранён в FastAPI.'
+      : 'Пунктир — демонстрационный контур. Для реальной геометрии обведи поле.'}</div>}
   </div>
 }

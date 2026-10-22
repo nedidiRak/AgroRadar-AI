@@ -51,3 +51,7 @@
 .action-message {padding:11px 14px;background:#174a3b;border:1px solid #337d64;color:#d4ffe9;border-radius:9px;margin-bottom:12px;font-size:12px}
 @media(max-width:1050px){.map-wrap{height:520px}.gis-tools{align-items:flex-start;flex-direction:column}.gis-actions{justify-content:flex-start}}
 @media(max-width:600px){.map-wrap{height:430px}.map-topbar{top:10px;right:10px;left:10px;gap:7px;flex-wrap:wrap}.map-source-tag{font-size:9px;padding:8px}.map-layer-switch{padding:3px}.map-layer-switch button{font-size:10px;padding:8px}.map-side-controls{top:92px;right:10px}.map-side-controls button{font-size:12px;padding:8px}.map-hint{right:10px;bottom:39px;max-width:70%;font-size:10px}.map-draw-bar{bottom:43px;left:9px;right:9px;padding:10px}.map-draw-actions button{font-size:10px;padding:8px}.geo-map .leaflet-control-attribution{font-size:8px!important;max-width:280px}.gis-tools{padding:13px}}
+
+/* v0.7 — native Yandex Maps 2.1 satellite/hybrid/map layer. */
+.yandex-map-loading {position:absolute;z-index:550;top:50%;left:50%;transform:translate(-50%,-50%);padding:14px 19px;border-radius:10px;background:#132f28e8;border:1px solid #47987a;color:#d2ffea;font-size:13px;pointer-events:none}
+.geo-map--drawing .geo-leaflet-map, .geo-map--drawing .geo-leaflet-map * {cursor:crosshair!important}
