@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import GeoFieldsMap from './GeoFieldsMap'
-import { Activity, CloudSun, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save } from 'lucide-react'
+import AiAgronom from './AiAgronom'
+import { Activity, CloudSun, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot } from 'lucide-react'
 import type { FeatureCollection, Polygon } from 'geojson'
 import './style.css'
 import './FieldsManager.css'
@@ -187,8 +188,9 @@ function App() {
       <div className="brand"><div className="brand-icon"><Leaf size={23}/></div><div><strong>AgroRadar <span>AI</span></strong><small>Аналитика сельхозполей</small></div></div>
       <div className="menu-title">РАБОЧЕЕ ПРОСТРАНСТВО</div>
       <div className="menu active"><Activity size={19}/> Обзор полей</div>
-      <div className="menu"><MapPinned size={19}/> Карта хозяйства</div>
-      <div className="sidebar-bottom">IT-спринт · Русагро<br/>Прототип v1.0</div>
+      <button className="menu menu-action" type="button" onClick={() => document.getElementById('agro-map')?.scrollIntoView({behavior:'smooth'})}><MapPinned size={19}/> Карта хозяйства</button>
+      <button className="menu menu-action" type="button" onClick={() => document.getElementById('ai-assistant')?.scrollIntoView({behavior:'smooth'})}><Bot size={19}/> ИИ-агроном</button>
+      <div className="sidebar-bottom">IT-спринт · Русагро<br/>Прототип v1.1</div>
     </aside>
     <main className="content">
       <header><div><div className="eyebrow">МОНИТОРИНГ / ОБЗОР</div><h1>Обзор хозяйства</h1><p>Метеоусловия и прогноз температурных рисков на 24 часа</p></div><button onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={17}/>{loading?'Обновление…':'Обновить'}</button></header>
@@ -204,7 +206,7 @@ function App() {
         <div className="stat"><div className="stat-label"><ShieldAlert size={18}/> Высокий риск за 24 ч</div><strong className="danger">{data?.high_risk_count??'—'}</strong><small>По минимальной прогнозной температуре</small></div>
         <div className="stat"><div className="stat-label"><CloudSun size={18}/> Сейчас на поле</div><strong>{active?`${active.weather.temperature_c}°`:'—'}</strong><small>{active?.name??'Выберите поле'}</small></div>
       </section>
-      <section className="workspace"><div className="map-panel"><div className="panel-head"><h2>Спутниковая карта полей</h2><span>● WGS84 · настоящая местность</span></div><div className="map-wrap"><GeoFieldsMap fields={data?.fields??[]} geojson={geojson} activeId={active?.id} onSelect={setSelected} onSaveGeometry={saveGeometry} onCreateOutline={openCreate}/></div><div className="map-foot"><span><i className="dot green"/> Низкий</span><span><i className="dot yellow"/> Умеренный</span><span><i className="dot red"/> Высокий</span></div></div>
+      <section className="workspace" id="agro-map"><div className="map-panel"><div className="panel-head"><h2>Спутниковая карта полей</h2><span>● WGS84 · настоящая местность</span></div><div className="map-wrap"><GeoFieldsMap fields={data?.fields??[]} geojson={geojson} activeId={active?.id} onSelect={setSelected} onSaveGeometry={saveGeometry} onCreateOutline={openCreate}/></div><div className="map-foot"><span><i className="dot green"/> Низкий</span><span><i className="dot yellow"/> Умеренный</span><span><i className="dot red"/> Высокий</span></div></div>
       <div className="details"><div className="panel-head"><h2>Информация о поле</h2></div>
         <label htmlFor="field-picker">Выберите поле</label>
         <select id="field-picker" value={active?.id??''} onChange={e=>setSelected(Number(e.target.value))}>
@@ -227,6 +229,7 @@ function App() {
           <p className="disclaimer">Пороговое правило: ≤0 °C — высокий риск, до +3 °C — умеренный, выше — низкий. Используется минимальная прогнозная температура за 24 часа (модель 3-часового прогноза). Для оценки повреждений нужно учитывать культуру, фазу развития и местный микроклимат.</p>
         </> : <div className="field-empty">Полей пока нет. Нажми «Новое поле» над картой, обведи участок и заполни карточку.</div>}
       </div></section>
+      <AiAgronom key={active?.id ?? 0} field={active} />
       <section className="gis-tools"><div><strong>Работа с геоданными</strong><p>Для нового участка нажми «Новое поле» над картой. «Изменить контур» корректирует существующий. Импорт GeoJSON заменяет границу выбранного поля.</p></div><div className="gis-actions"><label className="file-btn">↑ Контур выбранного поля<input type="file" accept=".json,.geojson,application/geo+json" onChange={e=>void importGeoJSON(e)} hidden/></label><button type="button" onClick={exportGeoJSON} disabled={!geojson}>↓ Экспорт GeoJSON</button>{active?.kind==='demo' && active?.geometry_source==='user_drawn' && <button type="button" className="outline-danger" onClick={()=>void resetGeometry(active.id)}>Сбросить контур</button>}</div></section>
       {dialog && <div className="field-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget && !busy) setDialog(null)}}>
         <div className="field-modal" role="dialog" aria-modal="true" aria-labelledby="field-dialog-title">
@@ -249,7 +252,7 @@ function App() {
           </form>
         </div>
       </div>}
-      <footer>AgroRadar AI · MVP 1.0 · Картографическая подложка Яндекс Карт (онлайн) · GeoJSON-контуры · Демонстрационная геометрия не является кадастровой · Условия использования: Яндекс Карты</footer>
+      <footer>AgroRadar AI · MVP 1.1 · Картографическая подложка Яндекс Карт (онлайн) · GeoJSON-контуры · Демонстрационная геометрия не является кадастровой · Условия использования: Яндекс Карты</footer>
     </main>
   </div>
 }

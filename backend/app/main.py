@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
-app = FastAPI(title='AgroRadar AI API', version='1.0.0')
+app = FastAPI(title='AgroRadar AI API', version='1.1.0')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
@@ -364,7 +364,7 @@ async def compose_field(field: dict) -> dict:
 
 @app.get('/api/health')
 def health():
-    return {'status': 'ok', 'version': '1.0.0',
+    return {'status': 'ok', 'version': '1.1.0',
             'weather_mode': 'live' if os.getenv('OPENWEATHER_API_KEY', '').strip() else 'demo'}
 
 
@@ -497,3 +497,8 @@ def reset_field_geometry(field_id: int):
             save_geometries(legacy)
         _CACHE.clear()
     return {'restored_demo_geometry': True, 'field_id': field_id}
+
+
+# Isolated DeepSeek integration; existing maps, fields and weather endpoints unchanged.
+from .ai_assistant import build_ai_router
+app.include_router(build_ai_router(find_field, compose_field))
