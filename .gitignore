@@ -13,3 +13,7 @@ dist/
 # IDE / OS
 .DS_Store
 Thumbs.db
+
+# Local frontend API configuration
+frontend/.env.local
+frontend/.env.*.local
