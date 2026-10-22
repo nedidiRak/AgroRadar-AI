@@ -4,6 +4,7 @@ The four bundled fields are fictional examples. Their polygons are GENERATED exa
 not surveyed cadastral boundaries. Replace the GeoJSON before production use.
 """
 import asyncio
+import json
 import math
 import os
 import time
@@ -13,14 +14,15 @@ from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
-app = FastAPI(title='AgroRadar AI API', version='0.4.0')
+app = FastAPI(title='AgroRadar AI API', version='0.5.0')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
-    allow_methods=['GET'], allow_headers=['*'],
+    allow_methods=['GET', 'POST', 'PUT', 'DELETE'], allow_headers=['*'],
 )
 
 # Fictional fields; coordinates are illustrative and not a record of actual farms.
@@ -30,6 +32,108 @@ FIELDS = [
     {'id': 3, 'name': 'Поле Южное', 'crop': 'Кукуруза', 'area_ha': 156, 'lat': 50.563, 'lon': 36.613},
     {'id': 4, 'name': 'Поле Западное', 'crop': 'Соя', 'area_ha': 93, 'lat': 50.592, 'lon': 36.505},
 ]
+
+# Saved user-traced polygons are persisted separately from demo geometry.
+GEOMETRY_FILE = Path(__file__).resolve().parents[1] / 'data' / 'field_geometries.json'
+
+class GeometryUpdate(BaseModel):
+    coordinates: list[list[float]]
+
+
+def stored_geometries() -> dict:
+    if not GEOMETRY_FILE.exists():
+        return {}
+    try:
+        data = json.loads(GEOMETRY_FILE.read_text(encoding='utf-8'))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise HTTPException(500, 'Файл сохранённых границ повреждён или недоступен') from exc
+    if not isinstance(data, dict):
+        raise HTTPException(500, 'Неверный формат данных геометрии')
+    return data
+
+
+def save_geometries(data: dict) -> None:
+    GEOMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temp_file = GEOMETRY_FILE.with_suffix('.tmp')
+    temp_file.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+    temp_file.replace(GEOMETRY_FILE)
+
+
+def polygon_area_center(ring: list[list[float]]) -> tuple[float, float, float]:
+    """Approximate small parcel area and centroid in a local equirectangular projection."""
+    avg_lat = sum(point[1] for point in ring[:-1]) / (len(ring)-1)
+    cos_lat = math.cos(math.radians(avg_lat))
+    xy = [(math.radians(lon) * 6371008.8 * cos_lat,
+           math.radians(lat) * 6371008.8) for lon, lat in ring]
+    doubled = 0.0
+    center_x, center_y = 0.0, 0.0
+    for (x1, y1), (x2, y2) in zip(xy, xy[1:]):
+        cross = x1*y2 - x2*y1
+        doubled += cross
+        center_x += (x1+x2)*cross
+        center_y += (y1+y2)*cross
+    if abs(doubled) < 1:
+        raise HTTPException(422, 'Площадь контура слишком мала')
+    center_lon = math.degrees((center_x / (3*doubled)) / (6371008.8*cos_lat))
+    center_lat = math.degrees((center_y / (3*doubled)) / 6371008.8)
+    return abs(doubled)/2/10000, center_lat, center_lon
+
+
+def _segments_intersect(a, b, c, d) -> bool:
+    def cross(p, q, r):
+        return (q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0])
+    o1, o2 = cross(a,b,c), cross(a,b,d)
+    o3, o4 = cross(c,d,a), cross(c,d,b)
+    return ((o1 > 0 > o2 or o1 < 0 < o2) and
+            (o3 > 0 > o4 or o3 < 0 < o4))
+
+
+def validate_ring(coords: list[list[float]]) -> list[list[float]]:
+    if not 3 <= len(coords) <= 501:
+        raise HTTPException(422, 'Нужно от 3 до 500 вершин')
+    ring = []
+    for point in coords:
+        if len(point) != 2 or not all(math.isfinite(value) for value in point):
+            raise HTTPException(422, 'Каждая вершина должна иметь конечные lon и lat')
+        lon, lat = point
+        if not -180 <= lon <= 180 or not -85 <= lat <= 85:
+            raise HTTPException(422, 'Координаты вне допустимых пределов')
+        if not ring or ring[-1] != [lon, lat]:
+            ring.append([lon, lat])
+    if ring[0] == ring[-1]:
+        ring.pop()
+    if len(ring) < 3:
+        raise HTTPException(422, 'Необходимо хотя бы три разные вершины')
+    ring.append(ring[0][:])
+    edge_count = len(ring)-1
+    for i in range(edge_count):
+        for j in range(i+1, edge_count):
+            if j == i+1 or (i==0 and j==edge_count-1):
+                continue
+            if _segments_intersect(ring[i], ring[i+1], ring[j], ring[j+1]):
+                raise HTTPException(422, 'Контур пересекает сам себя')
+    area, _, _ = polygon_area_center(ring)
+    if area > 100000:
+        raise HTTPException(422, 'Контур слишком большой: проверьте координаты')
+    return ring
+
+
+def effective_fields() -> list[dict]:
+    stored = stored_geometries()
+    result = []
+    for f in FIELDS:
+        field = f.copy()
+        override = stored.get(str(field['id']))
+        if override:
+            ring = override['coordinates']
+            area, lat, lon = polygon_area_center(ring)
+            field.update(area_ha=round(area, 2), lat=round(lat, 6), lon=round(lon, 6),
+                         geometry_source='user_drawn')
+        else:
+            field['geometry_source'] = 'demo_generated'
+        result.append(field)
+    return result
+
 DEMO_WEATHER = {
     1: {'temperature_c': -2.0, 'humidity_pct': 83, 'wind_ms': 3.1},
     2: {'temperature_c': 2.1, 'humidity_pct': 71, 'wind_ms': 4.0},
@@ -43,7 +147,7 @@ _CACHE_TTL_SECONDS = 900  # 15 minutes; in production use Redis/shared caching.
 
 
 def find_field(field_id: int) -> dict:
-    for field in FIELDS:
+    for field in effective_fields():
         if field['id'] == field_id:
             return field
     raise HTTPException(status_code=404, detail='Поле не найдено')
@@ -69,12 +173,14 @@ def _approx_demo_ring(field: dict, variation: int) -> list[list[float]]:
             [round(cx-dx, 7), round(cy-dy, 7)]]
 
 
-def make_feature(field: dict, index: int) -> dict:
+def make_feature(field: dict, index: int, stored: dict) -> dict:
+    own = stored.get(str(field['id']))
+    ring = own['coordinates'] if own else _approx_demo_ring(field, index)
     return {'type': 'Feature', 'id': field['id'], 'properties': {
         'field_id': field['id'], 'name': field['name'], 'crop': field['crop'],
-        'area_ha': field['area_ha'], 'geometry_source': 'demo_generated',
-        'geometry_accuracy': 'illustrative_not_surveyed',
-    }, 'geometry': {'type': 'Polygon', 'coordinates': [_approx_demo_ring(field, index)]}}
+        'area_ha': field['area_ha'], 'geometry_source': 'user_drawn' if own else 'demo_generated',
+        'geometry_accuracy': 'user_traced_not_surveyed' if own else 'illustrative_not_surveyed',
+    }, 'geometry': {'type': 'Polygon', 'coordinates': [ring]}}
 
 
 def risk_from_temperature(min_temp_c: float, basis: str) -> dict:
@@ -157,21 +263,23 @@ async def compose_field(field: dict) -> dict:
 
 @app.get('/api/health')
 def health():
-    return {'status': 'ok', 'version': '0.4.0',
+    return {'status': 'ok', 'version': '0.5.0',
             'weather_mode': 'live' if os.getenv('OPENWEATHER_API_KEY', '').strip() else 'demo'}
 
 
 @app.get('/api/fields')
 def fields():
-    return FIELDS
+    return effective_fields()
 
 
 @app.get('/api/fields.geojson')
 def fields_geojson():
-    return {'type': 'FeatureCollection', 'features': [make_feature(field, index)
-                                                    for index, field in enumerate(FIELDS)],
-            'metadata': {'geometry_source': 'demo_generated', 'crs': 'EPSG:4326',
-                         'notice': 'Это примерные геометрии вымышленных полей, не кадастровые границы.'}}
+    stored = stored_geometries()
+    return {'type': 'FeatureCollection',
+            'features': [make_feature(field, index, stored)
+                         for index, field in enumerate(effective_fields())],
+            'metadata': {'crs': 'EPSG:4326',
+                         'notice': 'Демо-границы приблизительны. Нарисованные контуры — пользовательские, не кадастровые.'}}
 
 
 @app.get('/api/fields/{field_id}')
@@ -199,7 +307,30 @@ async def field_risks(field_id: int):
 
 @app.get('/api/dashboard')
 async def dashboard():
-    results = await asyncio.gather(*(compose_field(field) for field in FIELDS))
+    results = await asyncio.gather(*(compose_field(field) for field in effective_fields()))
     return {'fields': results, 'count': len(results),
             'high_risk_count': sum(field['risk']['level'] == 'high' for field in results),
             'mode': 'demo' if not os.getenv('OPENWEATHER_API_KEY', '').strip() else 'live_forecast'}
+
+
+@app.put('/api/fields/{field_id}/geometry')
+def update_field_geometry(field_id: int, payload: GeometryUpdate):
+    find_field(field_id)
+    ring = validate_ring(payload.coordinates)
+    stored = stored_geometries()
+    stored[str(field_id)] = {'coordinates': ring, 'source': 'user_drawn',
+                             'updated_at': datetime.now(timezone.utc).isoformat()}
+    save_geometries(stored)
+    _CACHE.clear()  # Weather coordinates may change after drawing a field.
+    return {'saved': True, 'field_id': field_id, 'feature':
+            make_feature(find_field(field_id), field_id-1, stored)}
+
+
+@app.delete('/api/fields/{field_id}/geometry')
+def reset_field_geometry(field_id: int):
+    find_field(field_id)
+    stored = stored_geometries()
+    stored.pop(str(field_id), None)
+    save_geometries(stored)
+    _CACHE.clear()
+    return {'restored_demo_geometry': True, 'field_id': field_id}

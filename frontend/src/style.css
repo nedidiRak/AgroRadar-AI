@@ -11,3 +11,43 @@
 .geo-map .leaflet-tooltip{background:#16352e;color:#d6ffeb;border:1px solid #568974;box-shadow:0 4px 16px #0004}
 .geo-map .leaflet-tooltip-top:before{border-top-color:#568974}
 @media(max-width:600px){.geo-map-label{max-width:72%}.geo-map-label span{display:none}.geo-map-notice{font-size:10px;max-width:65%;bottom:12px}}
+
+/* v0.5 — actual Sentinel-2 imagery with GIS controls and legible attribution. */
+.map-wrap {height:570px;background:#162c28}
+.geo-map {background:#172b28}
+.geo-leaflet-map {background-color:#122d27;background-image:none}
+.geo-map .leaflet-container {font-family:inherit}
+.geo-map .leaflet-control-attribution {font-size:10px!important;background:#0b1e19e3!important;color:#d6e9dd!important;max-width:min(92vw,640px);white-space:normal;text-align:right;border-radius:6px 0 0 0;padding:4px 7px!important}
+.geo-map .leaflet-control-attribution a {color:#a2f0c6!important}
+.geo-map .leaflet-bottom.leaflet-left {margin-bottom:22px}
+.geo-map .leaflet-control-scale-line {background:#132e27ce;border-color:#b7d6c5;color:#e1fbea}
+.map-topbar {position:absolute;z-index:600;top:14px;left:14px;right:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;pointer-events:none}
+.map-source-tag {background:#102b26ef;border:1px solid #346b57;padding:10px 11px;color:#d5f6e5;font-size:11px;font-weight:700;letter-spacing:.5px;border-radius:9px;box-shadow:0 8px 20px #0004;white-space:nowrap}
+.map-source-dot {display:inline-block;width:8px;height:8px;border-radius:50%;background:#73eac0;margin-right:6px;box-shadow:0 0 0 3px #73eac022}
+.map-layer-switch {display:flex;gap:3px;padding:4px;background:#102a25e8;border:1px solid #356a57;border-radius:10px;pointer-events:auto;box-shadow:0 8px 20px #0004}
+.map-layer-switch button {background:none;border:0;font-size:11px;font-weight:650;color:#b0c8bf;padding:9px 11px;white-space:nowrap;border-radius:7px;line-height:1}
+.map-layer-switch button.chosen {background:#28755a;color:#fff}
+.map-layer-switch button:hover:not(.chosen) {background:#284b3e}
+.map-side-controls {position:absolute;z-index:600;top:66px;right:14px;display:flex;flex-direction:column;gap:8px;pointer-events:auto;align-items:flex-end}
+.map-side-controls button {background:#122e27eb;border:1px solid #4a8069;border-radius:8px;color:#d1f6e6;font-size:13px;box-shadow:0 8px 20px #0003;padding:9px 12px;white-space:nowrap}
+.map-side-controls button.selected {border-color:#69c99f}
+.map-side-controls button:hover {background:#27654b}
+.map-side-controls button:disabled {opacity:.4}
+.map-hint {position:absolute;z-index:500;bottom:37px;right:14px;max-width:350px;background:#0c2420e8;border:1px solid #3c7761;border-radius:9px;padding:9px 13px;color:#e0f6e8;font-size:11px;line-height:1.55;pointer-events:none}
+.map-draw-bar {position:absolute;z-index:700;bottom:44px;left:14px;right:14px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#0d2823f5;border:1px solid #6edaaa;border-radius:12px;box-shadow:0 7px 30px #0008;color:#e1f7ed}
+.map-draw-bar strong,.map-draw-bar span {display:block}.map-draw-bar strong {font-size:13px}.map-draw-bar span {font-size:11px;color:#a8d7c1;margin-top:4px}
+.map-draw-actions {display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.map-draw-actions button {padding:9px 11px;background:#1f4237;border-color:#3e725e;font-size:11px}
+.map-draw-actions button.map-save {background:#1f9269;border-color:#2dbd8a;font-weight:700}
+.geo-map--drawing .geo-leaflet-map {cursor:crosshair!important}
+.map-network-warning,.map-draw-error {position:absolute;z-index:650;top:113px;left:14px;max-width:390px;background:#613029e8;padding:10px 13px;border-radius:9px;color:#ffe1d9;font-size:12px;box-shadow:0 4px 20px #0005;pointer-events:none}
+.map-draw-error {top:155px}
+.geometry-status {margin:7px 20px 5px;color:#e8c786;font-size:11px}
+.gis-tools {display:flex;gap:15px;justify-content:space-between;align-items:center;margin-top:17px;border:1px solid #2d483d;border-radius:14px;background:#142720;padding:17px 19px}
+.gis-tools strong {font-size:14px}.gis-tools p {margin:5px 0 0;color:#90a99a;font-size:11px;line-height:1.6;max-width:600px}
+.gis-actions {display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.gis-actions button,.file-btn {padding:10px 12px;background:#1b4c3b;border:1px solid #43886a;border-radius:9px;color:#d9f9ea;font-size:12px;cursor:pointer;white-space:nowrap}
+.gis-actions .outline-danger {border-color:#91584f;background:#432a27;color:#ffe3da}
+.action-message {padding:11px 14px;background:#174a3b;border:1px solid #337d64;color:#d4ffe9;border-radius:9px;margin-bottom:12px;font-size:12px}
+@media(max-width:1050px){.map-wrap{height:520px}.gis-tools{align-items:flex-start;flex-direction:column}.gis-actions{justify-content:flex-start}}
+@media(max-width:600px){.map-wrap{height:430px}.map-topbar{top:10px;right:10px;left:10px;gap:7px;flex-wrap:wrap}.map-source-tag{font-size:9px;padding:8px}.map-layer-switch{padding:3px}.map-layer-switch button{font-size:10px;padding:8px}.map-side-controls{top:92px;right:10px}.map-side-controls button{font-size:12px;padding:8px}.map-hint{right:10px;bottom:39px;max-width:70%;font-size:10px}.map-draw-bar{bottom:43px;left:9px;right:9px;padding:10px}.map-draw-actions button{font-size:10px;padding:8px}.geo-map .leaflet-control-attribution{font-size:8px!important;max-width:280px}.gis-tools{padding:13px}}

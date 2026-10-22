@@ -17,3 +17,7 @@ Thumbs.db
 # Local frontend API configuration
 frontend/.env.local
 frontend/.env.*.local
+
+# User-created field boundaries (may contain sensitive coordinates)
+backend/data/field_geometries.json
+backend/data/*.tmp
