@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import GeoFieldsMap from './GeoFieldsMap'
 import AiAgronom from './AiAgronom'
-import { Activity, CloudSun, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot } from 'lucide-react'
+import { Activity, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot, ArrowRight, ChevronDown, Search, SlidersHorizontal, Info, Thermometer, Wind, Droplets, CheckCircle2 } from 'lucide-react'
 import type { FeatureCollection, Polygon } from 'geojson'
 import './style.css'
 import './FieldsManager.css'
+import './layout-v1.2.css'
 
 type Weather = { temperature_c:number;humidity_pct:number;wind_ms:number;source:string;observed_at:string|null }
 type ForecastPoint = {timestamp:number;temperature_c:number;precipitation_probability_pct:number|null;rain_mm_3h:number|null}
@@ -13,6 +14,13 @@ type Forecast = { min_temperature_next_24h_c:number;source:string;sample_count:n
 type Risk = {level:'high'|'medium'|'low';label:string;reason:string;basis:string;rule:string;min_temperature_next_24h_c:number}
 type Field = {id:number;name:string;crop:string;description:string;kind:'demo'|'user';area_ha:number;lat:number;lon:number;geometry_source?:string;weather:Weather;forecast:Forecast;risk:Risk}
 type Dashboard = { fields:Field[];count:number;high_risk_count:number;mode:'demo'|'live_forecast' }
+type View = 'overview' | 'fields' | 'assistant'
+const navigation: {id: View; label:string; Icon: typeof Activity}[] = [
+  {id:'overview', label:'Обзор',Icon:Activity},
+  {id:'fields',label:'Карта и поля',Icon:MapPinned},
+  {id:'assistant',label:'ИИ-агроном',Icon:Bot},
+]
+const riskLabel = {high:'Высокий',medium:'Умеренный',low:'Низкий'} as const
 
 function TemperatureTimeline({forecast}:{forecast:Forecast}) {
   const points = (forecast.points ?? []).slice(0, 9)
@@ -53,6 +61,17 @@ function App() {
   const [form,setForm] = useState({name:'',crop:'',description:''})
   const [formError,setFormError] = useState('')
   const [busy,setBusy] = useState(false)
+  const [view,setView] = useState<View>('overview')
+  const [visitedMap,setVisitedMap] = useState(false)
+  const [visitedAi,setVisitedAi] = useState(false)
+  const [fieldQuery,setFieldQuery] = useState('')
+  const [showFieldDetails,setShowFieldDetails] = useState(false)
+  function navigate(to:View) {
+    if(to==='fields') setVisitedMap(true)
+    if(to==='assistant') setVisitedAi(true)
+    setView(to)
+    window.scrollTo({top:0,behavior:'auto'})
+  }
   async function refresh() {
     setLoading(true); setError(''); setGeoError('')
     try {
@@ -183,54 +202,91 @@ function App() {
   }
   const active = data?.fields.find(f=>f.id===selected) ?? data?.fields[0]
   const demo = data?.mode==='demo'
-  return <div className="shell">
-    <aside className="sidebar">
-      <div className="brand"><div className="brand-icon"><Leaf size={23}/></div><div><strong>AgroRadar <span>AI</span></strong><small>Аналитика сельхозполей</small></div></div>
-      <div className="menu-title">РАБОЧЕЕ ПРОСТРАНСТВО</div>
-      <div className="menu active"><Activity size={19}/> Обзор полей</div>
-      <button className="menu menu-action" type="button" onClick={() => document.getElementById('agro-map')?.scrollIntoView({behavior:'smooth'})}><MapPinned size={19}/> Карта хозяйства</button>
-      <button className="menu menu-action" type="button" onClick={() => document.getElementById('ai-assistant')?.scrollIntoView({behavior:'smooth'})}><Bot size={19}/> ИИ-агроном</button>
-      <div className="sidebar-bottom">IT-спринт · Русагро<br/>Прототип v1.1</div>
+  const filteredFields = (data?.fields ?? []).filter(f=>`${f.name} ${f.crop}`.toLocaleLowerCase('ru-RU').includes(fieldQuery.toLocaleLowerCase('ru-RU')))
+  const sortedFields = [...(data?.fields ?? [])].sort((a,b)=>({high:0,medium:1,low:2}[a.risk.level]-{high:0,medium:1,low:2}[b.risk.level]))
+  const pageInfo = {
+    overview:['Обзор хозяйства','Погода и риски — самое важное за ближайшие 24 часа.'],
+    fields:['Карта и поля','Управляй участками, границами и карточками культур.'],
+    assistant:['ИИ-агроном','Обсуди выбранный участок с помощником DeepSeek.'],
+  }[view]
+  const picker = (id:string) => <select id={id} className="agr-field-picker" value={active?.id??''} onChange={e=>setSelected(Number(e.target.value))} aria-label="Выбрать поле">
+    {!active && <option value="">Нет полей</option>}
+    {data?.fields.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
+  </select>
+  return <div className="shell agr-shell">
+    <aside className="sidebar agr-sidebar">
+      <div className="brand agr-brand"><div className="brand-icon"><Leaf size={23}/></div><div><strong>AgroRadar <span>AI</span></strong><small>Аналитика сельхозполей</small></div></div>
+      <div className="menu-title">НАВИГАЦИЯ</div>
+      <nav aria-label="Разделы приложения" className="agr-navigation">
+        {navigation.map(({id,label,Icon})=><button key={id} type="button" className={`menu agr-nav-item ${view===id?'active':''}`} aria-current={view===id?'page':undefined} onClick={()=>navigate(id)}><Icon size={19}/><span>{label}</span></button>)}
+      </nav>
+      <div className="agr-sidebar-meta"><div className="agr-sidebar-meta__dot"/> AgroRadar · IT-спринт<br/><span>Русагро / MVP 1.2</span></div>
     </aside>
-    <main className="content">
-      <header><div><div className="eyebrow">МОНИТОРИНГ / ОБЗОР</div><h1>Обзор хозяйства</h1><p>Метеоусловия и прогноз температурных рисков на 24 часа</p></div><button onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={17}/>{loading?'Обновление…':'Обновить'}</button></header>
-      {error && <div className="error">{error} Проверь FastAPI на порту 8000.</div>}
-      {actionMessage && <div className="action-message">{actionMessage}</div>}
-      {geoError && <div className="error">{geoError}. Точечные маркеры продолжат работать, если есть данные полей.</div>}
-      <div className="notice">{demo
-        ? 'ДЕМОРЕЖИМ · Погода и исходные поля примерные; спутниковая подложка Яндекс Карт онлайн. Настрой OPENWEATHER_API_KEY для реальной погоды.'
-        : data ? 'OPENWEATHER LIVE · Текущая погода и прогноз 3-часовыми шагами. Карта Яндекс онлайн; не обведённые поля демонстрационные.'
-        : 'Загрузка данных…'} Риск — температурное правило, не агрономический диагноз.</div>
-      <section className="stats">
-        <div className="stat"><div className="stat-label"><MapPinned size={18}/> Всего полей</div><strong>{data?.count??'—'}</strong><small>Участков в хозяйстве</small></div>
-        <div className="stat"><div className="stat-label"><ShieldAlert size={18}/> Высокий риск за 24 ч</div><strong className="danger">{data?.high_risk_count??'—'}</strong><small>По минимальной прогнозной температуре</small></div>
-        <div className="stat"><div className="stat-label"><CloudSun size={18}/> Сейчас на поле</div><strong>{active?`${active.weather.temperature_c}°`:'—'}</strong><small>{active?.name??'Выберите поле'}</small></div>
+    <main className="content agr-content">
+      <header className="agr-header">
+        <div><div className="eyebrow">АГРОМОНИТОРИНГ / {view==='overview'?'СВОДКА':view==='fields'?'ГЕОДАННЫЕ':'ПОМОЩНИК'}</div><h1>{pageInfo[0]}</h1><p>{pageInfo[1]}</p></div>
+        <div className="agr-header-actions"><span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':'OpenWeather · LIVE'):'Загрузка данных'}</span><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
+      </header>
+      {error && <div className="error" role="alert">{error}. Проверь FastAPI на порту 8000.</div>}
+      {actionMessage && <div className="action-message" role="status">{actionMessage}</div>}
+      {geoError && view==='fields' && <div className="error" role="alert">{geoError}. Точечные маркеры продолжат работать, если есть данные полей.</div>}
+
+      <section className="agr-page agr-page--overview" hidden={view!=='overview'} aria-label="Сводка хозяйства">
+        <div className="agr-stats">
+          <div className="agr-stat"><div className="agr-stat__icon"><MapPinned size={19}/></div><span>Поля хозяйства</span><strong>{data?.count ?? '—'}</strong><small>Участков на карте</small></div>
+          <div className="agr-stat"><div className="agr-stat__icon agr-stat__icon--warning"><ShieldAlert size={19}/></div><span>Высокий температурный риск</span><strong className={(data?.high_risk_count??0)>0?'agr-text-danger':''}>{data?.high_risk_count??'—'}</strong><small>На горизонте 24 часа</small></div>
+          <div className="agr-stat"><div className="agr-stat__icon"><Thermometer size={19}/></div><span>Температура · {active?.name??'поле'}</span><strong>{active?`${active.weather.temperature_c}°`:'—'}</strong><small>{active?.weather.source==='demo'?'Демо-данные':'OpenWeather'}</small></div>
+        </div>
+        <div className="agr-overview-columns">
+          <article className="agr-card agr-field-list-card">
+            <div className="agr-card-heading"><div><div className="agr-overline">СОСТОЯНИЕ УЧАСТКОВ</div><h2>Поля и риски</h2></div><button className="agr-text-link" onClick={()=>navigate('fields')}>Открыть карту <ArrowRight size={16}/></button></div>
+            <div className="agr-summary-strip"><CheckCircle2 size={18}/><span>{!data?'Загрузка показателей…':data.high_risk_count>0?`Есть поля с высоким температурным риском: ${data.high_risk_count}`:'По текущему температурному правилу высокий риск не выявлен'}</span></div>
+            <div className="agr-field-rows">{sortedFields.length===0?<div className="agr-empty">Полей пока нет. Создай первый участок на карте.</div>:sortedFields.slice(0,8).map(field=><button key={field.id} type="button" className={`agr-field-row ${active?.id===field.id?'is-selected':''}`} onClick={()=>setSelected(field.id)}>
+              <span className={`agr-field-row__mark agr-risk-${field.risk.level}`} />
+              <span className="agr-field-row__text"><strong>{field.name}</strong><small>{field.crop} · {field.area_ha} га</small></span>
+              <span className={`agr-risk-pill agr-risk-pill--${field.risk.level}`}>{riskLabel[field.risk.level]}</span>
+            </button>)}</div>
+            {sortedFields.length>8&&<button className="agr-text-link agr-more-fields" onClick={()=>navigate('fields')}>Показать ещё {sortedFields.length-8} полей <ArrowRight size={15}/></button>}
+          </article>
+          <article className="agr-card agr-forecast-card">
+            <div className="agr-card-heading"><div><div className="agr-overline">ПРОГНОЗ ДЛЯ ПОЛЯ</div><h2>{active?.name??'Выбери поле'}</h2></div>{picker('agr-overview-picker')}</div>
+            {active ? <>
+              <div className="agr-weather-summary">
+                <div><span>Сейчас</span><strong>{active.weather.temperature_c} °C</strong></div>
+                <div><span>Минимум за 24 ч</span><strong>{active.forecast.min_temperature_next_24h_c} °C</strong></div>
+                <div><span>Ветер</span><strong>{active.weather.wind_ms} м/с</strong></div>
+              </div>
+              <TemperatureTimeline forecast={active.forecast}/>
+              <div className={`agr-risk-note agr-risk-note--${active.risk.level}`}><span className={`agr-risk-pill agr-risk-pill--${active.risk.level}`}>{riskLabel[active.risk.level]}</span><p>{active.risk.reason}</p></div>
+              <button className="agr-ai-link" onClick={()=>navigate('assistant')}><Bot size={17}/> Спросить ИИ об этом поле <ArrowRight size={16}/></button>
+            </>:<p className="agr-empty">Выбери участок, чтобы посмотреть прогноз.</p>}
+          </article>
+        </div>
+        <details className="agr-disclosure agr-data-info"><summary><Info size={15}/> Как читать показатели <ChevronDown size={15}/></summary><p>{demo?'Погода и прогноз приведены для демонстрации.':'Погодные данные и прогноз получены от OpenWeather; это модельные данные, не датчики непосредственно на участке.'} Уровень риска рассчитывается по минимальной прогнозной температуре за 24 часа: ≤0 °C — высокий, до +3 °C — умеренный, выше +3 °C — низкий. Это предупреждение по температуре, а не агрономический диагноз. Границы исходных полей могут быть демонстрационными.</p></details>
       </section>
-      <section className="workspace" id="agro-map"><div className="map-panel"><div className="panel-head"><h2>Спутниковая карта полей</h2><span>● WGS84 · настоящая местность</span></div><div className="map-wrap"><GeoFieldsMap fields={data?.fields??[]} geojson={geojson} activeId={active?.id} onSelect={setSelected} onSaveGeometry={saveGeometry} onCreateOutline={openCreate}/></div><div className="map-foot"><span><i className="dot green"/> Низкий</span><span><i className="dot yellow"/> Умеренный</span><span><i className="dot red"/> Высокий</span></div></div>
-      <div className="details"><div className="panel-head"><h2>Информация о поле</h2></div>
-        <label htmlFor="field-picker">Выберите поле</label>
-        <select id="field-picker" value={active?.id??''} onChange={e=>setSelected(Number(e.target.value))}>
-          {!active && <option value="">Нет полей</option>}
-          {data?.fields.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
-        </select>
-        {active ? <>
-          <div className="field-heading"><div className="field-name">{active.name}</div>
-            <div className="field-edit-actions">
-              <button type="button" onClick={()=>openEdit(active)} disabled={busy} title="Переименовать, указать культуру и описание"><Pencil size={14}/> Изменить</button>
-              <button type="button" className="field-delete" onClick={()=>void deleteField(active)} disabled={busy} title="Удалить поле навсегда"><Trash2 size={14}/> Удалить</button>
-            </div>
-          </div>
-          <div className="geometry-status">{active.geometry_source==='user_drawn'?'● Границы нанесены вручную':'◌ Границы демонстрационные — не измерены'}</div>
-          <div className="muted">{active.crop} · {active.area_ha} га · {active.lat.toFixed(4)}° N, {active.lon.toFixed(4)}° E</div>
-          <div className="field-description"><span>Описание участка</span><p>{active.description || 'Описание пока не добавлено. Нажми «Изменить», чтобы заполнить его.'}</p></div>
-          <div className="weather-grid"><div><small>Температура сейчас</small><b>{active.weather.temperature_c} °C</b></div><div><small>Мин. за 24 часа</small><b>{active.forecast.min_temperature_next_24h_c} °C</b></div><div><small>Влажность</small><b>{active.weather.humidity_pct}%</b></div><div><small>Ветер</small><b>{active.weather.wind_ms} м/с</b></div><div><small>Источник</small><b>{active.weather.source==='demo'?'Демо':'OpenWeather'}</b></div><div><small>Горизонт</small><b>24 часа</b></div></div>
-          <TemperatureTimeline forecast={active.forecast}/>
-          <div className={`risk risk-${active.risk.level}`}><div>● {active.risk.label} температурный риск</div><p>{active.risk.reason}</p></div>
-          <p className="disclaimer">Пороговое правило: ≤0 °C — высокий риск, до +3 °C — умеренный, выше — низкий. Используется минимальная прогнозная температура за 24 часа (модель 3-часового прогноза). Для оценки повреждений нужно учитывать культуру, фазу развития и местный микроклимат.</p>
-        </> : <div className="field-empty">Полей пока нет. Нажми «Новое поле» над картой, обведи участок и заполни карточку.</div>}
-      </div></section>
-      <AiAgronom key={active?.id ?? 0} field={active} />
-      <section className="gis-tools"><div><strong>Работа с геоданными</strong><p>Для нового участка нажми «Новое поле» над картой. «Изменить контур» корректирует существующий. Импорт GeoJSON заменяет границу выбранного поля.</p></div><div className="gis-actions"><label className="file-btn">↑ Контур выбранного поля<input type="file" accept=".json,.geojson,application/geo+json" onChange={e=>void importGeoJSON(e)} hidden/></label><button type="button" onClick={exportGeoJSON} disabled={!geojson}>↓ Экспорт GeoJSON</button>{active?.kind==='demo' && active?.geometry_source==='user_drawn' && <button type="button" className="outline-danger" onClick={()=>void resetGeometry(active.id)}>Сбросить контур</button>}</div></section>
+
+      <section className="agr-page agr-page--fields" hidden={view!=='fields'} aria-label="Карта и управление полями">
+        {visitedMap && <div className="agr-map-workspace">
+          <section className="map-panel agr-main-map"><div className="panel-head"><h2>Карта хозяйства</h2><span>Яндекс Карты · GeoJSON</span></div><div className="map-wrap"><GeoFieldsMap fields={data?.fields??[]} geojson={geojson} activeId={active?.id} onSelect={setSelected} onSaveGeometry={saveGeometry} onCreateOutline={openCreate}/></div><div className="map-foot"><span><i className="dot green"/> Низкий</span><span><i className="dot yellow"/> Умеренный</span><span><i className="dot red"/> Высокий</span></div></section>
+          <aside className="agr-map-sidebar"><div className="agr-map-sidebar__head"><h2>Участки <span>{data?.count??0}</span></h2><div className="agr-search"><Search size={15}/><input value={fieldQuery} onChange={e=>setFieldQuery(e.target.value)} placeholder="Найти поле или культуру" aria-label="Поиск поля" /></div></div>
+            <div className="agr-map-field-list">{filteredFields.map(field=><button key={field.id} type="button" className={`agr-map-field ${active?.id===field.id?'is-selected':''}`} onClick={()=>setSelected(field.id)}><span className={`agr-map-field__indicator agr-risk-${field.risk.level}`}/><span><strong>{field.name}</strong><small>{field.crop} · {field.area_ha} га</small></span></button>)}{!filteredFields.length&&<div className="agr-empty">Участки не найдены.</div>}</div>
+            <div className="agr-selected-card">{active?<><div className="agr-selected-card__title"><h3>{active.name}</h3><span className={`agr-risk-pill agr-risk-pill--${active.risk.level}`}>{riskLabel[active.risk.level]}</span></div>
+              <p className="agr-selected-card__meta">{active.crop} · {active.area_ha} га</p>
+              <div className="agr-selected-card__numbers"><span><Thermometer size={14}/> {active.weather.temperature_c} °C</span><span><Droplets size={14}/> {active.weather.humidity_pct}%</span><span><Wind size={14}/> {active.weather.wind_ms} м/с</span></div>
+              <div className="agr-selected-card__actions"><button onClick={()=>openEdit(active)} disabled={busy}><Pencil size={14}/> Изменить</button><button className="agr-delete-button" onClick={()=>void deleteField(active)} disabled={busy}><Trash2 size={14}/> Удалить</button></div>
+              <details className="agr-disclosure agr-field-extra" open={showFieldDetails} onToggle={e=>setShowFieldDetails(e.currentTarget.open)}><summary><span>Описание и координаты</span><ChevronDown size={15}/></summary><div className="agr-field-extra__body"><p>{active.description||'Описание ещё не добавлено.'}</p><small>{active.lat.toFixed(5)}° N, {active.lon.toFixed(5)}° E</small><small>{active.geometry_source==='user_drawn'?'Граница сохранена вручную':'Граница демонстрационная'}</small></div></details>
+              <button className="agr-selected-card__ask" onClick={()=>navigate('assistant')}><Bot size={16}/> Обсудить с ИИ <ArrowRight size={14}/></button>
+            </>:<p className="agr-empty">Создай поле кнопкой «Новое поле» на карте.</p>}</div>
+          </aside>
+        </div>}
+        <details className="agr-disclosure agr-geo-tools"><summary><span><SlidersHorizontal size={16}/> Дополнительные инструменты GeoJSON</span><ChevronDown size={16}/></summary><div className="agr-geo-tools__inner"><p>Импорт заменяет границу выбранного поля, экспорт сохраняет все контуры в GeoJSON. Для добавления отдельного поля нажми «Новое поле» на карте.</p><div className="gis-actions"><label className="file-btn">↑ Импорт контура<input type="file" accept=".json,.geojson,application/geo+json" onChange={e=>void importGeoJSON(e)} hidden/></label><button type="button" onClick={exportGeoJSON} disabled={!geojson}>↓ Экспорт GeoJSON</button>{active?.kind==='demo' && active?.geometry_source==='user_drawn' && <button type="button" className="outline-danger" onClick={()=>void resetGeometry(active.id)}>Сбросить контур</button>}</div></div></details>
+      </section>
+
+      <section className="agr-page agr-page--ai" hidden={view!=='assistant'} aria-label="ИИ-агроном">
+        <div className="agr-ai-context-switch"><div><span>ПОЛЕ ДЛЯ АНАЛИЗА</span><strong>{active?.crop??'Нет культуры'}</strong></div>{picker('agr-assistant-picker')}<button className="agr-text-link" onClick={()=>navigate('fields')}><MapPinned size={15}/> На карте</button></div>
+        {visitedAi && <AiAgronom key={active?.id ?? 0} field={active}/>}
+      </section>
+      <footer className="agr-footer">AgroRadar AI · Конкурсный прототип · Карта: Яндекс Карты · Данные исходных участков могут быть демонстрационными</footer>
       {dialog && <div className="field-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget && !busy) setDialog(null)}}>
         <div className="field-modal" role="dialog" aria-modal="true" aria-labelledby="field-dialog-title">
           <form onSubmit={e=>void submitField(e)}>
@@ -252,7 +308,6 @@ function App() {
           </form>
         </div>
       </div>}
-      <footer>AgroRadar AI · MVP 1.1 · Картографическая подложка Яндекс Карт (онлайн) · GeoJSON-контуры · Демонстрационная геометрия не является кадастровой · Условия использования: Яндекс Карты</footer>
     </main>
   </div>
 }

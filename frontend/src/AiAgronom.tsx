@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bot, Leaf, RotateCcw, Send, Sparkles, ShieldCheck } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import './AiAgronom.css'
 
 type RiskLevel = 'high' | 'medium' | 'low'
@@ -36,6 +38,18 @@ function apiError(data: unknown, status: number) {
     if (typeof detail === 'string') return detail
   }
   return `Ошибка сервера HTTP ${status}`
+}
+
+/**
+ * DeepSeek writes Markdown. Preserve its words and numbers, while turning
+ * standalone sections such as `1) **Краткий вывод**` into real headings.
+ * ReactMarkdown renders escaped text by default; raw HTML is not executed.
+ */
+function formatAgronomAnswer(answer: string): string {
+  return answer.replace(/\r\n?/g, '\n').trim().replace(
+    /^(\d{1,2})[.)][ 	]+\*\*([^*\n]+)\*\*[ 	]*:?[ 	]*$/gm,
+    (_match, number: string, heading: string) => `### ${number}. ${heading.trim()}`,
+  )
 }
 
 export default function AiAgronom({ field }: { field?: FieldContext }) {
@@ -125,7 +139,12 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
             <p>Я учитываю текущие данные выбранного поля, прогноз OpenWeather и общие справочные заметки. Выбери вопрос или напиши свой.</p>
             <div className="agro-ai__suggestions">{suggested.map(item => <button key={item} type="button" onClick={() => void send(item)} disabled={!status?.configured || !field || busy}>{item}</button>)}</div>
           </div>}
-          {messages.map((message, index) => <div key={`${index}-${message.role}`} className={`agro-ai__message agro-ai__message--${message.role}`}><span>{message.role === 'assistant' ? 'ИИ-АГРОНОМ' : 'ВЫ'}</span><div>{message.content}</div></div>)}
+          {messages.map((message, index) => <div key={`${index}-${message.role}`} className={`agro-ai__message agro-ai__message--${message.role}`}>
+            <span className="agro-ai__message-label">{message.role === 'assistant' ? 'ИИ-АГРОНОМ' : 'ВЫ'}</span>
+            {message.role === 'assistant'
+              ? <div className="agro-ai__markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{formatAgronomAnswer(message.content)}</ReactMarkdown></div>
+              : <div className="agro-ai__plain-text">{message.content}</div>}
+          </div>)}
           {busy && <div className="agro-ai__thinking"><Sparkles size={15}/> Анализирую прогноз и данные поля…</div>}
         </div>
         {error && <div role="alert" className="agro-ai__error">{error}</div>}
