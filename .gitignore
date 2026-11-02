@@ -32,3 +32,8 @@ frontend/.agroradar-api-port
 backend/data/admin_access.txt
 # Local viewer accounts contain salted password hashes, NEVER commit
 backend/data/viewer_accounts.json
+
+# Final-suite local operational storage and backups
+backend/data/*.sqlite3-*
+backend/data/backups/
+backend/data/*.bak
