@@ -4,13 +4,14 @@ The four bundled fields are fictional examples. Their polygons are GENERATED exa
 not surveyed cadastral boundaries. Replace the GeoJSON before production use.
 """
 import asyncio
+import hashlib
 import json
 import math
 import os
 import time
 import threading
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -20,7 +21,9 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
-app = FastAPI(title='AgroRadar AI API', version='1.1.0')
+from .risk_engine import analyze_risks, simulate_scenario, DEMO_SCENARIOS
+
+app = FastAPI(title='AgroRadar AI API', version='2.1.0')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
@@ -48,6 +51,15 @@ class FieldMetadata(BaseModel):
     name: str
     crop: str
     description: str = ''
+    # Optional for compatibility with older frontend versions.
+    sowing_date: str | None = None
+    growth_stage: str | None = None
+    soil_type: str | None = None
+
+
+class FieldObservationCreate(BaseModel):
+    text: str
+    observed_on: str | None = None
 
 
 class FieldCreate(FieldMetadata):
@@ -68,12 +80,59 @@ def normalise_metadata(payload: FieldMetadata) -> dict:
     return {'name': name, 'crop': crop, 'description': description}
 
 
+def validate_iso_date(value: str | None, title: str) -> str:
+    if value is None or not value.strip():
+        return ''
+    value = value.strip()
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError as exc:
+        raise HTTPException(422, f'{title}: дата должна быть в формате ГГГГ-ММ-ДД') from exc
+    if parsed.isoformat() != value:
+        raise HTTPException(422, f'{title}: дата должна быть в формате ГГГГ-ММ-ДД')
+    return value
+
+
+def normalise_agronomy(payload: FieldMetadata) -> dict:
+    # Only supplied values are updated so old clients won't erase profile data.
+    result = {}
+    for key, title, max_length in (
+        ('growth_stage', 'Фаза развития', 100),
+        ('soil_type', 'Тип почвы', 100),
+    ):
+        supplied = getattr(payload, key)
+        if supplied is not None:
+            value = supplied.strip()
+            if len(value) > max_length:
+                raise HTTPException(422, f'{title}: не более {max_length} символов')
+            result[key] = value
+    if payload.sowing_date is not None:
+        result['sowing_date'] = validate_iso_date(payload.sowing_date, 'Дата посева')
+    return result
+
+
+def new_observation(payload: FieldObservationCreate) -> dict:
+    content = payload.text.strip()
+    if not 1 <= len(content) <= 1000:
+        raise HTTPException(422, 'Наблюдение: от 1 до 1000 символов')
+    observed_on = validate_iso_date(payload.observed_on, 'Дата наблюдения') or date.today().isoformat()
+    return {
+        'id': uuid.uuid4().hex,
+        'observed_on': observed_on,
+        'recorded_at': datetime.now(timezone.utc).isoformat(),
+        'text': content,
+        'source': 'manual',
+    }
+
+
 def read_catalog() -> dict:
     # Backward-compatible: do not erase old four fields or old saved GeoJSON.
     # Once fields.json exists, it is authoritative, including deletions.
     if not CATALOG_FILE.exists():
         return {'version': 1, 'next_id': 5,
-                'fields': [{**field, 'description': '', 'kind': 'demo'} for field in FIELDS]}
+                'fields': [{**field, 'description': '', 'kind': 'demo',
+                            'sowing_date': '', 'growth_stage': '', 'soil_type': '',
+                            'observations': []} for field in FIELDS]}
     try:
         catalog = json.loads(CATALOG_FILE.read_text(encoding='utf-8'))
     except (json.JSONDecodeError, OSError) as exc:
@@ -195,6 +254,10 @@ def effective_fields() -> list[dict]:
         field = {key: value for key, value in record.items() if key != 'coordinates'}
         field.setdefault('description', '')
         field.setdefault('kind', 'demo')
+        field.setdefault('sowing_date', '')
+        field.setdefault('growth_stage', '')
+        field.setdefault('soil_type', '')
+        field.setdefault('observations', [])
         override = stored.get(str(field['id']))
         if override:
             ring = override['coordinates']
@@ -251,6 +314,9 @@ def make_feature(field: dict, index: int, stored: dict) -> dict:
     return {'type': 'Feature', 'id': field['id'], 'properties': {
         'field_id': field['id'], 'name': field['name'], 'crop': field['crop'],
         'description': field.get('description', ''), 'kind': field.get('kind', 'demo'),
+        'sowing_date': field.get('sowing_date', ''),
+        'growth_stage': field.get('growth_stage', ''),
+        'soil_type': field.get('soil_type', ''),
         'area_ha': field['area_ha'], 'geometry_source': 'user_drawn' if own else 'demo_generated',
         'geometry_accuracy': 'user_traced_not_surveyed' if own else 'illustrative_not_surveyed',
     }, 'geometry': {'type': 'Polygon', 'coordinates': [ring]}}
@@ -280,7 +346,7 @@ def _demo_data(field: dict) -> dict:
     points = [{'timestamp': start + index * 10800,
                'temperature_c': round(current + (minimum - current) * factor, 1),
                'precipitation_probability_pct': None,
-               'rain_mm_3h': None}
+               'rain_mm_3h': None, 'humidity_pct': None, 'wind_ms': None, 'wind_gust_ms': None}
               for index, factor in enumerate(offsets)]
     return {'weather': {**sample, 'source': 'demo', 'observed_at': None},
             'forecast': {'min_temperature_next_24h_c': minimum,
@@ -288,19 +354,49 @@ def _demo_data(field: dict) -> dict:
                          'period_hours': 24, 'points': points}}
 
 
+# Limit simultaneous external calls: one page load may request weather for many fields.
+# Protects against bursts and transient provider throttling.
+_WEATHER_REQUESTS = asyncio.Semaphore(4)
+
+
 async def _openweather_request(endpoint: str, field: dict, key: str) -> dict:
-    cache_key = (endpoint, round(field['lat'], 4), round(field['lon'], 4))
+    # Key fingerprint invalidates cached responses if the operator changes credentials.
+    # The credential itself is never written to logs or returned to the browser.
+    fingerprint = hashlib.sha256(key.encode('utf-8')).hexdigest()[:12]
+    cache_key = (endpoint, round(field['lat'], 4), round(field['lon'], 4), fingerprint)
     cached = _CACHE.get(cache_key)
     if cached and cached[0] > time.monotonic():
         return cached[1]
-    async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get('https://api.openweathermap.org/data/2.5/' + endpoint,
-                                    params={'lat': field['lat'], 'lon': field['lon'],
-                                            'appid': key, 'units': 'metric', 'lang': 'ru'})
-        response.raise_for_status()
-        data = response.json()
-    _CACHE[cache_key] = (time.monotonic() + _CACHE_TTL_SECONDS, data)
-    return data
+
+    # A timeout that succeeds with a manual 20-second call should not immediately
+    # be treated as an invalid API key by the dashboard.
+    async with _WEATHER_REQUESTS:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(25.0, connect=10.0)) as client:
+            for attempt in range(2):
+                try:
+                    response = await client.get(
+                        'https://api.openweathermap.org/data/2.5/' + endpoint,
+                        params={'lat': field['lat'], 'lon': field['lon'],
+                                'appid': key, 'units': 'metric', 'lang': 'ru'},
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    if not isinstance(data, dict):
+                        raise ValueError('OpenWeather returned non-object JSON')
+                    _CACHE[cache_key] = (time.monotonic() + _CACHE_TTL_SECONDS, data)
+                    return data
+                except httpx.HTTPStatusError as exc:
+                    # Retry only transient provider errors; never retry 401/bad key.
+                    if attempt == 0 and exc.response.status_code in (429, 500, 502, 503, 504):
+                        await asyncio.sleep(0.7)
+                        continue
+                    raise
+                except (httpx.TimeoutException, httpx.TransportError):
+                    if attempt == 0:
+                        await asyncio.sleep(0.7)
+                        continue
+                    raise
+    raise RuntimeError('Unexpected OpenWeather retry state')
 
 
 async def field_conditions(field: dict) -> dict:
@@ -332,6 +428,9 @@ async def field_conditions(field: dict) -> dict:
                     if probability is not None else None
                 ),
                 'rain_mm_3h': round(float(rain.get('3h', 0)), 2),
+                'humidity_pct': (int(entry['main']['humidity']) if 'humidity' in entry.get('main', {}) else None),
+                'wind_ms': (round(float(entry['wind']['speed']), 1) if 'speed' in entry.get('wind', {}) else None),
+                'wind_gust_ms': (round(float(entry['wind']['gust']), 1) if 'gust' in entry.get('wind', {}) else None),
             })
         return {
             'weather': {
@@ -346,25 +445,48 @@ async def field_conditions(field: dict) -> dict:
                          'sample_count': len(timestamps), 'period_hours': 24,
                          'points': points},
         }
-    except (httpx.HTTPError, ValueError, KeyError, TypeError, IndexError) as exc:
-        # Never silently invent live weather when the provider returns an error.
+    except httpx.HTTPStatusError as exc:
+        code = exc.response.status_code
+        reason = ('OpenWeather отклонил API-ключ (HTTP 401).' if code == 401 else
+                  'OpenWeather ограничил частоту запросов (HTTP 429).' if code == 429 else
+                  f'OpenWeather вернул HTTP {code}.')
         raise HTTPException(status_code=503, detail=(
-            'OpenWeather недоступен или ключ не принят. Проверьте OPENWEATHER_API_KEY. '
-            'Для офлайн-демо удалите ключ из backend/.env и перезапустите сервер.'
+            f'{reason} Поле «{field.get("name", field.get("id", "?"))}». '
+            'Ключ менять не нужно, если отдельная проверка weather/forecast возвращает 200.'
         )) from exc
+    except httpx.TimeoutException as exc:
+        raise HTTPException(status_code=503, detail=(
+            f'OpenWeather не ответил вовремя для поля «{field.get("name", "?")}». '
+            'Повтори запрос немного позже: API-ключ может быть исправен.'
+        )) from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=503, detail=(
+            f'Ошибка соединения с OpenWeather для поля «{field.get("name", "?")}»: '
+            f'{type(exc).__name__}. Проверь доступность сервиса или повтори запрос.'
+        )) from exc
+    except (ValueError, KeyError, TypeError, IndexError) as exc:
+        raise HTTPException(status_code=503, detail=(
+            f'Не удалось разобрать погодные данные поля «{field.get("name", "?")}»: '
+            f'{type(exc).__name__}. Ключ может быть действительным; требуется проверить ответ API.'
+        )) from exc
+
 
 
 async def compose_field(field: dict) -> dict:
     conditions = await field_conditions(field)
     forecast = conditions['forecast']
+    temperature_risk = risk_from_temperature(forecast['min_temperature_next_24h_c'],
+                                          'forecast_24h' if forecast['source'] != 'demo' else 'demo_forecast_24h')
+    analysis = analyze_risks(conditions['weather'], forecast)
     return {**field, **conditions,
-            'risk': risk_from_temperature(forecast['min_temperature_next_24h_c'],
-                                          'forecast_24h' if forecast['source'] != 'demo' else 'demo_forecast_24h')}
+            'risk': analysis['overall'],  # backward-compatible color/level used by map
+            'temperature_risk': temperature_risk,
+            'risk_analysis': analysis}
 
 
 @app.get('/api/health')
 def health():
-    return {'status': 'ok', 'version': '1.1.0',
+    return {'status': 'ok', 'version': '2.1.0',
             'weather_mode': 'live' if os.getenv('OPENWEATHER_API_KEY', '').strip() else 'demo'}
 
 
@@ -401,9 +523,24 @@ async def field_forecast(field_id: int):
 @app.get('/api/fields/{field_id}/risks')
 async def field_risks(field_id: int):
     details = await compose_field(find_field(field_id))
-    return {'field_id': field_id, 'risk_type': 'frost_temperature_screening_24h',
-            'risk': details['risk'], 'weather': details['weather'], 'forecast': details['forecast'],
-            'disclaimer': 'Температурный скрининг, не оценка ущерба культуре. Нужны культура, фаза и локальные условия.'}
+    return {'field_id': field_id, 'risk_type': 'multi_weather_screening_24h',
+            'risk': details['risk'], 'temperature_risk': details['temperature_risk'],
+            'risk_analysis': details['risk_analysis'],
+            'weather': details['weather'], 'forecast': details['forecast'],
+            'disclaimer': details['risk_analysis']['disclaimer']}
+
+
+@app.get('/api/risks/scenarios')
+def list_risk_scenarios():
+    return {'scenarios': [{'id': key, **detail} for key, detail in DEMO_SCENARIOS.items()],
+            'notice': 'Только синтетические сценарии; реальную погоду и поля не меняют.'}
+
+
+@app.get('/api/risks/scenarios/{scenario}')
+def risk_scenario(scenario: str):
+    if scenario not in DEMO_SCENARIOS:
+        raise HTTPException(404, 'Такого демонстрационного сценария нет')
+    return simulate_scenario(scenario)
 
 
 @app.get('/api/dashboard')
@@ -425,7 +562,8 @@ def create_field(payload: FieldCreate):
         field_id = max(catalog['next_id'], max((f['id'] for f in catalog['fields']), default=0) + 1)
         catalog['next_id'] = field_id + 1
         catalog['fields'].append({
-            'id': field_id, **meta, 'kind': 'user', 'area_ha': round(area, 2),
+            'id': field_id, **meta, **normalise_agronomy(payload),
+            'observations': [], 'kind': 'user', 'area_ha': round(area, 2),
             'lat': round(lat, 6), 'lon': round(lon, 6), 'coordinates': ring,
         })
         save_catalog(catalog)
@@ -435,7 +573,7 @@ def create_field(payload: FieldCreate):
 
 @app.put('/api/fields/{field_id}')
 def edit_field(field_id: int, payload: FieldMetadata):
-    meta = normalise_metadata(payload)
+    meta = {**normalise_metadata(payload), **normalise_agronomy(payload)}
     with CATALOG_LOCK:
         catalog = read_catalog()
         assert_unique_name(catalog['fields'], meta['name'], exclude_id=field_id)
@@ -445,6 +583,44 @@ def edit_field(field_id: int, payload: FieldMetadata):
         target.update(meta)
         save_catalog(catalog)
     return {'saved': True, 'field': find_field(field_id)}
+
+
+@app.get('/api/fields/{field_id}/observations')
+def field_observations(field_id: int):
+    field = find_field(field_id)
+    return {'field_id': field_id, 'observations': field.get('observations', [])}
+
+
+@app.post('/api/fields/{field_id}/observations', status_code=status.HTTP_201_CREATED)
+def create_field_observation(field_id: int, payload: FieldObservationCreate):
+    observation = new_observation(payload)
+    with CATALOG_LOCK:
+        catalog = read_catalog()
+        target = next((field for field in catalog['fields'] if field['id'] == field_id), None)
+        if target is None:
+            raise HTTPException(404, 'Поле не найдено')
+        notes = target.setdefault('observations', [])
+        if len(notes) >= 500:
+            raise HTTPException(422, 'Достигнут предел 500 наблюдений для одного поля')
+        notes.append(observation)
+        save_catalog(catalog)
+    return {'created': True, 'field_id': field_id, 'observation': observation}
+
+
+@app.delete('/api/fields/{field_id}/observations/{observation_id}')
+def delete_field_observation(field_id: int, observation_id: str):
+    with CATALOG_LOCK:
+        catalog = read_catalog()
+        target = next((field for field in catalog['fields'] if field['id'] == field_id), None)
+        if target is None:
+            raise HTTPException(404, 'Поле не найдено')
+        notes = target.setdefault('observations', [])
+        before = len(notes)
+        target['observations'] = [item for item in notes if item.get('id') != observation_id]
+        if len(target['observations']) == before:
+            raise HTTPException(404, 'Наблюдение не найдено')
+        save_catalog(catalog)
+    return {'deleted': True, 'observation_id': observation_id}
 
 
 @app.delete('/api/fields/{field_id}')

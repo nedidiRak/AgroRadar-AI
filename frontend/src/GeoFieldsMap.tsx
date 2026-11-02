@@ -171,6 +171,23 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
     }
   }, [expanded])
 
+  // When the user switches from «Карта и поля» to another workspace tab,
+  // React keeps the Yandex map mounted inside a hidden section to preserve
+  // its state. The fullscreen map must release the body scroll lock at once.
+  useEffect(() => {
+    const page = host.current?.closest<HTMLElement>('.agr-page--fields')
+    if (!page) return
+
+    const closeFullscreenIfHidden = () => {
+      if (page.hidden) setExpanded(false)
+    }
+
+    const observer = new MutationObserver(closeFullscreenIfHidden)
+    observer.observe(page, { attributes: true, attributeFilter: ['hidden'] })
+    closeFullscreenIfHidden()
+    return () => observer.disconnect()
+  }, [])
+
   // The initial map type was already set in the constructor. Calling setType
   // again on mount can produce a rejected API promise even when satellite tiles
   // are displayed correctly. Switch only when the requested type really differs.

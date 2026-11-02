@@ -11,6 +11,10 @@ type FieldContext = {
   crop: string
   description?: string
   area_ha: number
+  sowing_date?: string
+  growth_stage?: string
+  soil_type?: string
+  observations?: {id:string;observed_on:string;text:string}[]
   risk: { level: RiskLevel; label: string }
   weather: { source: string; temperature_c: number }
   forecast: { source: string; min_temperature_next_24h_c: number }
@@ -108,7 +112,7 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
         <div>
           <div className="agro-ai__kicker"><Sparkles size={13} /> ИНТЕЛЛЕКТУАЛЬНЫЙ ПОМОЩНИК</div>
           <h2 id="agro-ai-title">ИИ-агроном <span>AgroRadar</span></h2>
-          <p>Анализ выбранного поля, прогноза и температурных рисков с помощью DeepSeek</p>
+          <p>Анализ выбранного поля, прогноза и погодных рисков с помощью DeepSeek</p>
         </div>
       </div>
       <div className="agro-ai__status">
@@ -128,12 +132,18 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
         {field ? <>
           <strong className="agro-ai__field-name">{field.name}</strong>
           <p className="agro-ai__crop">{field.crop} · {field.area_ha} га</p>
+          {(field.growth_stage || field.sowing_date || field.soil_type) && <div className="agro-ai__profile">
+            {field.sowing_date && <div className="agro-ai__metric"><span>Посев</span><b>{field.sowing_date}</b></div>}
+            {field.growth_stage && <div className="agro-ai__metric"><span>Фаза развития</span><b>{field.growth_stage}</b></div>}
+            {field.soil_type && <div className="agro-ai__metric"><span>Почва</span><b>{field.soil_type}</b></div>}
+          </div>}
+          <p className="agro-ai__observation-count">Наблюдения: {field.observations?.length ?? 0}</p>
           <div className="agro-ai__metric"><span>Температура сейчас</span><b>{field.weather.temperature_c} °C</b></div>
           <div className="agro-ai__metric"><span>Минимум за 24 часа</span><b>{field.forecast.min_temperature_next_24h_c} °C</b></div>
-          <div className="agro-ai__metric"><span>Температурный риск</span><b className={`agro-ai__risk--${field.risk.level}`}>{field.risk.label}</b></div>
+          <div className="agro-ai__metric"><span>Погодный риск</span><b className={`agro-ai__risk--${field.risk.level}`}>{field.risk.label}</b></div>
           <div className="agro-ai__data-source">{live ? '● OpenWeather LIVE' : '◌ Демо-погода'}<br/>+ локальные справочные заметки</div>
         </> : <p>Сначала выбери или создай поле.</p>}
-        <div className="agro-ai__notice"><ShieldCheck size={16}/> Советы ИИ не заменяют проверку на месте. Данных о влажности почвы и фазе развития пока нет.</div>
+        <div className="agro-ai__notice"><ShieldCheck size={16}/> Советы ИИ не заменяют проверку на месте. Сведения из паспорта и журнала введены пользователем, а не подтверждены датчиками.</div>
         </div>
       </aside>
 
