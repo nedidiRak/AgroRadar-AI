@@ -130,12 +130,18 @@ def analyze_risks(weather: dict, forecast: dict) -> dict:
             f'Максимум {hottest_temp:g} °C, влажность в наиболее жаркий интервал {humidity_at_hottest:g}%, дождь {total_rain:g} мм. '            'Температура и сухость проверяются в одном интервале. Это погодные предпосылки, НЕ диагноз засухи.', source, coverage))
 
     known = [r for r in results if r['level'] != 'unknown']
+    unknown_count = len(results) - len(known)
     worst = max(known, key=lambda r: LEVELS[r['level']]) if known else None
     overall_level = worst['level'] if worst else 'unknown'
     warnings = [r for r in results if r['level'] in ('high', 'medium')]
     summary = ('; '.join(f"{r['title'].lower()} — {r['label'].lower()}" for r in warnings)
                if warnings else 'По имеющимся данным повышенные погодные риски не выявлены.' if known
                else 'Недостаточно данных для оценки погодных рисков.')
+    # A low score is NOT an all-clear when other factors could not be evaluated.
+    # Keep the existing overall level for backward-compatible map colors, but
+    # explicitly warn users and AI consumers that the assessment is partial.
+    if known and unknown_count:
+        summary += f' Оценка неполная: {unknown_count} из {len(results)} факторов без данных.'
     return {
         'version': '2.0',
         'source': source,
@@ -146,7 +152,8 @@ def analyze_risks(weather: dict, forecast: dict) -> dict:
                     'rule': 'Максимальный уровень среди оценённых погодных факторов'},
         'assessments': results,
         'known_count': len(known),
-        'unknown_count': len(results) - len(known),
+        'unknown_count': unknown_count,
+        'coverage_complete': unknown_count == 0,
         'disclaimer': ('Учебные пороги для метеорологического скрининга, не откалиброваны по культуре и фазе роста. '
                        'Это не диагноз заболевания, не вероятность гибели урожая и не прогноз засухи. '
                        'Модель OpenWeather не измеряет фактические условия почвы на участке.'),

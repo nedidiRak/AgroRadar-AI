@@ -58,6 +58,9 @@ def test_missing_data_is_not_treated_as_safe():
     assert risks['wind']['level'] == 'unknown'
     assert risks['dry_heat']['level'] == 'unknown'
     assert result['unknown_count'] == 3
+    assert result['coverage_complete'] is False
+    assert result['overall']['level'] == 'low'  # legacy map color unchanged
+    assert 'Оценка неполная: 3 из 4 факторов без данных.' in result['overall']['reason']
 
 
 def test_scenarios_are_explicit_simulations_and_independent():
@@ -123,3 +126,19 @@ def test_live_rain_can_raise_overall_risk_without_frost(monkeypatch, tmp_path):
     assert data['temperature_risk']['level'] == 'low'
     assert data['risk']['level'] == 'high'
     assert by_id(data['risk_analysis'])['rain']['value'] == 35
+
+
+def test_fully_unknown_forecast_is_not_safe():
+    result = example([], None)
+    assert result['overall']['level'] == 'unknown'
+    assert result['coverage_complete'] is False
+    assert result['known_count'] == 0
+    assert result['unknown_count'] == 4
+    assert 'Недостаточно данных' in result['overall']['reason']
+
+
+def test_complete_forecast_stays_complete_and_has_no_warning():
+    result = example([point()] * 8, 7)
+    assert result['overall']['level'] == 'low'
+    assert result['coverage_complete'] is True
+    assert 'Оценка неполная' not in result['overall']['reason']
