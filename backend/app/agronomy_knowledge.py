@@ -77,4 +77,9 @@ def retrieve_notes(crop: str, risk_level: str) -> list[dict[str, str]]:
         if any(term in low for term in terms):
             notes.append(NOTES[name])
             break
-    return [{'id': label, 'text': description} for label, description in notes]
+    return [{
+        'id': label, 'text': description,
+        'source_kind': 'internal_prototype_note',
+        'expert_validated': False,
+        'status': 'Справочная заметка прототипа, не подтверждённая экспертизой.',
+    } for label, description in notes]
