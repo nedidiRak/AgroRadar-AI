@@ -9,6 +9,7 @@ import asyncio
 import csv
 import html
 import io
+import sqlite3
 from datetime import datetime, timezone
 from typing import Awaitable, Callable
 
@@ -104,7 +105,12 @@ def report_router(find_field: Callable[[int], dict],
         analysis = field["risk_analysis"]
         actions = analysis.get("priority_actions", [])
         quality = analysis.get("data_quality", {})
-        history = field_history(field_id, 10)["snapshots"]
+        try:
+            history = field_history(field_id, 10)["snapshots"]
+        except (OSError, sqlite3.Error):
+            # History is auxiliary: a damaged SQLite sidecar must not prevent
+            # downloading a current report from the working field catalog.
+            history = []
         rows = "".join(
             f'<tr><td>{_h(item["title"])}</td><td>{_h(item["label"])}</td>'
             f'<td>{_h(item["value"])} {_h(item["unit"])}</td>'
