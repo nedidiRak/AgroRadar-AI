@@ -7,6 +7,7 @@ Demo weather is historical demonstration data, never a real operational alert.
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 import sqlite3
 import threading
 import time
@@ -27,7 +28,8 @@ def timestamp() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def connection() -> sqlite3.Connection:
+@contextmanager
+def connection():
     DATABASE_FILE.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DATABASE_FILE), timeout=10)
     conn.row_factory = sqlite3.Row
@@ -77,7 +79,14 @@ def connection() -> sqlite3.Connection:
         );
         CREATE INDEX IF NOT EXISTS idx_activity_time ON activity(id DESC);
     """)
-    return conn
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def _row(item: sqlite3.Row) -> dict:
