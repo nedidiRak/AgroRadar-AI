@@ -278,6 +278,7 @@ def launch(preferred_port: int | None, addresses: list[dict[str, str]]) -> int:
         env["AGRORADAR_WIFI_DEMO"] = "1"
         env["AGRORADAR_WIFI_PORT"] = str(port)
         env["AGRORADAR_WIFI_IPS"] = ";".join(item["ip"] for item in addresses)
+        env["AGRORADAR_WIFI_ADAPTERS"] = json.dumps(addresses, ensure_ascii=False)
         env["AGRORADAR_SECURE_COOKIES"] = "0"  # override .env for LAN HTTP (Secure cookies cannot be sent)
         command = [sys.executable, "-m", "uvicorn", "app.main:app",
                    "--host", "0.0.0.0", "--port", str(port), "--no-access-log"]
