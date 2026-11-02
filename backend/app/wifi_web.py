@@ -10,6 +10,7 @@ import base64
 import html
 import io
 import ipaddress
+import json
 import os
 from pathlib import Path
 
@@ -54,12 +55,25 @@ def _qr_image(url: str) -> str:
 
 def connect_page(port: int) -> HTMLResponse:
     cards = []
+    adapters = {}
+    try:
+        raw_adapters = json.loads(os.getenv("AGRORADAR_WIFI_ADAPTERS", "[]"))
+        if isinstance(raw_adapters, list):
+            adapters = {str(item["ip"]): item for item in raw_adapters
+                        if isinstance(item, dict) and isinstance(item.get("ip"), str)}
+    except (json.JSONDecodeError, ValueError, KeyError, TypeError):
+        adapters = {}
     for address in demo_addresses():
         url = f"http://{address}:{port}/"
         clean = html.escape(url, quote=True)
+        adapter = adapters.get(address, {})
+        alias = html.escape(str(adapter.get("alias", "Локальная сеть"))[:100], quote=True)
+        profile = html.escape(str(adapter.get("profile", "Unknown"))[:35], quote=True)
+        profile_warning = ('<strong class="note">Профиль Public: Private firewall-правило не действует.</strong>'
+                           if profile.lower() == "public" else "")
         cards.append(
             f'<article class="card">{_qr_image(url)}'
-            f'<div><h2>{clean}</h2>'
+            f'<div><small>Адаптер: {alias} · Windows: {profile}</small><h2>{clean}</h2>{profile_warning}'
             f'<p>Открой этот адрес или отсканируй QR-код с телефона в той же сети.</p>'
             f'<a class="btn" href="{clean}">Проверить адрес на этом компьютере</a></div></article>'
         )
