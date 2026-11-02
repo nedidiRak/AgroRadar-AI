@@ -183,3 +183,12 @@ def test_history_records_500_fields_without_external_calls(client):
     assert monitoring.summary()["monitored_fields"] == 500
     assert monitoring.capture_dashboard(fields)["snapshots_added"] == 0
     assert len(monitoring.field_history(500)["snapshots"]) == 1
+
+
+def test_report_still_works_if_historical_database_is_damaged(client):
+    # Monitoring must be auxiliary, never a prerequisite for reviewing a field.
+    monitoring.DATABASE_FILE.write_bytes(b"not a sqlite database")
+    response = client.get("/api/reports/field/1")
+    assert response.status_code == 200, response.text
+    assert "AgroRadar" in response.text
+    assert "История ещё не накоплена" in response.text
