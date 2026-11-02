@@ -42,3 +42,37 @@
 .agr-risk-engine__error { color:#ffb5b5; }
 @media(max-width:1200px) { .agr-risk-engine__grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .agr-risk-card__explanation { min-height:0; } }
 @media(max-width:620px) { .agr-risk-engine { margin:12px 0; padding:13px; } .agr-risk-engine__header { align-items:stretch; flex-direction:column; gap:12px; } .agr-risk-engine__selector { min-width:0; } .agr-risk-engine__grid { grid-template-columns:minmax(0,1fr); } .agr-risk-card { padding:13px; } .agr-risk-engine__summary { align-items:flex-start; flex-direction:column; } .agr-risk-card__metric { font-size:21px; } }
+
+/* v3.0 — transparent model coverage, contextual decisions, audit-friendly evidence. */
+.agr-risk-engine__quality{border:1px solid #355746;background:#152c23;border-radius:12px;padding:14px 17px;margin-bottom:14px}
+.agr-risk-engine__quality-main{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.agr-risk-engine__quality-main>strong{font-size:13px;color:#e6f5ea}
+.agr-risk-engine__quality-status{padding:5px 9px;border-radius:20px;border:1px solid #3b8064;background:#214532;color:#93e6b7;font-size:11px;font-weight:750}
+.agr-risk-engine__quality-status--partial,.agr-risk-engine__quality-status--demo,.agr-risk-engine__quality-status--simulation{border-color:#866c3c;background:#4b3920;color:#f5d69b}
+.agr-risk-engine__quality-status--unavailable{border-color:#8d4e4c;background:#4b2929;color:#ffb9b2}
+.agr-risk-engine__quality-metrics{display:flex;flex-wrap:wrap;gap:9px 19px;margin-top:12px;font-size:11px;color:#adcbb8}
+.agr-risk-engine__quality-metrics b{color:#def6e8}
+.agr-risk-engine__quality ul{margin:10px 0 5px;padding-left:20px;font-size:12px;line-height:1.55;color:#d1c9ac}
+.agr-risk-engine__quality small{display:block;margin-top:7px;color:#829f90;line-height:1.5}
+.agr-risk-engine__decisions{margin-top:19px}
+.agr-risk-engine__decisions-title{display:flex;align-items:end;justify-content:space-between;flex-wrap:wrap;gap:6px;margin:0 0 11px}
+.agr-risk-engine__decisions-title h3{margin:0;font-size:17px;color:#e8f7ef}
+.agr-risk-engine__decisions-title span{font-size:11px;color:#9ab9a6}
+.agr-risk-engine__actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.agr-risk-action{border:1px solid #315a45;border-left:3px solid #7aba94;border-radius:11px;background:#152b22;padding:14px;min-width:0}
+.agr-risk-action--high{border-left-color:#f37e7f}.agr-risk-action--medium{border-left-color:#f0c275}.agr-risk-action--unknown{border-left-color:#9caea4}
+.agr-risk-action__top{display:flex;align-items:center;gap:9px}
+.agr-risk-action__number{width:23px;height:23px;display:inline-grid;place-items:center;flex-shrink:0;background:#295440;border-radius:8px;font-size:11px;font-weight:800}
+.agr-risk-action__top strong{font-size:13px;line-height:1.4}
+.agr-risk-action>p{font-size:12px;line-height:1.65;color:#c5e0d1;margin:11px 0}
+.agr-risk-action details{font-size:11px;padding-top:10px;border-top:1px solid #305445}
+.agr-risk-action summary{color:#8ed7b2;cursor:pointer;font-weight:650}
+.agr-risk-action details p{color:#b4c7bb;line-height:1.6;margin:8px 0}
+.agr-risk-action details small{color:#879f91;line-height:1.4}
+.agr-risk-engine__field-context{margin-top:16px;border:1px solid #355445;background:#162e25;border-radius:10px;padding:14px}
+.agr-risk-engine__field-context>strong{font-size:12px;color:#d5f1e0}
+.agr-risk-engine__field-context>div{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:10px}
+.agr-risk-engine__field-context span{font-size:11px;color:#d6e8dd}
+.agr-risk-engine__field-context p{font-size:11px;line-height:1.55;color:#eed09b;margin:9px 0 0}
+.agr-risk-engine__field-context small,.agr-risk-engine__decision-notice{display:block;margin:10px 0 0;color:#91ac9e;font-size:11px;line-height:1.6}
+@media(max-width:760px){.agr-risk-engine__actions{grid-template-columns:1fr}.agr-risk-engine__quality{padding:13px}.agr-risk-engine__decisions-title{align-items:start;flex-direction:column}}
