@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { KeyRound, Leaf, LockKeyhole } from 'lucide-react'
-import { setCsrfToken } from './authClient'
+import { setCsrfToken, setCurrentUser } from './authClient'
 import './AuthGate.css'
 
-type Status = { authenticated: boolean; csrf_token: string | null }
+type Status = { authenticated: boolean; csrf_token: string | null; username: string | null; role: 'admin' | 'viewer' | null }
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<'loading' | 'login' | 'ready'>('loading')
   const [password, setPassword] = useState('')
+  const [username, setUsername] = useState('admin')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -21,10 +22,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       .then(data => {
         if (!active) return
         setCsrfToken(data.csrf_token)
+        setCurrentUser(data.username, data.role)
         setState(data.authenticated ? 'ready' : 'login')
       })
       .catch(err => { if (active) { setError(err instanceof Error ? err.message : 'Ошибка соединения'); setState('login') } })
-    const expire = () => { setCsrfToken(null); setState('login'); setError('Сессия завершилась. Войди снова.') }
+    const expire = () => { setCsrfToken(null); setCurrentUser(null, null); setState('login'); setError('Сессия завершилась. Войди снова.') }
     window.addEventListener('agroradar-auth-expired', expire)
     return () => { active = false; window.removeEventListener('agroradar-auth-expired', expire) }
   }, [])
@@ -38,11 +40,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       const response = await fetch('/api/auth/login', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : 'Ошибка входа.')
       setCsrfToken(result.csrf_token)
+      setCurrentUser(result.username, result.role)
       setPassword('')
       setState('ready')
     } catch (err) { setError(err instanceof Error ? err.message : 'Не удалось войти') }
@@ -57,13 +60,15 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       <h1>Вход администратора</h1>
       <p>Данные полей, прогнозы и ИИ-агроном доступны только после входа.</p>
       {state === 'loading' ? <div className="agro-login-wait">Проверяем сессию…</div> : <>
-        <label htmlFor="agro-admin-password"><KeyRound size={15}/> Пароль администратора</label>
+        <label htmlFor="agro-username">Логин</label>
+        <input id="agro-username" type="text" autoComplete="username" maxLength={32} value={username} onChange={event => setUsername(event.target.value)} placeholder="admin или логин наблюдателя" required />
+        <label htmlFor="agro-admin-password"><KeyRound size={15}/> Пароль</label>
         <input id="agro-admin-password" type="password" autoComplete="current-password"
           value={password} onChange={event => setPassword(event.target.value)}
           placeholder="Введите пароль" required autoFocus />
         {error && <div className="agro-login-error" role="alert">{error}</div>}
         <button type="submit" disabled={busy || !password.trim()}><LockKeyhole size={17}/>{busy ? 'Проверяем…' : 'Войти в AgroRadar'}</button>
-        <small>Пароль находится в локальном файле <code>backend/data/admin_access.txt</code> либо задан в <code>backend/.env</code>.</small>
+        <small>Администратор: <code>admin</code> и пароль из <code>backend/data/admin_access.txt</code>. Учётные записи наблюдателей создаются администратором в разделе «Пользователи».</small>
       </>}
     </form>
   </main>
