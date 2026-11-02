@@ -1,12 +1,13 @@
 import AuthGate from './AuthGate'
 import { apiFetch } from './authClient'
+import { setCsrfToken } from './authClient'
 import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import GeoFieldsMap from './GeoFieldsMap'
 import AiAgronom from './AiAgronom'
 import RiskDashboard from './RiskDashboard'
 import type { RiskAnalysis } from './RiskDashboard'
-import { Activity, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot, ArrowRight, ChevronDown, Search, SlidersHorizontal, Info, Thermometer, Wind, Droplets, CheckCircle2 } from 'lucide-react'
+import { Activity, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot, ArrowRight, ChevronDown, Search, SlidersHorizontal, Info, Thermometer, Wind, Droplets, CheckCircle2, LogOut } from 'lucide-react'
 import type { FeatureCollection, Polygon } from 'geojson'
 import './style.css'
 import './FieldsManager.css'
@@ -84,6 +85,14 @@ function App() {
     if(to==='assistant') setVisitedAi(true)
     setView(to)
     window.scrollTo({top:0,behavior:'auto'})
+  }
+  async function logout() {
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST' })
+    } finally {
+      setCsrfToken(null)
+      window.location.reload()
+    }
   }
   async function refresh() {
     setLoading(true); setError(''); setGeoError('')
@@ -270,7 +279,7 @@ function App() {
     <main className="content agr-content">
       <header className="agr-header">
         <div><div className="eyebrow">АГРОМОНИТОРИНГ / {view==='overview'?'СВОДКА':view==='fields'?'ГЕОДАННЫЕ':'ПОМОЩНИК'}</div><h1>{pageInfo[0]}</h1><p>{pageInfo[1]}</p></div>
-        <div className="agr-header-actions"><span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':data.degraded_count?'OpenWeather · частично недоступен':'OpenWeather · LIVE'):'Загрузка данных'}</span><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
+        <div className="agr-header-actions"><span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':data.degraded_count?'OpenWeather · частично недоступен':'OpenWeather · LIVE'):'Загрузка данных'}</span><button className="agr-refresh" onClick={()=>void logout()} title="Выйти из системы"><LogOut size={16}/><span>Выйти</span></button><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
       </header>
       {error && <div className="error" role="alert">{error}. Проверь, что FastAPI запущен через START_AGRORADAR.bat.</div>}
       {data && (data.degraded_count ?? 0) > 0 && <div className="error" role="status">Погода временно недоступна для {data.degraded_count} из {data.count} полей. Контуры и данные участков сохранены. Нет данных — не означает отсутствие риска.</div>}
