@@ -6,6 +6,7 @@ unverified claims about yields, soil moisture, pests or plant development.
 from __future__ import annotations
 
 import json
+import sqlite3
 import os
 import time
 import threading
@@ -17,6 +18,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from .agronomy_knowledge import retrieve_notes
+from .monitoring import field_history
 
 MODEL_DEFAULT = 'deepseek-flash'
 DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/chat/completions'
@@ -49,6 +51,8 @@ AgroRisk Engine оценивает погодные факторы на 24 ча�
 Пиши в ответе: 1) Краткий вывод, 2) На чём основан, 3) Что проверить на месте, 4) Практический следующий шаг.
 Предлагай безопасные общие действия наблюдения и проверки; не давай норм расхода или инструкций по применению пестицидов/опасных веществ.
 Не заявляй, что посетил участок, увидел растения, измерил почву или получил сведения не из JSON.
+Исторические risk snapshots — сохранённые в системе прогнозы, а не фактические измерения на поле; отделяй demo от OpenWeather LIVE.
+При ссылке на локальную базу знаний используй только известные идентификаторы KB из local_reference_notes. Это внутренние прототипные заметки, а не официальные агрономические нормативы; не придумывай внешних ссылок или авторов источников.
 Если запрашивают сведения о других полях, работай только с контекстом выбранного поля и попроси выбрать другое.
 Это вспомогательная оценка, окончательное решение принимает квалифицированный агроном.
 """
@@ -133,13 +137,20 @@ def build_ai_router(
         if not question:
             raise HTTPException(422, 'Введите вопрос для ИИ-агронома.')
 
-        check_rate_limit(request.client.host if request.client else 'unknown')
+        # Independent quotas for each authenticated account rather than one quota
+        # shared by all staff behind the same NAT/company gateway.
+        actor = getattr(request.state, 'agro_user', {}).get('username')
+        check_rate_limit(actor or (request.client.host if request.client else 'unknown'))
 
         # The server, not the frontend, obtains current field/weather data.
         field = await compose_field(find_field(payload.field_id))
         notes = retrieve_notes(field.get('crop', ''), field.get('temperature_risk', field['risk'])['level'])
         weather = field['weather']
         forecast = field['forecast']
+        try:
+            previous_risks = field_history(field['id'], 6)['snapshots']
+        except (OSError, ValueError, sqlite3.Error):
+            previous_risks = []
         context = {
             'field': {
                 'id': field['id'], 'name': field['name'], 'crop': field['crop'],
@@ -162,6 +173,7 @@ def build_ai_router(
                 'points': (forecast.get('points') or [])[:9],
             },
             'weather_risks': field.get('risk_analysis', {}),
+            'recent_risk_history_observed_at_dashboard_refresh': previous_risks,
             'temperature_risk': field.get('temperature_risk', field['risk']),
             'local_reference_notes': notes,
             'reference_note_status': 'General prototype reference notes, not a validated agronomy standard.',
@@ -184,6 +196,7 @@ def build_ai_router(
             'forecast_source': forecast['source'],
             'risk_level': field['risk']['level'],
             'knowledge_ids': [n['id'] for n in notes],
+            'knowledge_notes': notes,
             'disclaimer': 'ИИ-рекомендация по ограниченным данным. Проверь условия на поле перед решением.',
         }
 
