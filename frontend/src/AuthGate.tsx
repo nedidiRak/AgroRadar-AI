@@ -8,7 +8,9 @@ type Status = { authenticated: boolean; csrf_token: string | null; username: str
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<'loading' | 'login' | 'ready'>('loading')
   const [password, setPassword] = useState('')
-  const [username, setUsername] = useState('admin')
+  // Phone browsers use a LAN IP: never encourage entry of admin credentials there.
+  const localLaptop = ['127.0.0.1', 'localhost', '::1'].includes(window.location.hostname)
+  const [username, setUsername] = useState(localLaptop ? 'admin' : '')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -61,14 +63,16 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       <p>Данные полей, прогнозы и ИИ-агроном доступны только после входа.</p>
       {state === 'loading' ? <div className="agro-login-wait">Проверяем сессию…</div> : <>
         <label htmlFor="agro-username">Логин</label>
-        <input id="agro-username" type="text" autoComplete="username" maxLength={32} value={username} onChange={event => setUsername(event.target.value)} placeholder="admin или логин наблюдателя" required />
+        <input id="agro-username" type="text" autoComplete="username" maxLength={32} value={username} onChange={event => setUsername(event.target.value)} placeholder={localLaptop ? 'admin или логин наблюдателя' : 'Логин наблюдателя'} required />
         <label htmlFor="agro-admin-password"><KeyRound size={15}/> Пароль</label>
         <input id="agro-admin-password" type="password" autoComplete="current-password"
           value={password} onChange={event => setPassword(event.target.value)}
           placeholder="Введите пароль" required autoFocus />
         {error && <div className="agro-login-error" role="alert">{error}</div>}
         <button type="submit" disabled={busy || !password.trim()}><LockKeyhole size={17}/>{busy ? 'Проверяем…' : 'Войти в AgroRadar'}</button>
-        <small>Администратор: <code>admin</code> и пароль из <code>backend/data/admin_access.txt</code>. Учётные записи наблюдателей создаются администратором в разделе «Пользователи».</small>
+        <small>{localLaptop
+          ? <>Администратор: <code>admin</code> и пароль из <code>backend/data/admin_access.txt</code>. Для жюри создай наблюдателей в разделе «Пользователи».</>
+          : <>Мобильная демонстрация: войди под выданным логином <strong>наблюдателя</strong>. Учётная запись администратора доступна только на ноутбуке.</>}</small>
       </>}
     </form>
   </main>
