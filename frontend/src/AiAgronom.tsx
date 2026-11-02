@@ -1,6 +1,6 @@
 import { apiFetch } from './authClient'
 import { useEffect, useRef, useState } from 'react'
-import { Bot, ChevronDown, Leaf, RotateCcw, Send, Sparkles, ShieldCheck } from 'lucide-react'
+import { Bot, ChevronDown, Download, Leaf, RotateCcw, Send, Sparkles, ShieldCheck } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import './AiAgronom.css'
@@ -20,13 +20,15 @@ type FieldContext = {
   weather: { source: string; temperature_c: number | null }
   forecast: { source: string; min_temperature_next_24h_c: number | null }
 }
-type Message = { role: 'user' | 'assistant'; content: string }
+type KnowledgeNote = { id: string; text: string; source_kind?: string; expert_validated?: boolean }
+type Message = { role: 'user' | 'assistant'; content: string; knowledge?: KnowledgeNote[] }
 type AiStatus = { configured: boolean; model: string; provider: string }
 type ChatResult = {
   answer: string
   model: string
   weather_source: string
   knowledge_ids: string[]
+  knowledge_notes?: KnowledgeNote[]
   usage?: { total_tokens?: number | null }
 }
 
@@ -83,7 +85,7 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
   async function send(text: string) {
     const question = text.trim()
     if (!question || !field || busy || !status?.configured) return
-    const history = messages.slice(-10)
+    const history = messages.slice(-10).map(({role,content})=>({role,content}))
     setMessages([...messages, { role: 'user', content: question }])
     setPrompt('')
     setError('')
@@ -97,12 +99,39 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
       const data: ChatResult & { detail?: string } = await response.json().catch(() => ({} as ChatResult))
       if (!response.ok) throw new Error(apiError(data, response.status))
       if (!data.answer) throw new Error('Пустой ответ ИИ-сервиса')
-      setMessages(previous => [...previous, { role: 'assistant', content: data.answer }])
+      setMessages(previous => [...previous, { role: 'assistant', content: data.answer, knowledge: data.knowledge_notes ?? [] }])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось получить ответ DeepSeek')
     } finally {
       setBusy(false)
     }
+  }
+
+  function exportDialog() {
+    if (!messages.length) return
+    const markdown = [
+      '# AgroRadar AI · Диалог с ИИ-агрономом',
+      '',
+      'Поле: ' + (field?.name ?? 'не выбрано'),
+      'Создано: ' + new Date().toISOString(),
+      'Внимание: ИИ-консультация — не решение агронома, а полевая информация может быть непроверенной.',
+      '',
+      ...messages.flatMap(message => [
+        '## ' + (message.role === 'user' ? 'Агроном' : 'ИИ-агроном'),
+        message.content,
+        ...(message.knowledge?.length ? [
+          'Внутренние справочные заметки (не проверены экспертом): ' +
+          message.knowledge.map(note => note.id).join(', '),
+        ] : []),
+        '',
+      ]),
+    ].join('\n')
+    const url = URL.createObjectURL(new Blob([markdown], {type:'text/markdown;charset=utf-8'}))
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = 'AgroRadar-AI-dialog.md'
+    anchor.click()
+    setTimeout(() => URL.revokeObjectURL(url), 500)
   }
 
   const live = field?.weather.source === 'openweather_current'
@@ -149,7 +178,7 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
       </aside>
 
       <div className="agro-ai__chat">
-        <div className="agro-ai__chat-top"><span>Диалог об участке</span><button type="button" className="agro-ai__clear" onClick={() => { setMessages([]); setError('') }} disabled={busy || messages.length === 0}><RotateCcw size={14}/> Новый диалог</button></div>
+        <div className="agro-ai__chat-top"><span>Диалог об участке</span><button type="button" className="agro-ai__clear" title="Скачать текущий диалог" onClick={exportDialog} disabled={busy || !messages.length}><Download size={14}/> Экспорт</button><button type="button" className="agro-ai__clear" onClick={() => { setMessages([]); setError('') }} disabled={busy || messages.length === 0}><RotateCcw size={14}/> Новый диалог</button></div>
         <div className="agro-ai__messages" ref={messagesRef} aria-live="polite">
           {messages.length === 0 && <div className="agro-ai__welcome">
             <div className="agro-ai__welcome-icon"><Sparkles size={27}/></div>
@@ -160,7 +189,7 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
           {messages.map((message, index) => <div key={`${index}-${message.role}`} className={`agro-ai__message agro-ai__message--${message.role}`}>
             <span className="agro-ai__message-label">{message.role === 'assistant' ? 'ИИ-АГРОНОМ' : 'ВЫ'}</span>
             {message.role === 'assistant'
-              ? <div className="agro-ai__markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{formatAgronomAnswer(message.content)}</ReactMarkdown></div>
+              ? <div className="agro-ai__markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>{formatAgronomAnswer(message.content)}</ReactMarkdown>{!!message.knowledge?.length && <details className="agro-ai__references"><summary>Контекст справочника: {message.knowledge.length} заметок</summary><p>Локальные прототипные заметки, не заменяют проверенные регламенты.</p><ul>{message.knowledge.map(note=><li key={note.id}><strong>{note.id}</strong> — {note.text}</li>)}</ul></details>}</div>
               : <div className="agro-ai__plain-text">{message.content}</div>}
           </div>)}
           {busy && <div className="agro-ai__thinking"><Sparkles size={15}/> Анализирую прогноз и данные поля…</div>}
