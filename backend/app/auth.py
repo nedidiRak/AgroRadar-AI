@@ -21,6 +21,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
+from .backups import preserve_previous
 from pydantic import BaseModel, Field
 
 COOKIE_NAME = "agroradar_session"
@@ -92,6 +93,7 @@ def _read_viewers() -> dict[str, dict]:
 
 def _save_viewers(users: dict[str, dict]) -> None:
     USERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    preserve_previous(USERS_FILE)
     temporary = USERS_FILE.with_name(USERS_FILE.name + "." + uuid.uuid4().hex + ".tmp")
     try:
         fd = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -292,7 +294,7 @@ async def auth_guard(request: Request, call_next):
             return JSONResponse(status_code=401, content={"detail": "Требуется вход в AgroRadar AI."},
                                 headers={"Cache-Control": "no-store"})
         role = principal["role"]
-        if (path.startswith("/api/auth/users") or path in ("/docs", "/redoc", "/openapi.json")) and role != "admin":
+        if (path.startswith("/api/auth/users") or path.startswith("/api/admin/") or path in ("/docs", "/redoc", "/openapi.json")) and role != "admin":
             return JSONResponse(status_code=403, content={"detail": "Доступ только для администратора."},
                                 headers={"Cache-Control": "no-store"})
         if request.method.upper() not in ("GET", "HEAD", "OPTIONS"):
