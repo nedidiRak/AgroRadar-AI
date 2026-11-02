@@ -30,3 +30,5 @@ frontend/.agroradar-api-port
 
 # Local auto-generated admin credentials (NEVER commit)
 backend/data/admin_access.txt
+# Local viewer accounts contain salted password hashes, NEVER commit
+backend/data/viewer_accounts.json
