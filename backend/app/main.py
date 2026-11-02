@@ -6,6 +6,8 @@ not surveyed cadastral boundaries. Replace the GeoJSON before production use.
 import asyncio
 import hashlib
 import json
+import logging
+import sqlite3
 import math
 import os
 import time
@@ -16,7 +18,7 @@ from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -24,10 +26,16 @@ load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 from .risk_engine import analyze_risks, simulate_scenario, DEMO_SCENARIOS
 
 from .auth import router as auth_router, auth_guard
+from .monitoring import router as monitoring_router, capture_dashboard, record_event
+from .backups import router as backup_router, preserve_previous
+from .reports import report_router
 
-app = FastAPI(title='AgroRadar AI API', version='2.1.0')
+app = FastAPI(title='AgroRadar AI API', version='3.5.0')
 app.middleware('http')(auth_guard)
 app.include_router(auth_router)
+app.include_router(monitoring_router)
+app.include_router(backup_router)
+logger = logging.getLogger(__name__)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
@@ -149,6 +157,7 @@ def read_catalog() -> dict:
 
 def save_catalog(catalog: dict) -> None:
     CATALOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    preserve_previous(CATALOG_FILE)
     temporary = CATALOG_FILE.with_name(CATALOG_FILE.name + '.' + uuid.uuid4().hex + '.tmp')
     try:
         temporary.write_text(json.dumps(catalog, ensure_ascii=False, indent=2), encoding='utf-8')
@@ -186,6 +195,7 @@ def stored_geometries() -> dict:
 
 def save_geometries(data: dict) -> None:
     GEOMETRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    preserve_previous(GEOMETRY_FILE)
     temp_file = GEOMETRY_FILE.with_suffix('.tmp')
     temp_file.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     temp_file.replace(GEOMETRY_FILE)
@@ -529,7 +539,7 @@ async def compose_field_resilient(field: dict) -> dict:
 
 @app.get('/api/health')
 def health():
-    return {'status': 'ok', 'version': '2.1.0',
+    return {'status': 'ok', 'version': '3.5.0',
             'weather_mode': 'live' if os.getenv('OPENWEATHER_API_KEY', '').strip() else 'demo'}
 
 
@@ -592,6 +602,12 @@ async def dashboard():
     # geometry and working forecasts for other fields remain available.
     results = await asyncio.gather(*(compose_field_resilient(field) for field in effective_fields()))
     degraded = [field for field in results if field['weather']['source'] == 'unavailable']
+    # History must not make the core dashboard unavailable if disk is full,
+    # SQLite is locked, or a previous snapshot database is damaged.
+    try:
+        await asyncio.to_thread(capture_dashboard, results)
+    except (sqlite3.Error, OSError) as exc:
+        logger.warning("Risk-history persistence unavailable: %s", type(exc).__name__)
     return {
         'fields': results, 'count': len(results),
         'high_risk_count': sum(field['risk']['level'] == 'high' for field in results),
@@ -601,8 +617,16 @@ async def dashboard():
     }
 
 
+def log_change(request: Request, action: str, field_id: int | None = None, details: str = '') -> None:
+    username = getattr(request.state, 'agro_user', {}).get('username', 'system')
+    try:
+        record_event(username, action, field_id, details)
+    except (sqlite3.Error, OSError) as exc:
+        logger.warning("Activity log unavailable: %s", type(exc).__name__)
+
+
 @app.post('/api/fields', status_code=status.HTTP_201_CREATED)
-def create_field(payload: FieldCreate):
+def create_field(payload: FieldCreate, request: Request):
     meta = normalise_metadata(payload)
     ring = validate_ring(payload.coordinates)
     area, lat, lon = polygon_area_center(ring)
@@ -618,11 +642,12 @@ def create_field(payload: FieldCreate):
         })
         save_catalog(catalog)
         _CACHE.clear()
+    log_change(request, 'field_created', field_id, meta['name'])
     return {'created': True, 'field': find_field(field_id)}
 
 
 @app.put('/api/fields/{field_id}')
-def edit_field(field_id: int, payload: FieldMetadata):
+def edit_field(field_id: int, payload: FieldMetadata, request: Request):
     meta = {**normalise_metadata(payload), **normalise_agronomy(payload)}
     with CATALOG_LOCK:
         catalog = read_catalog()
@@ -632,6 +657,7 @@ def edit_field(field_id: int, payload: FieldMetadata):
             raise HTTPException(404, 'Поле не найдено')
         target.update(meta)
         save_catalog(catalog)
+    log_change(request, 'field_updated', field_id, meta['name'])
     return {'saved': True, 'field': find_field(field_id)}
 
 
@@ -642,7 +668,7 @@ def field_observations(field_id: int):
 
 
 @app.post('/api/fields/{field_id}/observations', status_code=status.HTTP_201_CREATED)
-def create_field_observation(field_id: int, payload: FieldObservationCreate):
+def create_field_observation(field_id: int, payload: FieldObservationCreate, request: Request):
     observation = new_observation(payload)
     with CATALOG_LOCK:
         catalog = read_catalog()
@@ -654,11 +680,12 @@ def create_field_observation(field_id: int, payload: FieldObservationCreate):
             raise HTTPException(422, 'Достигнут предел 500 наблюдений для одного поля')
         notes.append(observation)
         save_catalog(catalog)
+    log_change(request, 'observation_added', field_id)
     return {'created': True, 'field_id': field_id, 'observation': observation}
 
 
 @app.delete('/api/fields/{field_id}/observations/{observation_id}')
-def delete_field_observation(field_id: int, observation_id: str):
+def delete_field_observation(field_id: int, observation_id: str, request: Request):
     with CATALOG_LOCK:
         catalog = read_catalog()
         target = next((field for field in catalog['fields'] if field['id'] == field_id), None)
@@ -670,11 +697,12 @@ def delete_field_observation(field_id: int, observation_id: str):
         if len(target['observations']) == before:
             raise HTTPException(404, 'Наблюдение не найдено')
         save_catalog(catalog)
+    log_change(request, 'observation_deleted', field_id)
     return {'deleted': True, 'observation_id': observation_id}
 
 
 @app.delete('/api/fields/{field_id}')
-def delete_field(field_id: int):
+def delete_field(field_id: int, request: Request):
     with CATALOG_LOCK:
         catalog = read_catalog()
         if not any(f['id'] == field_id for f in catalog['fields']):
@@ -683,11 +711,12 @@ def delete_field(field_id: int):
         save_catalog(catalog)  # authoritative: deletion survives a server restart
         # Legacy geometries are safe even if they remain orphaned, since IDs are never reused.
         _CACHE.clear()
+    log_change(request, 'field_deleted', field_id)
     return {'deleted': True, 'field_id': field_id}
 
 
 @app.put('/api/fields/{field_id}/geometry')
-def update_field_geometry(field_id: int, payload: GeometryUpdate):
+def update_field_geometry(field_id: int, payload: GeometryUpdate, request: Request):
     ring = validate_ring(payload.coordinates)
     with CATALOG_LOCK:
         catalog = read_catalog()
@@ -699,12 +728,13 @@ def update_field_geometry(field_id: int, payload: GeometryUpdate):
                       lat=round(lat, 6), lon=round(lon, 6))
         save_catalog(catalog)
         _CACHE.clear()
+    log_change(request, 'geometry_updated', field_id)
     return {'saved': True, 'field_id': field_id,
             'feature': make_feature(find_field(field_id), 0, all_geometries())}
 
 
 @app.delete('/api/fields/{field_id}/geometry')
-def reset_field_geometry(field_id: int):
+def reset_field_geometry(field_id: int, request: Request):
     with CATALOG_LOCK:
         catalog = read_catalog()
         target = next((f for f in catalog['fields'] if f['id'] == field_id), None)
@@ -722,8 +752,12 @@ def reset_field_geometry(field_id: int):
             legacy.pop(str(field_id))
             save_geometries(legacy)
         _CACHE.clear()
+    log_change(request, 'geometry_reset', field_id)
     return {'restored_demo_geometry': True, 'field_id': field_id}
 
+
+# Printable reports operate on the same already validated field data.
+app.include_router(report_router(find_field, compose_field_resilient, effective_fields))
 
 # Isolated DeepSeek integration; existing maps, fields and weather endpoints unchanged.
 from .ai_assistant import build_ai_router
