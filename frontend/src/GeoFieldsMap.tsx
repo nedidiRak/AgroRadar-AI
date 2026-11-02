@@ -19,6 +19,7 @@ type Props = {
   geojson: FeatureCollection<GeoPolygon> | null;
   onSaveGeometry: (fieldId: number, points: [number, number][]) => Promise<boolean>;
   onCreateOutline: (points: [number, number][]) => void;
+  canEdit?: boolean;
 }
 type LayerName = 'satellite' | 'hybrid' | 'map'
 type LatLon = [number, number]
@@ -82,7 +83,7 @@ function boundsOf(fields: Field[]): LatLon[] | null {
   return [[minLat - latPad, minLon - lonPad], [maxLat + latPad, maxLon + lonPad]]
 }
 
-export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSaveGeometry, onCreateOutline }: Props) {
+export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSaveGeometry, onCreateOutline, canEdit = true }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const drawnObjectsRef = useRef<any>(null)
@@ -381,10 +382,10 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
           <button type="button" className={`agr-map-action ${showContours ? 'is-toggled' : ''}`} onClick={() => setShowContours(x => !x)} disabled={!loaded || drawing} aria-pressed={showContours} title={showContours ? 'Скрыть контуры' : 'Показать контуры'}>
             <Layers size={16} strokeWidth={1.9} /><span>Контуры</span>
           </button>
-          {!drawing && <button type="button" className="agr-map-action agr-map-action--primary" onClick={() => beginDrawing('new')} disabled={!loaded} title="Нарисовать новый участок и создать отдельное поле">
+          {canEdit && !drawing && <button type="button" className="agr-map-action agr-map-action--primary" onClick={() => beginDrawing('new')} disabled={!loaded} title="Нарисовать новый участок и создать отдельное поле">
             <Plus size={16} strokeWidth={1.9} /><span>Новое поле</span>
           </button>}
-          {!drawing && <button type="button" className="agr-map-action" onClick={() => beginDrawing('edit')} disabled={!loaded || !activeId} title="Изменить границы выбранного существующего поля">
+          {canEdit && !drawing && <button type="button" className="agr-map-action" onClick={() => beginDrawing('edit')} disabled={!loaded || !activeId} title="Изменить границы выбранного существующего поля">
             <Pencil size={16} strokeWidth={1.9} /><span>Изменить контур</span>
           </button>}
         </div>
@@ -399,7 +400,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
       </div>
     </div>
 
-    {drawing && <div className="agr-map-drawbar">
+    {canEdit && drawing && <div className="agr-map-drawbar">
       <div className="agr-map-drawbar__summary">
         <Crosshair size={18} strokeWidth={1.9}/>
         <div><strong>{drawingMode === 'new' ? 'Создание нового поля' : `Редактирование: ${activeField?.name}`}</strong><span>Отмечай углы участка на снимке · {points.length} точек</span></div>
