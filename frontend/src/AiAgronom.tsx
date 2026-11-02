@@ -1,3 +1,4 @@
+import { apiFetch } from './authClient'
 import { useEffect, useRef, useState } from 'react'
 import { Bot, ChevronDown, Leaf, RotateCcw, Send, Sparkles, ShieldCheck } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -68,7 +69,7 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
 
   useEffect(() => {
     let mounted = true
-    fetch('/api/ai/status')
+    apiFetch('/api/ai/status')
       .then(async res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json() as Promise<AiStatus>
@@ -88,7 +89,7 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
     setError('')
     setBusy(true)
     try {
-      const response = await fetch('/api/ai/chat', {
+      const response = await apiFetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ field_id: field.id, message: question, history }),
