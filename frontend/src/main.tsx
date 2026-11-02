@@ -282,7 +282,7 @@ function App() {
       <nav aria-label="Разделы приложения" className="agr-navigation">
         {[...navigation,...(canEdit ? [{id:'users' as View,label:'Пользователи',Icon:Users}] : [])].map(({id,label,Icon})=><button key={id} type="button" className={`menu agr-nav-item ${view===id?'active':''}`} aria-label={label} title={label} aria-current={view===id?'page':undefined} onClick={()=>navigate(id)}><Icon size={19}/><span>{label}</span></button>)}
       </nav>
-      <div className="agr-sidebar-meta"><div className="agr-sidebar-meta__dot"/> {currentUser?.username ?? 'Пользователь'} · {canEdit ? 'Администратор' : 'Наблюдатель'}<br/>AgroRadar · IT-спринт<br/><span>Русагро / MVP 2.0</span></div>
+      <div className="agr-sidebar-meta"><div className="agr-sidebar-meta__dot"/> {currentUser?.username ?? 'Пользователь'} · {canEdit ? 'Администратор' : 'Наблюдатель'}<br/>AgroRadar · IT-спринт<br/><span>Русагро / Final Suite 3.5</span></div>
     </aside>
     <main className="content agr-content">
       <header className="agr-header">
