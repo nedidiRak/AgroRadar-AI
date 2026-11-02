@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import './AiAgronom.css'
 
-type RiskLevel = 'high' | 'medium' | 'low'
+type RiskLevel = 'high' | 'medium' | 'low' | 'unknown'
 type FieldContext = {
   id: number
   name: string
@@ -16,8 +16,8 @@ type FieldContext = {
   soil_type?: string
   observations?: {id:string;observed_on:string;text:string}[]
   risk: { level: RiskLevel; label: string }
-  weather: { source: string; temperature_c: number }
-  forecast: { source: string; min_temperature_next_24h_c: number }
+  weather: { source: string; temperature_c: number | null }
+  forecast: { source: string; min_temperature_next_24h_c: number | null }
 }
 type Message = { role: 'user' | 'assistant'; content: string }
 type AiStatus = { configured: boolean; model: string; provider: string }
@@ -138,10 +138,10 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
             {field.soil_type && <div className="agro-ai__metric"><span>Почва</span><b>{field.soil_type}</b></div>}
           </div>}
           <p className="agro-ai__observation-count">Наблюдения: {field.observations?.length ?? 0}</p>
-          <div className="agro-ai__metric"><span>Температура сейчас</span><b>{field.weather.temperature_c} °C</b></div>
-          <div className="agro-ai__metric"><span>Минимум за 24 часа</span><b>{field.forecast.min_temperature_next_24h_c} °C</b></div>
+          <div className="agro-ai__metric"><span>Температура сейчас</span><b>{field.weather.temperature_c == null ? 'Нет данных' : `${field.weather.temperature_c} °C`}</b></div>
+          <div className="agro-ai__metric"><span>Минимум за 24 часа</span><b>{field.forecast.min_temperature_next_24h_c == null ? 'Нет данных' : `${field.forecast.min_temperature_next_24h_c} °C`}</b></div>
           <div className="agro-ai__metric"><span>Погодный риск</span><b className={`agro-ai__risk--${field.risk.level}`}>{field.risk.label}</b></div>
-          <div className="agro-ai__data-source">{live ? '● OpenWeather LIVE' : '◌ Демо-погода'}<br/>+ локальные справочные заметки</div>
+          <div className="agro-ai__data-source">{live ? '● OpenWeather LIVE' : field.weather.source === 'unavailable' ? '⚠ Погода недоступна' : '◌ Демо-погода'}<br/>+ локальные справочные заметки</div>
         </> : <p>Сначала выбери или создай поле.</p>}
         <div className="agro-ai__notice"><ShieldCheck size={16}/> Советы ИИ не заменяют проверку на месте. Сведения из паспорта и журнала введены пользователем, а не подтверждены датчиками.</div>
         </div>
