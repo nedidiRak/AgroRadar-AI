@@ -1,5 +1,6 @@
 import AuthGate from './AuthGate'
 import UserManager from './UserManager'
+import OperationsCenter from './OperationsCenter'
 import { apiFetch } from './authClient'
 import { setCsrfToken, setCurrentUser, getCurrentUser } from './authClient'
 import React, { useEffect, useState } from 'react'
@@ -8,7 +9,7 @@ import GeoFieldsMap from './GeoFieldsMap'
 import AiAgronom from './AiAgronom'
 import RiskDashboard from './RiskDashboard'
 import type { RiskAnalysis } from './RiskDashboard'
-import { Activity, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot, ArrowRight, ChevronDown, Search, SlidersHorizontal, Info, Thermometer, Wind, Droplets, CheckCircle2, LogOut, Users } from 'lucide-react'
+import { Activity, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot, ArrowRight, ChevronDown, Search, SlidersHorizontal, Info, Thermometer, Wind, Droplets, CheckCircle2, LogOut, Users, ChartNoAxesCombined } from 'lucide-react'
 import type { FeatureCollection, Polygon } from 'geojson'
 import './style.css'
 import './FieldsManager.css'
@@ -23,10 +24,11 @@ type Risk = {level:'high'|'medium'|'low'|'unknown';label:string;reason:string;ba
 type Observation = {id:string;observed_on:string;recorded_at:string;text:string;source:'manual'}
 type Field = {id:number;name:string;crop:string;description:string;sowing_date?:string;growth_stage?:string;soil_type?:string;observations?:Observation[];kind:'demo'|'user';area_ha:number;lat:number;lon:number;geometry_source?:string;weather:Weather;forecast:Forecast;risk:Risk; risk_analysis?:RiskAnalysis;temperature_risk?:Risk}
 type Dashboard = { fields:Field[];count:number;high_risk_count:number;degraded_count?:number;degraded_field_ids?:number[];mode:'demo'|'live_forecast' }
-type View = 'overview' | 'fields' | 'assistant' | 'users'
+type View = 'overview' | 'fields' | 'operations' | 'assistant' | 'users'
 const navigation: {id: View; label:string; Icon: typeof Activity}[] = [
   {id:'overview', label:'Обзор',Icon:Activity},
   {id:'fields',label:'Карта и поля',Icon:MapPinned},
+  {id:'operations',label:'Центр решений',Icon:ChartNoAxesCombined},
   {id:'assistant',label:'ИИ-агроном',Icon:Bot},
 ]
 const riskLabel = {high:'Высокий',medium:'Умеренный',low:'Низкий',unknown:'Нет данных'} as const
@@ -264,7 +266,8 @@ function App() {
   const sortedFields = [...(data?.fields ?? [])].sort((a,b)=>(riskOrder[a.risk.level]-riskOrder[b.risk.level]))
   const pageInfo = {
     overview:['Обзор хозяйства','Погода и риски — самое важное за ближайшие 24 часа.'],
-    fields:['Карта и поля','Управляй участками, границами и карточками культур.'],
+    fields:['Карта и поля', canEdit?'Управляй участками, границами и карточками культур.':'Просматривай карту, контуры и карточки культур.'],
+    operations:['Центр решений','История прогнозов, предупреждения и отчёты по полям.'],
     assistant:['ИИ-агроном','Обсуди выбранный участок с помощником DeepSeek.'],
     users:['Пользователи','Администрирование учётных записей и доступа.'],
   }[view]
@@ -283,7 +286,7 @@ function App() {
     </aside>
     <main className="content agr-content">
       <header className="agr-header">
-        <div><div className="eyebrow">АГРОМОНИТОРИНГ / {view==='overview'?'СВОДКА':view==='fields'?'ГЕОДАННЫЕ':view==='users'?'УЧЁТНЫЕ ЗАПИСИ':'ПОМОЩНИК'}</div><h1>{pageInfo[0]}</h1><p>{pageInfo[1]}</p></div>
+        <div><div className="eyebrow">АГРОМОНИТОРИНГ / {view==='overview'?'СВОДКА':view==='fields'?'ГЕОДАННЫЕ':view==='operations'?'АНАЛИТИКА':view==='users'?'УЧЁТНЫЕ ЗАПИСИ':'ПОМОЩНИК'}</div><h1>{pageInfo[0]}</h1><p>{pageInfo[1]}</p></div>
         <div className="agr-header-actions"><span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':data.degraded_count?'OpenWeather · частично недоступен':'OpenWeather · LIVE'):'Загрузка данных'}</span><button className="agr-refresh" onClick={()=>void logout()} title="Выйти из системы"><LogOut size={16}/><span>Выйти</span></button><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
       </header>
       {!canEdit && <div className="agr-viewer-banner" role="status">Режим наблюдателя: просмотр полей, карты и рисков, а также диалог с ИИ. Изменение данных отключено.</div>}
@@ -369,6 +372,10 @@ function App() {
       <section className="agr-page agr-page--ai" hidden={view!=='assistant'} aria-label="ИИ-агроном">
         <div className="agr-ai-context-switch"><div><span>ПОЛЕ ДЛЯ АНАЛИЗА</span><strong>{active?.crop??'Нет культуры'}</strong></div>{picker('agr-assistant-picker')}<button className="agr-text-link" onClick={()=>navigate('fields')}><MapPinned size={15}/> На карте</button></div>
         {visitedAi && <AiAgronom key={active?.id ?? 0} field={active}/>}
+      </section>
+      <section className="agr-page agr-page--operations" hidden={view!=='operations'} aria-label="Центр аналитики и предупреждений">
+        {view==='operations' && <OperationsCenter fields={data?.fields ?? []} activeId={active?.id ?? 0}
+          onPick={setSelected} canEdit={canEdit} mode={data?.mode ?? 'demo'}/>}
       </section>
       {canEdit && <section className="agr-page agr-page--users" hidden={view!=='users'} aria-label="Управление пользователями">{view==='users' && <UserManager/>}</section>}
       <footer className="agr-footer">AgroRadar AI · Конкурсный прототип · Карта: Яндекс Карты · Данные исходных участков могут быть демонстрационными</footer>
