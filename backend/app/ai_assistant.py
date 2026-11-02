@@ -6,6 +6,7 @@ unverified claims about yields, soil moisture, pests or plant development.
 from __future__ import annotations
 
 import json
+import sqlite3
 import os
 import time
 import threading
@@ -148,7 +149,7 @@ def build_ai_router(
         forecast = field['forecast']
         try:
             previous_risks = field_history(field['id'], 6)['snapshots']
-        except (OSError, ValueError):
+        except (OSError, ValueError, sqlite3.Error):
             previous_risks = []
         context = {
             'field': {
