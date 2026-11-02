@@ -1,10 +1,13 @@
+import AuthGate from './AuthGate'
+import { apiFetch } from './authClient'
+import { setCsrfToken } from './authClient'
 import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import GeoFieldsMap from './GeoFieldsMap'
 import AiAgronom from './AiAgronom'
 import RiskDashboard from './RiskDashboard'
 import type { RiskAnalysis } from './RiskDashboard'
-import { Activity, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot, ArrowRight, ChevronDown, Search, SlidersHorizontal, Info, Thermometer, Wind, Droplets, CheckCircle2 } from 'lucide-react'
+import { Activity, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot, ArrowRight, ChevronDown, Search, SlidersHorizontal, Info, Thermometer, Wind, Droplets, CheckCircle2, LogOut } from 'lucide-react'
 import type { FeatureCollection, Polygon } from 'geojson'
 import './style.css'
 import './FieldsManager.css'
@@ -83,10 +86,18 @@ function App() {
     setView(to)
     window.scrollTo({top:0,behavior:'auto'})
   }
+  async function logout() {
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST' })
+    } finally {
+      setCsrfToken(null)
+      window.location.reload()
+    }
+  }
   async function refresh() {
     setLoading(true); setError(''); setGeoError('')
     try {
-      const response = await fetch('/api/dashboard')
+      const response = await apiFetch('/api/dashboard')
       if(!response.ok) {
         const extra = await response.json().catch(()=>null)
         throw new Error(typeof extra?.detail==='string' ? extra.detail : `Сервер вернул ошибку ${response.status}`)
@@ -97,7 +108,7 @@ function App() {
     } catch(e) {setError(e instanceof Error ? e.message : 'Не удалось загрузить данные')}
     finally {setLoading(false)}
     try {
-      const resp = await fetch('/api/fields.geojson')
+      const resp = await apiFetch('/api/fields.geojson')
       if(!resp.ok) throw new Error(`Ошибка GeoJSON: ${resp.status}`)
       setGeojson(await resp.json())
     } catch(e) {setGeoError(e instanceof Error ? e.message : 'Не удалось загрузить контуры')}
@@ -127,7 +138,7 @@ function App() {
       const creating = dialog.mode==='create'
       if(creating && (!dialog.outline || dialog.outline.length<3)) throw new Error('Нарисуй хотя бы три вершины поля')
       const url = creating ? '/api/fields' : `/api/fields/${dialog.id}`
-      const response = await fetch(url,{
+      const response = await apiFetch(url,{
         method:creating?'POST':'PUT',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify(creating ? {
@@ -151,7 +162,7 @@ function App() {
     if (!active || observationBusy || !observationText.trim()) return
     setObservationBusy(true)
     try {
-      const response = await fetch(`/api/fields/${active.id}/observations`, {
+      const response = await apiFetch(`/api/fields/${active.id}/observations`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body:JSON.stringify({text:observationText.trim(), observed_on:observationDate || null}),
       })
@@ -168,7 +179,7 @@ function App() {
     if (observationBusy || !window.confirm(`Удалить наблюдение от ${observation.observed_on}?`)) return
     setObservationBusy(true)
     try {
-      const response = await fetch(`/api/fields/${fieldId}/observations/${observation.id}`, {method:'DELETE'})
+      const response = await apiFetch(`/api/fields/${fieldId}/observations/${observation.id}`, {method:'DELETE'})
       if (!response.ok) {
         const result = await response.json().catch(()=>null)
         throw new Error(serverMessage(result,response.status))
@@ -182,7 +193,7 @@ function App() {
     if(busy || !window.confirm(`Удалить поле «${field.name}» и его контур? Действие нельзя отменить.`)) return
     setBusy(true);setActionMessage('')
     try {
-      const response = await fetch(`/api/fields/${field.id}`,{method:'DELETE'})
+      const response = await apiFetch(`/api/fields/${field.id}`,{method:'DELETE'})
       if(!response.ok) {
         const result=await response.json().catch(()=>null)
         throw new Error(serverMessage(result,response.status))
@@ -196,7 +207,7 @@ function App() {
   async function saveGeometry(id:number,vertices:[number,number][]):Promise<boolean> {
     setActionMessage('')
     try {
-      const response = await fetch(`/api/fields/${id}/geometry`,{
+      const response = await apiFetch(`/api/fields/${id}/geometry`,{
         method:'PUT',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({coordinates:vertices.map(([lat,lon])=>[lon,lat])})
       })
@@ -212,7 +223,7 @@ function App() {
   async function resetGeometry(id:number) {
     setActionMessage('')
     try {
-      const response=await fetch(`/api/fields/${id}/geometry`,{method:'DELETE'})
+      const response=await apiFetch(`/api/fields/${id}/geometry`,{method:'DELETE'})
       if(!response.ok) throw new Error(`Ошибка ${response.status}`)
       setActionMessage('Восстановлена демонстрационная граница выбранного поля.')
       await refresh()
@@ -268,7 +279,7 @@ function App() {
     <main className="content agr-content">
       <header className="agr-header">
         <div><div className="eyebrow">АГРОМОНИТОРИНГ / {view==='overview'?'СВОДКА':view==='fields'?'ГЕОДАННЫЕ':'ПОМОЩНИК'}</div><h1>{pageInfo[0]}</h1><p>{pageInfo[1]}</p></div>
-        <div className="agr-header-actions"><span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':data.degraded_count?'OpenWeather · частично недоступен':'OpenWeather · LIVE'):'Загрузка данных'}</span><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
+        <div className="agr-header-actions"><span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':data.degraded_count?'OpenWeather · частично недоступен':'OpenWeather · LIVE'):'Загрузка данных'}</span><button className="agr-refresh" onClick={()=>void logout()} title="Выйти из системы"><LogOut size={16}/><span>Выйти</span></button><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
       </header>
       {error && <div className="error" role="alert">{error}. Проверь, что FastAPI запущен через START_AGRORADAR.bat.</div>}
       {data && (data.degraded_count ?? 0) > 0 && <div className="error" role="status">Погода временно недоступна для {data.degraded_count} из {data.count} полей. Контуры и данные участков сохранены. Нет данных — не означает отсутствие риска.</div>}
@@ -387,4 +398,4 @@ function App() {
     </main>
   </div>
 }
-createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>)
+createRoot(document.getElementById('root')!).render(<React.StrictMode><AuthGate><App/></AuthGate></React.StrictMode>)

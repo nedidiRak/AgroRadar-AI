@@ -30,6 +30,8 @@ if not defined AGRO_PORT (
 echo %AGRO_PORT%>"%ROOT%frontend\.agroradar-api-port"
 echo AgroRadar backend: http://127.0.0.1:%AGRO_PORT%
 echo AgroRadar frontend: http://localhost:5173
+echo [SECURITY] On first start: admin password saved to backend\data\admin_access.txt
+echo [SECURITY] Never share the contents of that file or upload it to GitHub.
 
 start "AgroRadar API" /D "%ROOT%backend" cmd /k ".venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port %AGRO_PORT% --reload"
 start "AgroRadar UI" /D "%ROOT%frontend" cmd /k "npm.cmd run dev"

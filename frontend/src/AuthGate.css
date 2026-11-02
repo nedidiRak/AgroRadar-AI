@@ -1,0 +1,14 @@
+.agro-login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(circle at 50% 18%,#1b4b39 0%,#0d1516 57%);color:#e7f6ec;font-family:Inter,Segoe UI,Arial,sans-serif}
+.agro-login-card{width:min(100%,440px);background:#14251f;border:1px solid #2e5e49;border-radius:20px;padding:34px;box-shadow:0 24px 65px #0007;display:flex;flex-direction:column;gap:14px}
+.agro-login-mark{color:#8ff6bb;background:#1c4936;border-radius:13px;width:54px;height:54px;display:flex;align-items:center;justify-content:center}
+.agro-login-overline{font-size:11px;letter-spacing:1.2px;font-weight:700;color:#80dbae}
+.agro-login-card h1{margin:0;font-size:28px}
+.agro-login-card p{margin:0 0 7px;color:#b2c7bb;line-height:1.55}
+.agro-login-card label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700}
+.agro-login-card input{background:#0e1e18;border:1px solid #436f58;border-radius:10px;color:white;font:inherit;padding:14px;outline:none}
+.agro-login-card input:focus{border-color:#92e8b1;box-shadow:0 0 0 3px #46b98133}
+.agro-login-card button{justify-content:center;background:#23835b;font-weight:700;min-height:47px}
+.agro-login-card small{font-size:11px;line-height:1.55;color:#99b4a6;overflow-wrap:anywhere}
+.agro-login-card code{font-size:11px}
+.agro-login-error{background:#562b2c;color:#ffd1d1;border-radius:8px;padding:12px;font-size:13px}
+.agro-login-wait{color:#a9c4b5;padding:20px 0}
