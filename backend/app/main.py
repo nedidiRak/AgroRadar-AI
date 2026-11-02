@@ -484,6 +484,45 @@ async def compose_field(field: dict) -> dict:
             'risk_analysis': analysis}
 
 
+def unavailable_field(field: dict, detail: str) -> dict:
+    """Preserve field metadata while marking failed weather as genuinely unknown.
+
+    No synthetic numbers are substituted for a failed provider request.
+    This is a degraded response, NOT a claim that conditions are safe.
+    """
+    weather = {
+        'temperature_c': None, 'humidity_pct': None, 'wind_ms': None,
+        'source': 'unavailable', 'observed_at': None,
+    }
+    forecast = {
+        'min_temperature_next_24h_c': None, 'source': 'unavailable',
+        'sample_count': 0, 'period_hours': 24, 'points': [],
+    }
+    analysis = analyze_risks(weather, forecast)
+    explanation = 'Погодные данные временно недоступны. Оценка рисков не выполнена.'
+    analysis['overall']['reason'] = explanation
+    temperature_risk = {
+        'level': 'unknown', 'label': 'Нет данных',
+        'reason': explanation, 'basis': 'unavailable',
+        'min_temperature_next_24h_c': None, 'rule': 'Оценка не выполнялась',
+    }
+    return {
+        **field, 'weather': weather, 'forecast': forecast,
+        'risk': analysis['overall'], 'temperature_risk': temperature_risk,
+        'risk_analysis': analysis, 'weather_error': detail,
+    }
+
+
+async def compose_field_resilient(field: dict) -> dict:
+    """Only recover expected provider failures; never suppress code defects."""
+    try:
+        return await compose_field(field)
+    except HTTPException as exc:
+        if exc.status_code != 503:
+            raise
+        return unavailable_field(field, str(exc.detail))
+
+
 @app.get('/api/health')
 def health():
     return {'status': 'ok', 'version': '2.1.0',
@@ -522,7 +561,7 @@ async def field_forecast(field_id: int):
 
 @app.get('/api/fields/{field_id}/risks')
 async def field_risks(field_id: int):
-    details = await compose_field(find_field(field_id))
+    details = await compose_field_resilient(find_field(field_id))
     return {'field_id': field_id, 'risk_type': 'multi_weather_screening_24h',
             'risk': details['risk'], 'temperature_risk': details['temperature_risk'],
             'risk_analysis': details['risk_analysis'],
@@ -545,10 +584,17 @@ def risk_scenario(scenario: str):
 
 @app.get('/api/dashboard')
 async def dashboard():
-    results = await asyncio.gather(*(compose_field(field) for field in effective_fields()))
-    return {'fields': results, 'count': len(results),
-            'high_risk_count': sum(field['risk']['level'] == 'high' for field in results),
-            'mode': 'demo' if not os.getenv('OPENWEATHER_API_KEY', '').strip() else 'live_forecast'}
+    # Expected provider failures degrade only the affected field. Field metadata,
+    # geometry and working forecasts for other fields remain available.
+    results = await asyncio.gather(*(compose_field_resilient(field) for field in effective_fields()))
+    degraded = [field for field in results if field['weather']['source'] == 'unavailable']
+    return {
+        'fields': results, 'count': len(results),
+        'high_risk_count': sum(field['risk']['level'] == 'high' for field in results),
+        'degraded_count': len(degraded),
+        'degraded_field_ids': [field['id'] for field in degraded],
+        'mode': 'demo' if not os.getenv('OPENWEATHER_API_KEY', '').strip() else 'live_forecast',
+    }
 
 
 @app.post('/api/fields', status_code=status.HTTP_201_CREATED)
@@ -677,4 +723,4 @@ def reset_field_geometry(field_id: int):
 
 # Isolated DeepSeek integration; existing maps, fields and weather endpoints unchanged.
 from .ai_assistant import build_ai_router
-app.include_router(build_ai_router(find_field, compose_field))
+app.include_router(build_ai_router(find_field, compose_field_resilient))

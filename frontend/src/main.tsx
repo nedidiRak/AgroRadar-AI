@@ -12,27 +12,29 @@ import './layout-v1.2.css'
 import './mobile-v1.3.css'
 import './agronomy-v2.1.css'
 
-type Weather = { temperature_c:number;humidity_pct:number;wind_ms:number;source:string;observed_at:string|null }
+type Weather = { temperature_c:number|null;humidity_pct:number|null;wind_ms:number|null;source:string;observed_at:string|null }
 type ForecastPoint = {timestamp:number;temperature_c:number;precipitation_probability_pct:number|null;rain_mm_3h:number|null}
-type Forecast = { min_temperature_next_24h_c:number;source:string;sample_count:number;period_hours:number;points?:ForecastPoint[] }
-type Risk = {level:'high'|'medium'|'low';label:string;reason:string;basis:string;rule:string;min_temperature_next_24h_c:number}
+type Forecast = { min_temperature_next_24h_c:number|null;source:string;sample_count:number;period_hours:number;points?:ForecastPoint[] }
+type Risk = {level:'high'|'medium'|'low'|'unknown';label:string;reason:string;basis:string;rule:string;min_temperature_next_24h_c:number|null}
 type Observation = {id:string;observed_on:string;recorded_at:string;text:string;source:'manual'}
 type Field = {id:number;name:string;crop:string;description:string;sowing_date?:string;growth_stage?:string;soil_type?:string;observations?:Observation[];kind:'demo'|'user';area_ha:number;lat:number;lon:number;geometry_source?:string;weather:Weather;forecast:Forecast;risk:Risk; risk_analysis?:RiskAnalysis;temperature_risk?:Risk}
-type Dashboard = { fields:Field[];count:number;high_risk_count:number;mode:'demo'|'live_forecast' }
+type Dashboard = { fields:Field[];count:number;high_risk_count:number;degraded_count?:number;degraded_field_ids?:number[];mode:'demo'|'live_forecast' }
 type View = 'overview' | 'fields' | 'assistant'
 const navigation: {id: View; label:string; Icon: typeof Activity}[] = [
   {id:'overview', label:'Обзор',Icon:Activity},
   {id:'fields',label:'Карта и поля',Icon:MapPinned},
   {id:'assistant',label:'ИИ-агроном',Icon:Bot},
 ]
-const riskLabel = {high:'Высокий',medium:'Умеренный',low:'Низкий'} as const
+const riskLabel = {high:'Высокий',medium:'Умеренный',low:'Низкий',unknown:'Нет данных'} as const
+const riskOrder = {high:0,medium:1,low:2,unknown:3} as const
+const weatherText = (value:number|null|undefined, unit:string) => value == null ? '—' : `${value} ${unit}`
 
 function TemperatureTimeline({forecast}:{forecast:Forecast}) {
   const points = (forecast.points ?? []).slice(0, 9)
   if (!points.length) return <div className="timeline-empty">Нет данных по временным точкам прогноза.</div>
   const temps = points.map(p => p.temperature_c)
-  const minT = Math.min(...temps, forecast.min_temperature_next_24h_c) - 1
-  const maxT = Math.max(...temps, forecast.min_temperature_next_24h_c) + 1
+  const minT = Math.min(...temps, ...(forecast.min_temperature_next_24h_c == null ? [] : [forecast.min_temperature_next_24h_c])) - 1
+  const maxT = Math.max(...temps, ...(forecast.min_temperature_next_24h_c == null ? [] : [forecast.min_temperature_next_24h_c])) + 1
   const height = 84
   const x = (i:number) => 16 + i * (320 / Math.max(1, points.length - 1))
   const y = (t:number) => 14 + (maxT - t) / Math.max(0.1, maxT - minT) * height
@@ -244,7 +246,7 @@ function App() {
   const active = data?.fields.find(f=>f.id===selected) ?? data?.fields[0]
   const demo = data?.mode==='demo'
   const filteredFields = (data?.fields ?? []).filter(f=>`${f.name} ${f.crop}`.toLocaleLowerCase('ru-RU').includes(fieldQuery.toLocaleLowerCase('ru-RU')))
-  const sortedFields = [...(data?.fields ?? [])].sort((a,b)=>({high:0,medium:1,low:2}[a.risk.level]-{high:0,medium:1,low:2}[b.risk.level]))
+  const sortedFields = [...(data?.fields ?? [])].sort((a,b)=>(riskOrder[a.risk.level]-riskOrder[b.risk.level]))
   const pageInfo = {
     overview:['Обзор хозяйства','Погода и риски — самое важное за ближайшие 24 часа.'],
     fields:['Карта и поля','Управляй участками, границами и карточками культур.'],
@@ -266,9 +268,10 @@ function App() {
     <main className="content agr-content">
       <header className="agr-header">
         <div><div className="eyebrow">АГРОМОНИТОРИНГ / {view==='overview'?'СВОДКА':view==='fields'?'ГЕОДАННЫЕ':'ПОМОЩНИК'}</div><h1>{pageInfo[0]}</h1><p>{pageInfo[1]}</p></div>
-        <div className="agr-header-actions"><span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':'OpenWeather · LIVE'):'Загрузка данных'}</span><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
+        <div className="agr-header-actions"><span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':data.degraded_count?'OpenWeather · частично недоступен':'OpenWeather · LIVE'):'Загрузка данных'}</span><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
       </header>
-      {error && <div className="error" role="alert">{error}. Проверь FastAPI на порту 8000.</div>}
+      {error && <div className="error" role="alert">{error}. Проверь, что FastAPI запущен через START_AGRORADAR.bat.</div>}
+      {data && (data.degraded_count ?? 0) > 0 && <div className="error" role="status">Погода временно недоступна для {data.degraded_count} из {data.count} полей. Контуры и данные участков сохранены. Нет данных — не означает отсутствие риска.</div>}
       {actionMessage && <div className="action-message" role="status">{actionMessage}</div>}
       {geoError && view==='fields' && <div className="error" role="alert">{geoError}. Точечные маркеры продолжат работать, если есть данные полей.</div>}
 
@@ -276,12 +279,12 @@ function App() {
         <div className="agr-stats">
           <div className="agr-stat"><div className="agr-stat__icon"><MapPinned size={19}/></div><span>Поля хозяйства</span><strong>{data?.count ?? '—'}</strong><small>Участков на карте</small></div>
           <div className="agr-stat"><div className="agr-stat__icon agr-stat__icon--warning"><ShieldAlert size={19}/></div><span>Высокий погодный риск</span><strong className={(data?.high_risk_count??0)>0?'agr-text-danger':''}>{data?.high_risk_count??'—'}</strong><small>По погодным факторам за 24 часа</small></div>
-          <div className="agr-stat"><div className="agr-stat__icon"><Thermometer size={19}/></div><span>Температура · {active?.name??'поле'}</span><strong>{active?`${active.weather.temperature_c}°`:'—'}</strong><small>{active?.weather.source==='demo'?'Демо-данные':'OpenWeather'}</small></div>
+          <div className="agr-stat"><div className="agr-stat__icon"><Thermometer size={19}/></div><span>Температура · {active?.name??'поле'}</span><strong>{active?weatherText(active.weather.temperature_c,'°C'):'—'}</strong><small>{active?.weather.source==='demo'?'Демо-данные':'OpenWeather'}</small></div>
         </div>
         <div className="agr-overview-columns">
           <article className="agr-card agr-field-list-card">
             <div className="agr-card-heading"><div><div className="agr-overline">СОСТОЯНИЕ УЧАСТКОВ</div><h2>Поля и риски</h2></div><button className="agr-text-link" onClick={()=>navigate('fields')}>Открыть карту <ArrowRight size={16}/></button></div>
-            <div className="agr-summary-strip"><CheckCircle2 size={18}/><span>{!data?'Загрузка показателей…':data.high_risk_count>0?`Есть поля с высоким погодным риском: ${data.high_risk_count}`:'По доступным погодным данным высокий риск не выявлен'}</span></div>
+            <div className="agr-summary-strip"><CheckCircle2 size={18}/><span>{!data?'Загрузка показателей…':data.high_risk_count>0?`Есть поля с высоким погодным риском: ${data.high_risk_count}`:'По доступным погодным данным высокий риск не выявлен (проверь полноту прогноза)'}</span></div>
             <div className="agr-field-rows">{sortedFields.length===0?<div className="agr-empty">Полей пока нет. Создай первый участок на карте.</div>:sortedFields.slice(0,8).map(field=><button key={field.id} type="button" className={`agr-field-row ${active?.id===field.id?'is-selected':''}`} onClick={()=>setSelected(field.id)}>
               <span className={`agr-field-row__mark agr-risk-${field.risk.level}`} />
               <span className="agr-field-row__text"><strong>{field.name}</strong><small>{field.crop} · {field.area_ha} га</small></span>
@@ -293,9 +296,9 @@ function App() {
             <div className="agr-card-heading"><div><div className="agr-overline">ПРОГНОЗ ДЛЯ ПОЛЯ</div><h2>{active?.name??'Выбери поле'}</h2></div>{picker('agr-overview-picker')}</div>
             {active ? <>
               <div className="agr-weather-summary">
-                <div><span>Сейчас</span><strong>{active.weather.temperature_c} °C</strong></div>
-                <div><span>Минимум за 24 ч</span><strong>{active.forecast.min_temperature_next_24h_c} °C</strong></div>
-                <div><span>Ветер</span><strong>{active.weather.wind_ms} м/с</strong></div>
+                <div><span>Сейчас</span><strong>{weatherText(active.weather.temperature_c,'°C')}</strong></div>
+                <div><span>Минимум за 24 ч</span><strong>{weatherText(active.forecast.min_temperature_next_24h_c,'°C')}</strong></div>
+                <div><span>Ветер</span><strong>{weatherText(active.weather.wind_ms,'м/с')}</strong></div>
               </div>
               <TemperatureTimeline forecast={active.forecast}/>
               <div className={`agr-risk-note agr-risk-note--${active.risk.level}`}><span className={`agr-risk-pill agr-risk-pill--${active.risk.level}`}>{riskLabel[active.risk.level]}</span><p>{active.risk.reason}</p></div>
@@ -314,7 +317,7 @@ function App() {
             <div className="agr-map-field-list">{filteredFields.map(field=><button key={field.id} type="button" className={`agr-map-field ${active?.id===field.id?'is-selected':''}`} onClick={()=>setSelected(field.id)}><span className={`agr-map-field__indicator agr-risk-${field.risk.level}`}/><span><strong>{field.name}</strong><small>{field.crop} · {field.area_ha} га</small></span></button>)}{!filteredFields.length&&<div className="agr-empty">Участки не найдены.</div>}</div>
             <div className="agr-selected-card">{active?<><div className="agr-selected-card__title"><h3>{active.name}</h3><span className={`agr-risk-pill agr-risk-pill--${active.risk.level}`}>{riskLabel[active.risk.level]}</span></div>
               <p className="agr-selected-card__meta">{active.crop} · {active.area_ha} га</p>
-              <div className="agr-selected-card__numbers"><span><Thermometer size={14}/> {active.weather.temperature_c} °C</span><span><Droplets size={14}/> {active.weather.humidity_pct}%</span><span><Wind size={14}/> {active.weather.wind_ms} м/с</span></div>
+              <div className="agr-selected-card__numbers"><span><Thermometer size={14}/> {active.weather.temperature_c} °C</span><span><Droplets size={14}/> {weatherText(active.weather.humidity_pct,'%')}</span><span><Wind size={14}/> {active.weather.wind_ms} м/с</span></div>
               <div className="agr-selected-card__actions"><button onClick={()=>openEdit(active)} disabled={busy}><Pencil size={14}/> Изменить</button><button className="agr-delete-button" onClick={()=>void deleteField(active)} disabled={busy}><Trash2 size={14}/> Удалить</button></div>
               <details className="agr-disclosure agr-field-extra" open={showFieldDetails} onToggle={e=>setShowFieldDetails(e.currentTarget.open)}><summary><span>Описание и координаты</span><ChevronDown size={15}/></summary><div className="agr-field-extra__body"><p>{active.description||'Описание ещё не добавлено.'}</p><small>{active.lat.toFixed(5)}° N, {active.lon.toFixed(5)}° E</small><small>{active.geometry_source==='user_drawn'?'Граница сохранена вручную':'Граница демонстрационная'}</small></div></details>
               <details className="agr-disclosure agr-agronomy-details"><summary><span><Leaf size={15}/> Агрономический паспорт</span><ChevronDown size={15}/></summary>

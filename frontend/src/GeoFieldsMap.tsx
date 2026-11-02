@@ -6,7 +6,7 @@ import './GeoFieldsMap.css'
 // API 2.1 provides high-resolution satellite / hybrid / street map layers.
 // It is loaded via the official Yandex script, without an extra React adapter.
 // No Leaflet or third-party tile source is used by this component.
-type Risk = 'high' | 'medium' | 'low'
+type Risk = 'high' | 'medium' | 'low' | 'unknown'
 type Field = {
   id: number; name: string; crop: string; area_ha: number;
   lat: number; lon: number; geometry_source?: string;
@@ -22,7 +22,7 @@ type Props = {
 }
 type LayerName = 'satellite' | 'hybrid' | 'map'
 type LatLon = [number, number]
-const colors: Record<Risk, string> = { high: '#f87171', medium: '#f6c65b', low: '#62dbad' }
+const colors: Record<Risk, string> = { high: '#f87171', medium: '#f6c65b', low: '#62dbad', unknown: '#94a3b8' }
 // Yandex's hintContent is HTML; never interpolate unescaped user-provided names.
 const escapeHint = (value: string | number) => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char] ?? char))
 const layers: Record<LayerName, string> = {
