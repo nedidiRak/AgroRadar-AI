@@ -23,7 +23,11 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 from .risk_engine import analyze_risks, simulate_scenario, DEMO_SCENARIOS
 
+from .auth import router as auth_router, auth_guard
+
 app = FastAPI(title='AgroRadar AI API', version='2.1.0')
+app.middleware('http')(auth_guard)
+app.include_router(auth_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=['http://localhost:5173', 'http://127.0.0.1:5173'],
