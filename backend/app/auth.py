@@ -294,7 +294,7 @@ async def auth_guard(request: Request, call_next):
             return JSONResponse(status_code=401, content={"detail": "Требуется вход в AgroRadar AI."},
                                 headers={"Cache-Control": "no-store"})
         role = principal["role"]
-        if (path.startswith("/api/auth/users") or path.startswith("/api/admin/") or path in ("/docs", "/redoc", "/openapi.json")) and role != "admin":
+        if (path.startswith("/api/auth/users") or path.startswith("/api/admin/") or path == "/api/operations/activity" or path in ("/docs", "/redoc", "/openapi.json")) and role != "admin":
             return JSONResponse(status_code=403, content={"detail": "Доступ только для администратора."},
                                 headers={"Cache-Control": "no-store"})
         if request.method.upper() not in ("GET", "HEAD", "OPTIONS"):
