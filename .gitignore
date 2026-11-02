@@ -27,3 +27,6 @@ backend/data/fields.json
 
 # Runtime-only port selected by START_AGRORADAR.bat
 frontend/.agroradar-api-port
+
+# Local auto-generated admin credentials (NEVER commit)
+backend/data/admin_access.txt
