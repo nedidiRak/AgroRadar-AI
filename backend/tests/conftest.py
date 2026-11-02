@@ -13,6 +13,7 @@ def existing_tests_have_local_operator(request, monkeypatch):
     if request.node.get_closest_marker("real_auth"):
         return
     monkeypatch.setattr(auth, "authenticated_session", lambda _: ("test", "test-csrf"))
+    monkeypatch.setattr(auth, "session_principal", lambda _: {"username": "admin", "role": "admin"})
     original = TestClient.request
 
     def request_with_csrf(self, method, url, *args, **kwargs):

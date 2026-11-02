@@ -1,13 +1,14 @@
 import AuthGate from './AuthGate'
+import UserManager from './UserManager'
 import { apiFetch } from './authClient'
-import { setCsrfToken } from './authClient'
+import { setCsrfToken, setCurrentUser, getCurrentUser } from './authClient'
 import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import GeoFieldsMap from './GeoFieldsMap'
 import AiAgronom from './AiAgronom'
 import RiskDashboard from './RiskDashboard'
 import type { RiskAnalysis } from './RiskDashboard'
-import { Activity, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot, ArrowRight, ChevronDown, Search, SlidersHorizontal, Info, Thermometer, Wind, Droplets, CheckCircle2, LogOut } from 'lucide-react'
+import { Activity, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot, ArrowRight, ChevronDown, Search, SlidersHorizontal, Info, Thermometer, Wind, Droplets, CheckCircle2, LogOut, Users } from 'lucide-react'
 import type { FeatureCollection, Polygon } from 'geojson'
 import './style.css'
 import './FieldsManager.css'
@@ -22,7 +23,7 @@ type Risk = {level:'high'|'medium'|'low'|'unknown';label:string;reason:string;ba
 type Observation = {id:string;observed_on:string;recorded_at:string;text:string;source:'manual'}
 type Field = {id:number;name:string;crop:string;description:string;sowing_date?:string;growth_stage?:string;soil_type?:string;observations?:Observation[];kind:'demo'|'user';area_ha:number;lat:number;lon:number;geometry_source?:string;weather:Weather;forecast:Forecast;risk:Risk; risk_analysis?:RiskAnalysis;temperature_risk?:Risk}
 type Dashboard = { fields:Field[];count:number;high_risk_count:number;degraded_count?:number;degraded_field_ids?:number[];mode:'demo'|'live_forecast' }
-type View = 'overview' | 'fields' | 'assistant'
+type View = 'overview' | 'fields' | 'assistant' | 'users'
 const navigation: {id: View; label:string; Icon: typeof Activity}[] = [
   {id:'overview', label:'Обзор',Icon:Activity},
   {id:'fields',label:'Карта и поля',Icon:MapPinned},
@@ -61,6 +62,8 @@ function TemperatureTimeline({forecast}:{forecast:Forecast}) {
 
 function App() {
   const [data,setData] = useState<Dashboard|null>(null)
+  const currentUser = getCurrentUser()
+  const canEdit = currentUser?.role === 'admin'
   const [geojson,setGeojson] = useState<FeatureCollection<Polygon>|null>(null)
   const [selected,setSelected] = useState(1)
   const [error,setError] = useState('')
@@ -91,6 +94,7 @@ function App() {
       await apiFetch('/api/auth/logout', { method: 'POST' })
     } finally {
       setCsrfToken(null)
+      setCurrentUser(null, null)
       window.location.reload()
     }
   }
@@ -262,6 +266,7 @@ function App() {
     overview:['Обзор хозяйства','Погода и риски — самое важное за ближайшие 24 часа.'],
     fields:['Карта и поля','Управляй участками, границами и карточками культур.'],
     assistant:['ИИ-агроном','Обсуди выбранный участок с помощником DeepSeek.'],
+    users:['Пользователи','Администрирование учётных записей и доступа.'],
   }[view]
   const picker = (id:string) => <select id={id} className="agr-field-picker" value={active?.id??''} onChange={e=>setSelected(Number(e.target.value))} aria-label="Выбрать поле">
     {!active && <option value="">Нет полей</option>}
@@ -272,15 +277,16 @@ function App() {
       <div className="brand agr-brand"><div className="brand-icon"><Leaf size={23}/></div><div><strong>AgroRadar <span>AI</span></strong><small>Аналитика сельхозполей</small></div></div>
       <div className="menu-title">НАВИГАЦИЯ</div>
       <nav aria-label="Разделы приложения" className="agr-navigation">
-        {navigation.map(({id,label,Icon})=><button key={id} type="button" className={`menu agr-nav-item ${view===id?'active':''}`} aria-label={label} title={label} aria-current={view===id?'page':undefined} onClick={()=>navigate(id)}><Icon size={19}/><span>{label}</span></button>)}
+        {[...navigation,...(canEdit ? [{id:'users' as View,label:'Пользователи',Icon:Users}] : [])].map(({id,label,Icon})=><button key={id} type="button" className={`menu agr-nav-item ${view===id?'active':''}`} aria-label={label} title={label} aria-current={view===id?'page':undefined} onClick={()=>navigate(id)}><Icon size={19}/><span>{label}</span></button>)}
       </nav>
-      <div className="agr-sidebar-meta"><div className="agr-sidebar-meta__dot"/> AgroRadar · IT-спринт<br/><span>Русагро / MVP 2.0</span></div>
+      <div className="agr-sidebar-meta"><div className="agr-sidebar-meta__dot"/> {currentUser?.username ?? 'Пользователь'} · {canEdit ? 'Администратор' : 'Наблюдатель'}<br/>AgroRadar · IT-спринт<br/><span>Русагро / MVP 2.0</span></div>
     </aside>
     <main className="content agr-content">
       <header className="agr-header">
-        <div><div className="eyebrow">АГРОМОНИТОРИНГ / {view==='overview'?'СВОДКА':view==='fields'?'ГЕОДАННЫЕ':'ПОМОЩНИК'}</div><h1>{pageInfo[0]}</h1><p>{pageInfo[1]}</p></div>
+        <div><div className="eyebrow">АГРОМОНИТОРИНГ / {view==='overview'?'СВОДКА':view==='fields'?'ГЕОДАННЫЕ':view==='users'?'УЧЁТНЫЕ ЗАПИСИ':'ПОМОЩНИК'}</div><h1>{pageInfo[0]}</h1><p>{pageInfo[1]}</p></div>
         <div className="agr-header-actions"><span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':data.degraded_count?'OpenWeather · частично недоступен':'OpenWeather · LIVE'):'Загрузка данных'}</span><button className="agr-refresh" onClick={()=>void logout()} title="Выйти из системы"><LogOut size={16}/><span>Выйти</span></button><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
       </header>
+      {!canEdit && <div className="agr-viewer-banner" role="status">Режим наблюдателя: просмотр полей, карты и рисков, а также диалог с ИИ. Изменение данных отключено.</div>}
       {error && <div className="error" role="alert">{error}. Проверь, что FastAPI запущен через START_AGRORADAR.bat.</div>}
       {data && (data.degraded_count ?? 0) > 0 && <div className="error" role="status">Погода временно недоступна для {data.degraded_count} из {data.count} полей. Контуры и данные участков сохранены. Нет данных — не означает отсутствие риска.</div>}
       {actionMessage && <div className="action-message" role="status">{actionMessage}</div>}
@@ -323,13 +329,13 @@ function App() {
 
       <section className="agr-page agr-page--fields" hidden={view!=='fields'} aria-label="Карта и управление полями">
         {visitedMap && <div className="agr-map-workspace">
-          <section className="map-panel agr-main-map"><div className="panel-head"><h2>Карта хозяйства</h2><span>Яндекс Карты · GeoJSON</span></div><div className="map-wrap"><GeoFieldsMap fields={data?.fields??[]} geojson={geojson} activeId={active?.id} onSelect={setSelected} onSaveGeometry={saveGeometry} onCreateOutline={openCreate}/></div><div className="map-foot"><span><i className="dot green"/> Низкий</span><span><i className="dot yellow"/> Умеренный</span><span><i className="dot red"/> Высокий</span></div></section>
+          <section className="map-panel agr-main-map"><div className="panel-head"><h2>Карта хозяйства</h2><span>Яндекс Карты · GeoJSON</span></div><div className="map-wrap"><GeoFieldsMap fields={data?.fields??[]} geojson={geojson} activeId={active?.id} onSelect={setSelected} onSaveGeometry={saveGeometry} onCreateOutline={openCreate} canEdit={canEdit}/></div><div className="map-foot"><span><i className="dot green"/> Низкий</span><span><i className="dot yellow"/> Умеренный</span><span><i className="dot red"/> Высокий</span></div></section>
           <aside className="agr-map-sidebar"><div className="agr-map-sidebar__head"><h2>Участки <span>{data?.count??0}</span></h2><div className="agr-search"><Search size={15}/><input value={fieldQuery} onChange={e=>setFieldQuery(e.target.value)} placeholder="Найти поле или культуру" aria-label="Поиск поля" /></div></div>
             <div className="agr-map-field-list">{filteredFields.map(field=><button key={field.id} type="button" className={`agr-map-field ${active?.id===field.id?'is-selected':''}`} onClick={()=>setSelected(field.id)}><span className={`agr-map-field__indicator agr-risk-${field.risk.level}`}/><span><strong>{field.name}</strong><small>{field.crop} · {field.area_ha} га</small></span></button>)}{!filteredFields.length&&<div className="agr-empty">Участки не найдены.</div>}</div>
             <div className="agr-selected-card">{active?<><div className="agr-selected-card__title"><h3>{active.name}</h3><span className={`agr-risk-pill agr-risk-pill--${active.risk.level}`}>{riskLabel[active.risk.level]}</span></div>
               <p className="agr-selected-card__meta">{active.crop} · {active.area_ha} га</p>
               <div className="agr-selected-card__numbers"><span><Thermometer size={14}/> {active.weather.temperature_c} °C</span><span><Droplets size={14}/> {weatherText(active.weather.humidity_pct,'%')}</span><span><Wind size={14}/> {active.weather.wind_ms} м/с</span></div>
-              <div className="agr-selected-card__actions"><button onClick={()=>openEdit(active)} disabled={busy}><Pencil size={14}/> Изменить</button><button className="agr-delete-button" onClick={()=>void deleteField(active)} disabled={busy}><Trash2 size={14}/> Удалить</button></div>
+              {canEdit && <div className="agr-selected-card__actions"><button onClick={()=>openEdit(active)} disabled={busy}><Pencil size={14}/> Изменить</button><button className="agr-delete-button" onClick={()=>void deleteField(active)} disabled={busy}><Trash2 size={14}/> Удалить</button></div>}
               <details className="agr-disclosure agr-field-extra" open={showFieldDetails} onToggle={e=>setShowFieldDetails(e.currentTarget.open)}><summary><span>Описание и координаты</span><ChevronDown size={15}/></summary><div className="agr-field-extra__body"><p>{active.description||'Описание ещё не добавлено.'}</p><small>{active.lat.toFixed(5)}° N, {active.lon.toFixed(5)}° E</small><small>{active.geometry_source==='user_drawn'?'Граница сохранена вручную':'Граница демонстрационная'}</small></div></details>
               <details className="agr-disclosure agr-agronomy-details"><summary><span><Leaf size={15}/> Агрономический паспорт</span><ChevronDown size={15}/></summary>
                 <div className="agr-agronomy-grid">
@@ -338,34 +344,35 @@ function App() {
                   <div><small>Тип почвы</small><strong>{active.soil_type || 'Не указан'}</strong></div>
                 </div>
                 <p className="agr-agronomy-notice">Указано агрономом вручную. Погодные пороги v2.0 пока не калиброваны под культуру.</p>
-                <button className="agr-agronomy-action" type="button" onClick={()=>openEdit(active)}><Pencil size={14}/> Заполнить паспорт</button>
+                {canEdit && <button className="agr-agronomy-action" type="button" onClick={()=>openEdit(active)}><Pencil size={14}/> Заполнить паспорт</button>}
               </details>
               <details className="agr-disclosure agr-agronomy-details"><summary><span><Info size={15}/> Журнал наблюдений ({active.observations?.length ?? 0})</span><ChevronDown size={15}/></summary>
                 <div className="agr-observations">
-                  <form onSubmit={e=>void addObservation(e)} className="agr-observations-form">
+                  {canEdit && <form onSubmit={e=>void addObservation(e)} className="agr-observations-form">
                     <label htmlFor="agr-observation-date">Дата наблюдения</label>
                     <input id="agr-observation-date" type="date" value={observationDate} onChange={e=>setObservationDate(e.target.value)} />
                     <label htmlFor="agr-observation-text">Что заметили на поле?</label>
                     <textarea id="agr-observation-text" rows={3} maxLength={1000} placeholder="Например: осмотр после дождя, состояние всходов, почва влажная на поверхности…" value={observationText} onChange={e=>setObservationText(e.target.value)}/>
                     <button type="submit" disabled={observationBusy || !observationText.trim()}>+ Добавить запись</button>
-                  </form>
+                  </form>}
                   {(active.observations ?? []).length === 0 ? <p className="agr-observations-empty">Записей пока нет.</p> :
-                    <div className="agr-observations-list">{[...(active.observations ?? [])].reverse().map(item=><article key={item.id} className="agr-observation-item"><div><time dateTime={item.observed_on}>{item.observed_on}</time><button type="button" aria-label={`Удалить наблюдение ${item.observed_on}`} title="Удалить наблюдение" onClick={()=>void removeObservation(active.id,item)} disabled={observationBusy}><Trash2 size={14}/></button></div><p>{item.text}</p></article>)}</div>}
+                    <div className="agr-observations-list">{[...(active.observations ?? [])].reverse().map(item=><article key={item.id} className="agr-observation-item"><div><time dateTime={item.observed_on}>{item.observed_on}</time>{canEdit && <button type="button" aria-label={`Удалить наблюдение ${item.observed_on}`} title="Удалить наблюдение" onClick={()=>void removeObservation(active.id,item)} disabled={observationBusy}><Trash2 size={14}/></button>}</div><p>{item.text}</p></article>)}</div>}
                 </div>
               </details>
               <button className="agr-selected-card__ask" onClick={()=>navigate('assistant')}><Bot size={16}/> Обсудить с ИИ <ArrowRight size={14}/></button>
             </>:<p className="agr-empty">Создай поле кнопкой «Новое поле» на карте.</p>}</div>
           </aside>
         </div>}
-        <details className="agr-disclosure agr-geo-tools"><summary><span><SlidersHorizontal size={16}/> Дополнительные инструменты GeoJSON</span><ChevronDown size={16}/></summary><div className="agr-geo-tools__inner"><p>Импорт заменяет границу выбранного поля, экспорт сохраняет все контуры в GeoJSON. Для добавления отдельного поля нажми «Новое поле» на карте.</p><div className="gis-actions"><label className="file-btn">↑ Импорт контура<input type="file" accept=".json,.geojson,application/geo+json" onChange={e=>void importGeoJSON(e)} hidden/></label><button type="button" onClick={exportGeoJSON} disabled={!geojson}>↓ Экспорт GeoJSON</button>{active?.kind==='demo' && active?.geometry_source==='user_drawn' && <button type="button" className="outline-danger" onClick={()=>void resetGeometry(active.id)}>Сбросить контур</button>}</div></div></details>
+        <details className="agr-disclosure agr-geo-tools"><summary><span><SlidersHorizontal size={16}/> Дополнительные инструменты GeoJSON</span><ChevronDown size={16}/></summary><div className="agr-geo-tools__inner"><p>Импорт заменяет границу выбранного поля, экспорт сохраняет все контуры в GeoJSON. Для добавления отдельного поля нажми «Новое поле» на карте.</p><div className="gis-actions">{canEdit && <label className="file-btn">↑ Импорт контура<input type="file" accept=".json,.geojson,application/geo+json" onChange={e=>void importGeoJSON(e)} hidden/></label>}<button type="button" onClick={exportGeoJSON} disabled={!geojson}>↓ Экспорт GeoJSON</button>{canEdit && active?.kind==='demo' && active?.geometry_source==='user_drawn' && <button type="button" className="outline-danger" onClick={()=>void resetGeometry(active.id)}>Сбросить контур</button>}</div></div></details>
       </section>
 
       <section className="agr-page agr-page--ai" hidden={view!=='assistant'} aria-label="ИИ-агроном">
         <div className="agr-ai-context-switch"><div><span>ПОЛЕ ДЛЯ АНАЛИЗА</span><strong>{active?.crop??'Нет культуры'}</strong></div>{picker('agr-assistant-picker')}<button className="agr-text-link" onClick={()=>navigate('fields')}><MapPinned size={15}/> На карте</button></div>
         {visitedAi && <AiAgronom key={active?.id ?? 0} field={active}/>}
       </section>
+      {canEdit && <section className="agr-page agr-page--users" hidden={view!=='users'} aria-label="Управление пользователями">{view==='users' && <UserManager/>}</section>}
       <footer className="agr-footer">AgroRadar AI · Конкурсный прототип · Карта: Яндекс Карты · Данные исходных участков могут быть демонстрационными</footer>
-      {dialog && <div className="field-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget && !busy) setDialog(null)}}>
+      {canEdit && dialog && <div className="field-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget && !busy) setDialog(null)}}>
         <div className="field-modal" role="dialog" aria-modal="true" aria-labelledby="field-dialog-title">
           <form onSubmit={e=>void submitField(e)}>
             <div className="field-modal__heading"><div><span>{dialog.mode==='create'?'НОВЫЙ УЧАСТОК · ШАГ 2 / 2':'КАРТОЧКА УЧАСТКА'}</span>
