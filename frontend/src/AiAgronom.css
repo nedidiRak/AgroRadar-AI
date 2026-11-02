@@ -44,3 +44,10 @@
 .agro-ai__markdown input[type=checkbox]{accent-color:#67dfa3;vertical-align:middle}
 .agro-ai__markdown del{color:#93a99b}
 @media(max-width:600px){.agro-ai__markdown{font-size:12.5px}.agro-ai__markdown h3{font-size:13px}.agro-ai__markdown ul,.agro-ai__markdown ol{padding-left:20px}}
+
+/* Final-suite: AI evidence references from the local, not expert-validated KB. */
+.agro-ai__references{margin-top:15px;border:1px solid #3c674f;border-radius:10px;padding:11px 12px;background:#143025;color:#c9e5d5}
+.agro-ai__references summary{cursor:pointer;font-size:12px;font-weight:700;color:#9ce6bb}
+.agro-ai__references p,.agro-ai__references li{font-size:11px;line-height:1.7;color:#a7cab7}
+.agro-ai__references ul{padding-left:18px;margin:10px 0}
+.agro-ai__references li{margin:7px 0}
