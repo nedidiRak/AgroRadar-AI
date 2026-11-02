@@ -762,3 +762,10 @@ app.include_router(report_router(find_field, compose_field_resilient, effective_
 # Isolated DeepSeek integration; existing maps, fields and weather endpoints unchanged.
 from .ai_assistant import build_ai_router
 app.include_router(build_ai_router(find_field, compose_field_resilient))
+
+# Separate, opt-in Wi-Fi demo: serve only the compiled React bundle.
+# The ordinary START_AGRORADAR.bat launch remains loopback-only.
+if os.getenv("AGRORADAR_WIFI_DEMO", "") == "1":
+    from .wifi_web import enable_wifi_site
+    enable_wifi_site(app)
+
