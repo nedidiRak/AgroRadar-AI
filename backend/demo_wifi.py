@@ -246,12 +246,14 @@ New-NetFirewallRule -DisplayName '{name}' -Direction Inbound -Action Allow -Prot
 
 def _ready(port: int, process: subprocess.Popen, max_wait: float = 25.0) -> bool:
     url = f"http://127.0.0.1:{port}/wifi/ping"
+    # A corporate/system HTTP proxy must not intercept our loopback health probe.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     deadline = time.monotonic() + max_wait
     while time.monotonic() < deadline:
         if process.poll() is not None:
             return False
         try:
-            with urllib.request.urlopen(url, timeout=1.5) as response:
+            with opener.open(url, timeout=1.5) as response:
                 if response.status == 200 and json.load(response).get("mode") == "wifi_demo":
                     return True
         except (OSError, ValueError, urllib.error.URLError):
