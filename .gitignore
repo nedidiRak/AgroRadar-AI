@@ -24,3 +24,6 @@ backend/data/*.tmp
 
 # v1.0 persistent field catalog (includes custom field descriptions & geometries)
 backend/data/fields.json
+
+# Runtime-only port selected by START_AGRORADAR.bat
+frontend/.agroradar-api-port
