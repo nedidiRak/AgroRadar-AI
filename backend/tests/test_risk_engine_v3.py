@@ -36,7 +36,6 @@ def test_warnings_are_priority_ordered_and_grounded_in_rules():
     ]
     assert analysis["priority_actions"][0]["level"] == "high"
     assert "Правило:" in analysis["priority_actions"][0]["evidence"]
-    assert "Источ" not in analysis["priority_actions"][0]["evidence"]  # evidence has explicit singular source field
     assert "Источник:" in analysis["priority_actions"][0]["evidence"]
 
 
