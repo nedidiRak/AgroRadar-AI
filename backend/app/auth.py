@@ -9,6 +9,7 @@ logs and a database with multi-process transaction guarantees are required.
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import os
 import re
@@ -132,6 +133,20 @@ def _verify_viewer(password: str, record: dict) -> bool:
         return False
 
 
+def local_client(request: Request) -> bool:
+    """Ignore Host and proxy forwarding headers; trust the actual TCP peer."""
+    try:
+        peer = ipaddress.ip_address(request.client.host if request.client else "")
+        return peer.is_loopback or bool(getattr(peer, "ipv4_mapped", None)
+                                        and peer.ipv4_mapped.is_loopback)
+    except ValueError:
+        return False
+
+
+def wifi_demo_mode() -> bool:
+    return os.getenv("AGRORADAR_WIFI_DEMO", "") == "1"
+
+
 def authenticated_session(request: Request) -> tuple[str, str] | None:
     token = request.cookies.get(COOKIE_NAME, "")
     if not token:
@@ -186,6 +201,10 @@ def login(payload: LoginRequest, request: Request, response: Response):
     ip = request.client.host if request.client else "unknown"
     _check_login_limit(ip)
     username = payload.username.strip().lower()
+    if wifi_demo_mode() and username == "admin" and not local_client(request):
+        # Never transmit the long-term administrator password over LAN HTTP.
+        raise HTTPException(403, "Администратор может входить только с ноутбука. "
+                                  "Для телефонов используй учётные записи наблюдателей.")
     account_id = "admin"
     if username == "admin":
         expected = hashlib.sha256(admin_password().encode("utf-8")).digest()
@@ -294,6 +313,10 @@ async def auth_guard(request: Request, call_next):
             return JSONResponse(status_code=401, content={"detail": "Требуется вход в AgroRadar AI."},
                                 headers={"Cache-Control": "no-store"})
         role = principal["role"]
+        if wifi_demo_mode() and role == "admin" and not local_client(request):
+            return JSONResponse(status_code=403,
+                                content={"detail": "Административный доступ разрешён только на ноутбуке."},
+                                headers={"Cache-Control": "no-store"})
         if (path.startswith("/api/auth/users") or path.startswith("/api/admin/") or path == "/api/operations/activity" or path in ("/docs", "/redoc", "/openapi.json")) and role != "admin":
             return JSONResponse(status_code=403, content={"detail": "Доступ только для администратора."},
                                 headers={"Cache-Control": "no-store"})
