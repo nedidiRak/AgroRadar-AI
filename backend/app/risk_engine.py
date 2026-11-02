@@ -1,4 +1,4 @@
-"""AgroRisk Engine 2.0: transparent 24-hour *weather* screening rules.
+"""AgroRisk Engine 3.0: auditable 24-hour weather rules and decision support.
 
 These are deliberately illustrative MVP thresholds, NOT experimentally validated
 crop-damage models, drought predictions or agronomic prescriptions.
@@ -8,6 +8,8 @@ Missing forecast variables produce an 'unknown' assessment, never a false zero.
 from __future__ import annotations
 
 from typing import Any
+
+from .risk_intelligence import build_decision_support
 
 LEVELS = {'high': 2, 'medium': 1, 'low': 0, 'unknown': -1}
 LABELS = {'high': 'Высокий', 'medium': 'Умеренный', 'low': 'Низкий', 'unknown': 'Нет данных'}
@@ -62,7 +64,7 @@ def assessment(kind: str, level: str, value: float | None, unit: str,
     }
 
 
-def analyze_risks(weather: dict, forecast: dict) -> dict:
+def analyze_risks(weather: dict, forecast: dict, field: dict | None = None) -> dict:
     """Assess the AVAILABLE forecast intervals inside the next 24 h.
 
     3-hour OpenWeather intervals aren't instantaneous sensor observations and may
@@ -142,8 +144,8 @@ def analyze_risks(weather: dict, forecast: dict) -> dict:
     # explicitly warn users and AI consumers that the assessment is partial.
     if known and unknown_count:
         summary += f' Оценка неполная: {unknown_count} из {len(results)} факторов без данных.'
-    return {
-        'version': '2.0',
+    result = {
+        'version': '3.0',
         'source': source,
         'period_hours': forecast.get('period_hours', 24),
         'overall': {'level': overall_level, 'label': LABELS[overall_level],
@@ -159,6 +161,7 @@ def analyze_risks(weather: dict, forecast: dict) -> dict:
                        'Модель OpenWeather не измеряет фактические условия почвы на участке.'),
         'is_simulation': source in ('demo', 'scenario'),
     }
+    return {**result, **build_decision_support(result, forecast, field)}
 
 
 DEMO_SCENARIOS = {

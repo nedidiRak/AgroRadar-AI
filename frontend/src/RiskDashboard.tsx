@@ -17,6 +17,37 @@ export type RiskAssessment = {
   data_source: string
   coverage?: string
 }
+type DataQuality = {
+  status: 'available' | 'partial' | 'demo' | 'simulation' | 'unavailable'
+  label: string
+  source: string
+  forecast_points: number
+  expected_interval_hours: number
+  known_factors: number
+  unknown_factors: number
+  factor_coverage_complete: boolean
+  limitations: string[]
+  note: string
+}
+type FieldContext = {
+  crop: string | null
+  growth_stage: string | null
+  soil_type: string | null
+  sowing_date: string | null
+  observation_count: number
+  source: string
+  missing: string[]
+  interpretation: string
+}
+type PriorityAction = {
+  id: string
+  level: Level
+  title: string
+  why: string
+  action: string
+  evidence: string
+  basis: string
+}
 export type RiskAnalysis = {
   version: string
   source: string
@@ -27,6 +58,11 @@ export type RiskAnalysis = {
   unknown_count: number
   disclaimer: string
   is_simulation: boolean
+  coverage_complete?: boolean
+  data_quality?: DataQuality
+  field_context?: FieldContext
+  priority_actions?: PriorityAction[]
+  decision_support_notice?: string
 }
 type Scenario = 'live' | 'frost' | 'rain' | 'wind' | 'dry_heat'
 type Simulation = { scenario: string; title: string; subtitle: string; analysis: RiskAnalysis; notice: string }
@@ -73,7 +109,7 @@ export default function RiskDashboard({ fieldName, analysis }: {fieldName: strin
   return <section className="agr-risk-engine" aria-label="Анализ погодных рисков">
     <div className="agr-risk-engine__header">
       <div>
-        <span className="agr-risk-engine__eyebrow">AGRORISK ENGINE · ПРАВИЛА V2.0</span>
+        <span className="agr-risk-engine__eyebrow">AGRORISK ENGINE · V3.0</span>
         <h2>Погодные риски на 24 часа</h2>
         <p>{demo ? 'Изолированная демонстрация алгоритмов' : `По прогнозу для поля «${fieldName}»`}</p>
       </div>
@@ -96,6 +132,19 @@ export default function RiskDashboard({ fieldName, analysis }: {fieldName: strin
         <span className={`agr-risk-engine__overall agr-risk-engine__overall--${current.overall.level}`}>{current.overall.label}</span>
         <span>{current.overall.reason}</span>
       </div>
+      {current.data_quality && <div className="agr-risk-engine__quality" aria-label="Качество входных данных">
+        <div className="agr-risk-engine__quality-main">
+          <strong>Качество входных данных</strong>
+          <span className={`agr-risk-engine__quality-status agr-risk-engine__quality-status--${current.data_quality.status}`}>{current.data_quality.label}</span>
+        </div>
+        <div className="agr-risk-engine__quality-metrics">
+          <span>Оценено факторов: <b>{current.data_quality.known_factors}/4</b></span>
+          <span>Точек прогноза: <b>{current.data_quality.forecast_points}</b> · шаг 3 часа</span>
+          <span>Источник: <b>{current.data_quality.source}</b></span>
+        </div>
+        <ul>{current.data_quality.limitations.map((item,index)=><li key={index}>{item}</li>)}</ul>
+        <small>{current.data_quality.note}</small>
+      </div>}
       <div className="agr-risk-engine__grid">
         {current.assessments.map(item => {
           const Icon = icons[item.id] || Info
@@ -112,6 +161,23 @@ export default function RiskDashboard({ fieldName, analysis }: {fieldName: strin
           </article>
         })}
       </div>
+      {current.priority_actions && <div className="agr-risk-engine__decisions">
+        <div className="agr-risk-engine__decisions-title"><h3>Приоритетные действия агронома</h3><span>По обнаруженным погодным факторам</span></div>
+        <div className="agr-risk-engine__actions">
+          {current.priority_actions.map((item,index)=><article className={`agr-risk-action agr-risk-action--${item.level}`} key={item.id}>
+            <div className="agr-risk-action__top"><span className="agr-risk-action__number">{index+1}</span><strong>{item.title}</strong></div>
+            <p>{item.action}</p>
+            <details><summary>Основание и проверка</summary><p>{item.why}</p><small>{item.evidence}</small></details>
+          </article>)}
+        </div>
+      </div>}
+      {!demo && current.field_context && <div className="agr-risk-engine__field-context">
+        <strong>Контекст выбранного поля · сведения пользователя</strong>
+        <div><span>Культура: {current.field_context.crop || 'не указана'}</span><span>Фаза: {current.field_context.growth_stage || 'не указана'}</span><span>Почва: {current.field_context.soil_type || 'не указана'}</span><span>Наблюдения: {current.field_context.observation_count}</span></div>
+        {!!current.field_context.missing.length && <p>Для уточнения оценки заполни: {current.field_context.missing.join(', ').toLowerCase()}.</p>}
+        <small>{current.field_context.interpretation}</small>
+      </div>}
+      {current.decision_support_notice && <p className="agr-risk-engine__decision-notice">{current.decision_support_notice}</p>}
       <p className="agr-risk-engine__disclaimer"><Info size={15}/>{current.disclaimer}</p>
     </>}
   </section>

@@ -481,7 +481,7 @@ async def compose_field(field: dict) -> dict:
     forecast = conditions['forecast']
     temperature_risk = risk_from_temperature(forecast['min_temperature_next_24h_c'],
                                           'forecast_24h' if forecast['source'] != 'demo' else 'demo_forecast_24h')
-    analysis = analyze_risks(conditions['weather'], forecast)
+    analysis = analyze_risks(conditions['weather'], forecast, field)
     return {**field, **conditions,
             'risk': analysis['overall'],  # backward-compatible color/level used by map
             'temperature_risk': temperature_risk,
@@ -502,7 +502,7 @@ def unavailable_field(field: dict, detail: str) -> dict:
         'min_temperature_next_24h_c': None, 'source': 'unavailable',
         'sample_count': 0, 'period_hours': 24, 'points': [],
     }
-    analysis = analyze_risks(weather, forecast)
+    analysis = analyze_risks(weather, forecast, field)
     explanation = 'Погодные данные временно недоступны. Оценка рисков не выполнена.'
     analysis['overall']['reason'] = explanation
     temperature_risk = {
