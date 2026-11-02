@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection, Polygon as GeoPolygon } from 'geojson'
 import { Check, Crosshair, Expand, Focus, Layers, Map as MapIcon, Minus, Pencil, Plus, Satellite, Shrink, Undo2, X } from 'lucide-react'
 import './GeoFieldsMap.css'
+import FallbackFieldsMap from './FallbackFieldsMap'
 
 // API 2.1 provides high-resolution satellite / hybrid / street map layers.
 // It is loaded via the official Yandex script, without an extra React adapter.
@@ -92,6 +93,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
   const drawingRef = useRef(false)
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState('')
+  const [manualFallback, setManualFallback] = useState(false)
   const [layerError, setLayerError] = useState('')
   const [layer, setLayer] = useState<LayerName>('satellite')
   const [showContours, setShowContours] = useState(true)
@@ -103,6 +105,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
   const [overviewTick, setOverviewTick] = useState(0)
   const [expanded, setExpanded] = useState(false)
   const activeField = fields.find(f => f.id === activeId)
+  const fallbackActive = Boolean(loadError || manualFallback)
   const fieldById = useMemo(() => new Map(fields.map(f => [f.id, f])), [fields])
   const centersKey = fields.map(f => `${f.id}:${f.lat}:${f.lon}`).join('|')
   onSelectRef.current = onSelect
@@ -369,23 +372,26 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
             aria-pressed={layer === id}
             className={`agr-map-segments__button ${layer === id ? 'is-active' : ''}`}
             onClick={() => setLayer(id)}
-            disabled={!loaded || drawing}
+            disabled={!loaded || drawing || fallbackActive}
             title={title}
           ><Icon size={15} strokeWidth={1.8} /><span>{title}</span></button>)}
         </div>
       </div>
       <div className="agr-map-toolbar__actions">
         <div className="agr-map-toolbar__set" role="group" aria-label="Работа с полями">
-          <button type="button" className="agr-map-action" onClick={() => setOverviewTick(x => x + 1)} disabled={!loaded || drawing} title="Показать все поля">
+          <button type="button" className="agr-map-action" onClick={() => setManualFallback(v=>!v)} title={manualFallback ? 'Вернуться к Яндекс Картам' : 'Показать запасную схему OpenStreetMap'}>
+            <MapIcon size={16}/><span>{manualFallback ? 'Яндекс' : 'Запасная схема'}</span>
+          </button>
+          <button type="button" className="agr-map-action" onClick={() => setOverviewTick(x => x + 1)} disabled={!loaded || drawing || fallbackActive} title="Показать все поля">
             <Focus size={16} strokeWidth={1.9} /><span>Все поля</span>
           </button>
-          <button type="button" className={`agr-map-action ${showContours ? 'is-toggled' : ''}`} onClick={() => setShowContours(x => !x)} disabled={!loaded || drawing} aria-pressed={showContours} title={showContours ? 'Скрыть контуры' : 'Показать контуры'}>
+          <button type="button" className={`agr-map-action ${showContours ? 'is-toggled' : ''}`} onClick={() => setShowContours(x => !x)} disabled={!loaded || drawing || fallbackActive} aria-pressed={showContours} title={showContours ? 'Скрыть контуры' : 'Показать контуры'}>
             <Layers size={16} strokeWidth={1.9} /><span>Контуры</span>
           </button>
-          {canEdit && !drawing && <button type="button" className="agr-map-action agr-map-action--primary" onClick={() => beginDrawing('new')} disabled={!loaded} title="Нарисовать новый участок и создать отдельное поле">
+          {canEdit && !drawing && <button type="button" className="agr-map-action agr-map-action--primary" onClick={() => beginDrawing('new')} disabled={!loaded || fallbackActive} title="Нарисовать новый участок и создать отдельное поле">
             <Plus size={16} strokeWidth={1.9} /><span>Новое поле</span>
           </button>}
-          {canEdit && !drawing && <button type="button" className="agr-map-action" onClick={() => beginDrawing('edit')} disabled={!loaded || !activeId} title="Изменить границы выбранного существующего поля">
+          {canEdit && !drawing && <button type="button" className="agr-map-action" onClick={() => beginDrawing('edit')} disabled={!loaded || fallbackActive || !activeId} title="Изменить границы выбранного существующего поля">
             <Pencil size={16} strokeWidth={1.9} /><span>Изменить контур</span>
           </button>}
         </div>
@@ -413,15 +419,16 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
     </div>}
 
     <div className="agr-map-viewport">
-      <div ref={host} className="geo-leaflet-map agr-map-canvas" aria-label="Интерактивная Яндекс Карта с полями" />
-      {!loaded && !loadError && <div className="yandex-map-loading">Загрузка Яндекс Карт…</div>}
-      {loadError && <div className="agr-map-alert" role="alert">{loadError}<br/>Проверь доступ к JavaScript API 2.1 и HTTP Referer <b>localhost</b>.</div>}
+      <div ref={host} className="geo-leaflet-map agr-map-canvas" style={fallbackActive?{visibility:'hidden'}:undefined} aria-label="Интерактивная Яндекс Карта с полями" />
+       {fallbackActive && <FallbackFieldsMap fields={fields} activeId={activeId} onSelect={onSelect} geojson={geojson} showContours={showContours}/>}
+      {!loaded && !loadError && !fallbackActive && <div className="yandex-map-loading">Загрузка Яндекс Карт…</div>}
+      {loadError && <div className="agr-map-alert agr-map-alert--fallback" role="status">Яндекс Карты недоступны: показана запасная схема OpenStreetMap. Контуры и выбор полей работают. Для спутникового режима проверь ключ и ограничения адресов API.</div>}
       {!loadError && layerError && <div className="agr-map-alert" role="alert">{layerError}</div>}
       {error && <div className="agr-map-alert agr-map-alert--draw" role="alert">{error}</div>}
     </div>
 
     <div className="agr-map-status" aria-live="polite">
-      <div className="agr-map-status__primary"><span className="agr-map-status__pulse" /> <span>Яндекс Карты</span><span className="agr-map-status__separator">/</span><span>{loaded ? 'Карта подключена' : 'Подключение…'}</span></div>
+      <div className="agr-map-status__primary"><span className="agr-map-status__pulse" /> <span>{fallbackActive?'OpenStreetMap · резерв':'Яндекс Карты'}</span><span className="agr-map-status__separator">/</span><span>{fallbackActive?'Схема и контуры':loaded?'Карта подключена':'Подключение…'}</span></div>
       <div className="agr-map-status__details">
         {!loaded ? 'Ожидаем загрузку подложки' : drawing ? `${drawingMode === 'new' ? 'Новое поле' : 'Редактирование контура'} · ${points.length} точек` : activeField ? <><span className={`agr-map-risk agr-map-risk--${activeField.risk.level}`} /> <b>{activeField.name}</b><span className="agr-map-status__separator">·</span><span>{activeField.geometry_source === 'user_drawn' ? 'Граница сохранена' : 'Контур демонстрационный'}</span></> : 'Выбери поле для просмотра'}
       </div>
