@@ -43,7 +43,7 @@ def test_viewer_can_read_and_chat_but_cannot_write(setup, monkeypatch):
     assert viewer.get("/api/fields.geojson").status_code == 200
     assert viewer.get("/api/fields/1/risks").status_code == 200
     assert viewer.get("/api/auth/users").status_code == 403
-    assert viewer.get("/openapi.json").status_code == 403
+    assert viewer.get("/openapi.json").status_code == 401  # session cookie scoped to /api
     mutations = [
         ("POST", "/api/fields", {"name":"other","crop":"Соя","coordinates":[]}),
         ("PUT", "/api/fields/1", {"name":"x","crop":"y"}),
