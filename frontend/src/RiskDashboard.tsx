@@ -1,3 +1,4 @@
+import { apiFetch } from './authClient'
 import { useEffect, useState } from 'react'
 import { AlertTriangle, CloudRain, Flame, Info, Snowflake, Wind } from 'lucide-react'
 import './RiskDashboard.css'
@@ -56,7 +57,7 @@ export default function RiskDashboard({ fieldName, analysis }: {fieldName: strin
     setLoading(true)
     setSimulation(null)
     setError('')
-    fetch(`/api/risks/scenarios/${scenario}`, { signal: controller.signal })
+    apiFetch(`/api/risks/scenarios/${scenario}`, { signal: controller.signal })
       .then(async response => {
         if (!response.ok) throw new Error(`Сценарий недоступен: HTTP ${response.status}`)
         return response.json() as Promise<Simulation>
