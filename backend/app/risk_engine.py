@@ -124,12 +124,22 @@ def analyze_risks(weather: dict, forecast: dict, field: dict | None = None) -> d
         results.append(assessment('dry_heat', 'unknown', None, '°C',
             'Нужны прогнозы температуры, влажности воздуха и объёма осадков. Без данных о почве нельзя оценить засуху.', source, coverage))
     else:
-        hottest_temp, humidity_at_hottest = max(paired, key=lambda record: record[0])
-        level = ('high' if any(t >= 33 and h <= 30 for t, h in paired) and total_rain <= 0.3
-                 else 'medium' if any(t >= 28 and h <= 40 for t, h in paired) and total_rain <= 1
-                 else 'low')
-        results.append(assessment('dry_heat', level, hottest_temp, '°C',
-            f'Максимум {hottest_temp:g} °C, влажность в наиболее жаркий интервал {humidity_at_hottest:g}%, дождь {total_rain:g} мм. '            'Температура и сухость проверяются в одном интервале. Это погодные предпосылки, НЕ диагноз засухи.', source, coverage))
+        high_trigger = next(((t, h) for t, h in paired if t >= 33 and h <= 30), None) if total_rain <= 0.3 else None
+        medium_trigger = next(((t, h) for t, h in paired if t >= 28 and h <= 40), None) if total_rain <= 1 else None
+        if high_trigger:
+            level, trigger = 'high', high_trigger
+        elif medium_trigger:
+            level, trigger = 'medium', medium_trigger
+        else:
+            level, trigger = 'low', max(paired, key=lambda record: record[0])
+        trigger_temp, trigger_humidity = trigger
+        details = ('Интервал, вызвавший предупреждение' if level != 'low'
+                   else 'Самый жаркий доступный интервал')
+        results.append(assessment('dry_heat', level, trigger_temp, '°C',
+            f'{details}: {trigger_temp:g} °C, влажность {trigger_humidity:g}%; '
+            f'сумма осадков по доступным интервалам {total_rain:g} мм. '
+            'Температура и влажность относятся к одной прогнозной точке. '
+            'Это погодный скрининг, а не диагноз засухи.', source, coverage))
 
     known = [r for r in results if r['level'] != 'unknown']
     unknown_count = len(results) - len(known)
