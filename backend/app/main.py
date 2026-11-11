@@ -780,6 +780,11 @@ app.include_router(build_tasks_router(find_field))
 from .ai_assistant import build_ai_router
 app.include_router(build_ai_router(find_field, compose_field_resilient))
 
+# Bounded background scanning is OFF by default: enable explicitly for real operations.
+from .monitor_scheduler import router as monitor_router, attach_monitor
+attach_monitor(app, effective_fields, compose_field_resilient, capture_dashboard)
+app.include_router(monitor_router)
+
 # Separate, opt-in Wi-Fi demo: serve only the compiled React bundle.
 # The ordinary START_AGRORADAR.bat launch remains loopback-only.
 if os.getenv("AGRORADAR_WIFI_DEMO", "") == "1":
