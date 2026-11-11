@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, Eye, RotateCcw, Settings2, X } from 'lucide-react'
 import {
   presetOf, type UiFlag, type UiPreferences, type UiPreset,
@@ -74,7 +75,7 @@ export default function UiSettings({value,onChange,onPreset,onClose}:Props) {
   }, [onClose])
 
   const current=presetOf(value)
-  return <div className="agr-settings-backdrop" role="presentation"
+  return createPortal(<div className="agr-settings-backdrop" role="presentation"
     onMouseDown={event=>{if(event.target===event.currentTarget)onClose()}}>
     <section className="agr-settings-panel" ref={dialog} role="dialog" aria-modal="true"
       aria-labelledby="agr-settings-title" aria-describedby="agr-settings-description">
@@ -121,5 +122,5 @@ export default function UiSettings({value,onChange,onPreset,onClose}:Props) {
         <button type="button" className="agr-settings-done" onClick={onClose}>Готово</button>
       </footer>
     </section>
-  </div>
+  </div>, document.body)
 }
