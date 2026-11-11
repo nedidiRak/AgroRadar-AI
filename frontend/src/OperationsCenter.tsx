@@ -19,6 +19,7 @@ type Alert = {
 }
 type Summary = { monitored_fields: number; open_alerts: number; acknowledged_alerts: number; resolved_alerts: number; activity_count: number }
 type Event = { id: number; username: string; action: string; field_id: number | null; created_at: string; details: string }
+type Monitor = {enabled:boolean;weather_configured:boolean;running:boolean;last_finished:string|null;processed_fields:number;last_error:string;degraded_fields:number}
 type Props = { fields: Field[]; activeId: number; onPick: (id: number) => void; canEdit: boolean; mode: 'demo' | 'live_forecast' }
 const levelNames: Record<Level, string> = { high: 'Высокий', medium: 'Умеренный', low: 'Низкий', unknown: 'Нет данных' }
 
@@ -65,6 +66,7 @@ export default function OperationsCenter({ fields, activeId, onPick, canEdit, mo
   const [history, setHistory] = useState<Snapshot[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [events, setEvents] = useState<Event[]>([])
+  const [monitor, setMonitor] = useState<Monitor | null>(null)
   const [status, setStatus] = useState<'all' | 'open' | 'acknowledged' | 'resolved'>('all')
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -76,13 +78,14 @@ export default function OperationsCenter({ fields, activeId, onPick, canEdit, mo
   async function refresh() {
     setLoading(true); setError('')
     try {
-      const [a, b, c, d] = await Promise.all([
+      const [a, b, c, d, m] = await Promise.all([
         getJson<Summary>('/api/operations/summary'),
         getJson<{snapshots: Snapshot[]}>(`/api/operations/fields/${activeId}/history?limit=60`),
         getJson<{alerts: Alert[]}>(`/api/operations/alerts?status=${status}`),
         canEdit ? getJson<{events: Event[]}>('/api/operations/activity?limit=30') : Promise.resolve({ events: [] as Event[] }),
+        getJson<Monitor>('/api/operations/monitor'),
       ])
-      setSummary(a); setHistory(b.snapshots); setAlerts(c.alerts); setEvents(d.events)
+      setSummary(a); setHistory(b.snapshots); setAlerts(c.alerts); setEvents(d.events); setMonitor(m)
     } catch (err) { setError(err instanceof Error ? err.message : 'Не удалось получить аналитику') }
     finally { setLoading(false) }
   }
@@ -102,6 +105,18 @@ export default function OperationsCenter({ fields, activeId, onPick, canEdit, mo
     finally { setBusy(false) }
   }
 
+  async function forceMonitor() {
+    setBusy(true);setError('');setNotice('')
+    try {
+      const res = await apiFetch('/api/operations/monitor/refresh',{method:'POST'})
+      const info = await res.json().catch(()=>({})) as {detail?:string;queued?:boolean;reason?:string}
+      if(!res.ok) throw new Error(info.detail||'Не удалось начать проверку')
+      setNotice(info.queued ? 'Обновление выбранной партии полей запущено в фоне. Предупреждения обновятся после завершения проверки.' : info.reason||'Проверка уже идёт.')
+      await refresh()
+    } catch(e) { setError(e instanceof Error?e.message:'Не удалось обновить мониторинг') }
+    finally {setBusy(false)}
+  }
+
   const printField = () => {
     if (!active) return
     window.open(`/api/reports/field/${active.id}`, '_blank', 'noopener,noreferrer')
@@ -112,6 +127,17 @@ export default function OperationsCenter({ fields, activeId, onPick, canEdit, mo
     {mode === 'demo' && <div className="agr-ops-demo"><AlertTriangle size={17}/> Демонстрационная погода: история и аналитика не являются наблюдениями реального хозяйства. Рабочие предупреждения создаются только из OpenWeather LIVE.</div>}
     {error && <div className="error" role="alert">{error}</div>}
     {notice && <div className="action-message" role="status">{notice}</div>}
+    <div className="agr-ops-monitor">
+      <div><strong>Фоновый мониторинг · AgroRadar 4.0</strong>
+      <p>{!monitor?'Загружаем статус…':monitor.enabled?'Плановое обновление включено':'Плановое обновление выключено'}.
+      {' '}За последнюю работу обработано {monitor?.processed_fields??0} участков.
+      {monitor?.last_finished&&' Последняя проверка: '+new Date(monitor.last_finished).toLocaleString('ru-RU')+'.'}
+      {monitor?.last_error&&' '+monitor.last_error}</p>
+      {!monitor?.enabled&&<small>Для непрерывной проверки при запущенном сервере: AGRORADAR_AUTO_MONITOR=1. При 500 полях опрос выполняется ограниченными партиями.</small>}
+      </div>
+      {canEdit&&<button type="button" disabled={busy||!monitor?.weather_configured||monitor?.running}
+        onClick={()=>void forceMonitor()}><RefreshCcw size={15}/> Запустить проверку</button>}
+    </div>
     <div className="agr-ops-stats">
       <div><small>Полей с историей</small><strong>{summary?.monitored_fields ?? '—'}</strong></div>
       <div><small>Открытые предупреждения</small><strong>{summary?.open_alerts ?? '—'}</strong></div>
