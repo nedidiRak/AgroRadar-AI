@@ -1,21 +1,24 @@
 import AuthGate from './AuthGate'
 import UserManager from './UserManager'
+import UiSettings from './UiSettings'
+import { loadPreferences, savePreferences, presetPreferences, type UiPreferences, type UiFlag, type UiPreset } from './uiPreferences'
 import OperationsCenter from './OperationsCenter'
 import { apiFetch } from './authClient'
 import { setCsrfToken, setCurrentUser, getCurrentUser } from './authClient'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import GeoFieldsMap from './GeoFieldsMap'
 import AiAgronom from './AiAgronom'
 import RiskDashboard from './RiskDashboard'
 import type { RiskAnalysis } from './RiskDashboard'
-import { Activity, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot, ArrowRight, ChevronDown, Search, SlidersHorizontal, Info, Thermometer, Wind, Droplets, CheckCircle2, LogOut, Users, ChartNoAxesCombined } from 'lucide-react'
+import { Activity, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot, ArrowRight, ChevronDown, Search, SlidersHorizontal, Info, Thermometer, Wind, Droplets, CheckCircle2, LogOut, Users, ChartNoAxesCombined, Settings2 } from 'lucide-react'
 import type { FeatureCollection, Polygon } from 'geojson'
 import './style.css'
 import './FieldsManager.css'
 import './layout-v1.2.css'
 import './mobile-v1.3.css'
 import './agronomy-v2.1.css'
+import './ui-mobile-fixes.css'
 
 type Weather = { temperature_c:number|null;humidity_pct:number|null;wind_ms:number|null;source:string;observed_at:string|null }
 type ForecastPoint = {timestamp:number;temperature_c:number;precipitation_probability_pct:number|null;rain_mm_3h:number|null}
@@ -66,6 +69,21 @@ function App() {
   const [data,setData] = useState<Dashboard|null>(null)
   const currentUser = getCurrentUser()
   const canEdit = currentUser?.role === 'admin'
+  const username = currentUser?.username
+  const [ui, setUi] = useState<UiPreferences>(() => {
+    let storage: Storage | null = null
+    try { storage = window.localStorage } catch { /* private browsing */ }
+    return loadPreferences(storage, username, window.matchMedia?.('(max-width: 650px)').matches ?? false)
+  })
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const closeSettings = useCallback(() => setSettingsOpen(false), [])
+  useEffect(() => {
+    try { savePreferences(window.localStorage, username, ui) } catch { /* storage disabled */ }
+  }, [username, ui])
+  function setVisibility(key: UiFlag, visible: boolean) {
+    setUi(previous => ({ ...previous, [key]: visible }))
+  }
+  function useUiPreset(preset: UiPreset) { setUi(presetPreferences(preset)) }
   const [geojson,setGeojson] = useState<FeatureCollection<Polygon>|null>(null)
   const [selected,setSelected] = useState(1)
   const [error,setError] = useState('')
@@ -275,11 +293,12 @@ function App() {
     {!active && <option value="">Нет полей</option>}
     {data?.fields.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
   </select>
-  return <div className={`shell agr-shell ${view === 'assistant' ? 'agr-shell--assistant' : ''}`}>
+  return <div className={`shell agr-shell ${view === 'assistant' ? 'agr-shell--assistant' : ''} ${ui.navLabels ? '' : 'agr-shell--hide-nav-labels'}`}>
     <aside className="sidebar agr-sidebar">
       <div className="brand agr-brand"><div className="brand-icon"><Leaf size={23}/></div><div><strong>AgroRadar <span>AI</span></strong><small>Аналитика сельхозполей</small></div></div>
+      <button type="button" className="agr-settings-launch agr-settings-launch--brand" aria-label="Настройки интерфейса" title="Настройки интерфейса" onClick={()=>setSettingsOpen(true)}><Settings2 size={19}/></button>
       <div className="menu-title">НАВИГАЦИЯ</div>
-      <nav aria-label="Разделы приложения" className="agr-navigation">
+      <nav aria-label="Разделы приложения" className="agr-navigation" style={{'--agr-nav-count':canEdit?5:4} as React.CSSProperties}>
         {[...navigation,...(canEdit ? [{id:'users' as View,label:'Пользователи',Icon:Users}] : [])].map(({id,label,Icon})=><button key={id} type="button" className={`menu agr-nav-item ${view===id?'active':''}`} aria-label={label} title={label} aria-current={view===id?'page':undefined} onClick={()=>navigate(id)}><Icon size={19}/><span>{label}</span></button>)}
       </nav>
       <div className="agr-sidebar-meta"><div className="agr-sidebar-meta__dot"/> {currentUser?.username ?? 'Пользователь'} · {canEdit ? 'Администратор' : 'Наблюдатель'}<br/>AgroRadar · IT-спринт<br/><span>Русагро / Final Suite 3.5</span></div>
@@ -287,22 +306,22 @@ function App() {
     <main className="content agr-content">
       <header className="agr-header">
         <div><div className="eyebrow">АГРОМОНИТОРИНГ / {view==='overview'?'СВОДКА':view==='fields'?'ГЕОДАННЫЕ':view==='operations'?'АНАЛИТИКА':view==='users'?'УЧЁТНЫЕ ЗАПИСИ':'ПОМОЩНИК'}</div><h1>{pageInfo[0]}</h1><p>{pageInfo[1]}</p></div>
-        <div className="agr-header-actions"><span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':data.degraded_count?'OpenWeather · частично недоступен':'OpenWeather · LIVE'):'Загрузка данных'}</span><button className="agr-refresh" onClick={()=>void logout()} title="Выйти из системы"><LogOut size={16}/><span>Выйти</span></button><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
+        <div className="agr-header-actions">{ui.weatherBadge && <span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':data.degraded_count?'OpenWeather · частично недоступен':'OpenWeather · LIVE'):'Загрузка данных'}</span>}<button type="button" className="agr-settings-launch agr-settings-launch--header" title="Настройки интерфейса" aria-label="Настройки интерфейса" onClick={()=>setSettingsOpen(true)}><Settings2 size={17}/> Настройки</button><button className="agr-refresh" onClick={()=>void logout()} title="Выйти из системы"><LogOut size={16}/><span>Выйти</span></button><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
       </header>
-      {!canEdit && <div className="agr-viewer-banner" role="status">Режим наблюдателя: просмотр полей, карты и рисков, а также диалог с ИИ. Изменение данных отключено.</div>}
+      {!canEdit && ui.viewerNotice && <div className="agr-viewer-banner" role="status">Режим наблюдателя: просмотр полей, карты и рисков, а также диалог с ИИ. Изменение данных отключено.</div>}
       {error && <div className="error" role="alert">{error}. Проверь, что FastAPI запущен через START_AGRORADAR.bat.</div>}
       {data && (data.degraded_count ?? 0) > 0 && <div className="error" role="status">Погода временно недоступна для {data.degraded_count} из {data.count} полей. Контуры и данные участков сохранены. Нет данных — не означает отсутствие риска.</div>}
       {actionMessage && <div className="action-message" role="status">{actionMessage}</div>}
       {geoError && view==='fields' && <div className="error" role="alert">{geoError}. Точечные маркеры продолжат работать, если есть данные полей.</div>}
 
       <section className="agr-page agr-page--overview" hidden={view!=='overview'} aria-label="Сводка хозяйства">
-        <div className="agr-stats">
+        {ui.overviewStats && <div className="agr-stats">
           <div className="agr-stat"><div className="agr-stat__icon"><MapPinned size={19}/></div><span>Поля хозяйства</span><strong>{data?.count ?? '—'}</strong><small>Участков на карте</small></div>
           <div className="agr-stat"><div className="agr-stat__icon agr-stat__icon--warning"><ShieldAlert size={19}/></div><span>Высокий погодный риск</span><strong className={(data?.high_risk_count??0)>0?'agr-text-danger':''}>{data?.high_risk_count??'—'}</strong><small>По погодным факторам за 24 часа</small></div>
           <div className="agr-stat"><div className="agr-stat__icon"><Thermometer size={19}/></div><span>Температура · {active?.name??'поле'}</span><strong>{active?weatherText(active.weather.temperature_c,'°C'):'—'}</strong><small>{active?.weather.source==='demo'?'Демо-данные':'OpenWeather'}</small></div>
-        </div>
+        </div>}
         <div className="agr-overview-columns">
-          <article className="agr-card agr-field-list-card">
+          {ui.overviewFieldList && <article className="agr-card agr-field-list-card">
             <div className="agr-card-heading"><div><div className="agr-overline">СОСТОЯНИЕ УЧАСТКОВ</div><h2>Поля и риски</h2></div><button className="agr-text-link" onClick={()=>navigate('fields')}>Открыть карту <ArrowRight size={16}/></button></div>
             <div className="agr-summary-strip"><CheckCircle2 size={18}/><span>{!data?'Загрузка показателей…':data.high_risk_count>0?`Есть поля с высоким погодным риском: ${data.high_risk_count}`:'По доступным погодным данным высокий риск не выявлен (проверь полноту прогноза)'}</span></div>
             <div className="agr-field-rows">{sortedFields.length===0?<div className="agr-empty">Полей пока нет. Создай первый участок на карте.</div>:sortedFields.slice(0,8).map(field=><button key={field.id} type="button" className={`agr-field-row ${active?.id===field.id?'is-selected':''}`} onClick={()=>setSelected(field.id)}>
@@ -311,8 +330,8 @@ function App() {
               <span className={`agr-risk-pill agr-risk-pill--${field.risk.level}`}>{riskLabel[field.risk.level]}</span>
             </button>)}</div>
             {sortedFields.length>8&&<button className="agr-text-link agr-more-fields" onClick={()=>navigate('fields')}>Показать ещё {sortedFields.length-8} полей <ArrowRight size={15}/></button>}
-          </article>
-          <article className="agr-card agr-forecast-card">
+          </article>}
+          {ui.overviewForecast && <article className="agr-card agr-forecast-card">
             <div className="agr-card-heading"><div><div className="agr-overline">ПРОГНОЗ ДЛЯ ПОЛЯ</div><h2>{active?.name??'Выбери поле'}</h2></div>{picker('agr-overview-picker')}</div>
             {active ? <>
               <div className="agr-weather-summary">
@@ -324,10 +343,10 @@ function App() {
               <div className={`agr-risk-note agr-risk-note--${active.risk.level}`}><span className={`agr-risk-pill agr-risk-pill--${active.risk.level}`}>{riskLabel[active.risk.level]}</span><p>{active.risk.reason}</p></div>
               <button className="agr-ai-link" onClick={()=>navigate('assistant')}><Bot size={17}/> Спросить ИИ об этом поле <ArrowRight size={16}/></button>
             </>:<p className="agr-empty">Выбери участок, чтобы посмотреть прогноз.</p>}
-          </article>
+          </article>}
         </div>
-        <RiskDashboard fieldName={active?.name ?? 'не выбрано'} analysis={active?.risk_analysis}/>
-        <details className="agr-disclosure agr-data-info"><summary><Info size={15}/> Как читать показатели <ChevronDown size={15}/></summary><p>{demo?'Погода и прогноз приведены для демонстрации.':'Погодные данные и прогноз получены от OpenWeather; это модельные данные, не датчики непосредственно на участке.'} AgroRisk Engine v3.0 оценивает заморозки, осадки, ветер и сухую жару, показывает неполные данные и проверяемые действия по открытым учебным порогам. Это не подтверждённый прогноз ущерба культуре и не диагноз засухи. Отсутствующие погодные показатели помечаются как «Нет данных». Сценарии для жюри не влияют на реальные поля или контекст DeepSeek. Границы исходных полей могут быть демонстрационными.</p></details>
+        {ui.overviewRiskDetails && <RiskDashboard fieldName={active?.name ?? 'не выбрано'} analysis={active?.risk_analysis}/>}
+        {ui.overviewHelp && <details className="agr-disclosure agr-data-info"><summary><Info size={15}/> Как читать показатели <ChevronDown size={15}/></summary><p>{demo?'Погода и прогноз приведены для демонстрации.':'Погодные данные и прогноз получены от OpenWeather; это модельные данные, не датчики непосредственно на участке.'} AgroRisk Engine v3.0 оценивает заморозки, осадки, ветер и сухую жару, показывает неполные данные и проверяемые действия по открытым учебным порогам. Это не подтверждённый прогноз ущерба культуре и не диагноз засухи. Отсутствующие погодные показатели помечаются как «Нет данных». Сценарии для жюри не влияют на реальные поля или контекст DeepSeek. Границы исходных полей могут быть демонстрационными.</p></details>}
       </section>
 
       <section className="agr-page agr-page--fields" hidden={view!=='fields'} aria-label="Карта и управление полями">
@@ -370,15 +389,19 @@ function App() {
       </section>
 
       <section className="agr-page agr-page--ai" hidden={view!=='assistant'} aria-label="ИИ-агроном">
-        <div className="agr-ai-context-switch"><div><span>ПОЛЕ ДЛЯ АНАЛИЗА</span><strong>{active?.crop??'Нет культуры'}</strong></div>{picker('agr-assistant-picker')}<button className="agr-text-link" onClick={()=>navigate('fields')}><MapPinned size={15}/> На карте</button></div>
-        {visitedAi && <AiAgronom key={active?.id ?? 0} field={active}/>}
+        {(ui.aiFieldPicker || ui.aiMapShortcut) && <div className="agr-ai-context-switch">
+          {ui.aiFieldPicker && picker('agr-assistant-picker')}
+          {ui.aiMapShortcut && <button className="agr-text-link" onClick={()=>navigate('fields')}><MapPinned size={15}/> На карте</button>}
+        </div>}
+        {visitedAi && <AiAgronom key={active?.id ?? 0} field={active} ui={ui} onOpenSettings={()=>setSettingsOpen(true)}/>}
       </section>
       <section className="agr-page agr-page--operations" hidden={view!=='operations'} aria-label="Центр аналитики и предупреждений">
         {view==='operations' && <OperationsCenter fields={data?.fields ?? []} activeId={active?.id ?? 0}
           onPick={setSelected} canEdit={canEdit} mode={data?.mode ?? 'demo'}/>}
       </section>
       {canEdit && <section className="agr-page agr-page--users" hidden={view!=='users'} aria-label="Управление пользователями">{view==='users' && <UserManager/>}</section>}
-      <footer className="agr-footer">AgroRadar AI · Конкурсный прототип · Карта: Яндекс Карты · Данные исходных участков могут быть демонстрационными</footer>
+      {ui.footer && <footer className="agr-footer">AgroRadar AI · Конкурсный прототип · Карта: Яндекс Карты · Данные исходных участков могут быть демонстрационными</footer>}
+      {settingsOpen && <UiSettings value={ui} onChange={setVisibility} onPreset={useUiPreset} onClose={closeSettings}/>}
       {canEdit && dialog && <div className="field-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget && !busy) setDialog(null)}}>
         <div className="field-modal" role="dialog" aria-modal="true" aria-labelledby="field-dialog-title">
           <form onSubmit={e=>void submitField(e)}>

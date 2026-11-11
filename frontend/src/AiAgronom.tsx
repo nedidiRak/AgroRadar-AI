@@ -1,6 +1,7 @@
 import { apiFetch } from './authClient'
 import { useEffect, useRef, useState } from 'react'
-import { Bot, ChevronDown, Download, Leaf, RotateCcw, Send, Sparkles, ShieldCheck } from 'lucide-react'
+import type { UiPreferences } from './uiPreferences'
+import { Bot, ChevronDown, Download, Leaf, MoreHorizontal, RotateCcw, Send, Settings2, Sparkles, ShieldCheck } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import './AiAgronom.css'
@@ -59,7 +60,11 @@ function formatAgronomAnswer(answer: string): string {
   )
 }
 
-export default function AiAgronom({ field }: { field?: FieldContext }) {
+export default function AiAgronom({ field, ui, onOpenSettings }: {
+  field?: FieldContext
+  ui: UiPreferences
+  onOpenSettings: () => void
+}) {
   const [status, setStatus] = useState<AiStatus | null>(null)
   const [statusError, setStatusError] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
@@ -68,6 +73,7 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
   const [error, setError] = useState('')
   const [contextOpen, setContextOpen] = useState(false)
   const messagesRef = useRef<HTMLDivElement>(null)
+  const moreRef = useRef<HTMLDetailsElement>(null)
 
   useEffect(() => {
     let mounted = true
@@ -134,6 +140,15 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
     setTimeout(() => URL.revokeObjectURL(url), 500)
   }
 
+  function clearConversation() {
+    setMessages([])
+    setError('')
+    if (moreRef.current) moreRef.current.open = false
+  }
+  function exportAndClose() {
+    exportDialog()
+    if (moreRef.current) moreRef.current.open = false
+  }
   const live = field?.weather.source === 'openweather_current'
   return <section className="agro-ai" id="ai-assistant" aria-labelledby="agro-ai-title">
     <div className="agro-ai__heading">
@@ -145,14 +160,28 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
           <p>Анализ выбранного поля, прогноза и погодных рисков с помощью DeepSeek</p>
         </div>
       </div>
-      <div className="agro-ai__status">
-        <span className={`agro-ai__signal ${status?.configured ? 'agro-ai__signal--online' : ''}`} />
-        {status ? status.configured ? 'DeepSeek подключён' : 'Требуется API-ключ' : statusError || 'Проверка подключения…'}
+      <div className="agro-ai__header-actions">
+        {ui.aiStatus && <div className="agro-ai__status" role="status">
+          <span className={`agro-ai__signal ${status?.configured ? 'agro-ai__signal--online' : ''}`} />
+          <span className="agro-ai__status-full">{status ? status.configured ? 'DeepSeek подключён' : 'Требуется API-ключ' : statusError || 'Проверка подключения…'}</span>
+          <span className="agro-ai__status-short">{status ? status.configured ? 'Онлайн' : 'Нет ключа' : statusError ? 'Ошибка' : 'Проверка'}</span>
+        </div>}
+        <details className="agro-ai__more" ref={moreRef}>
+          <summary title="Дополнительные действия" aria-label="Дополнительные действия чата"><MoreHorizontal size={20}/></summary>
+          <div className="agro-ai__more-menu">
+            <button type="button" onClick={exportAndClose} disabled={busy || messages.length===0}>
+              <Download size={16}/> Экспорт диалога</button>
+            <button type="button" onClick={clearConversation} disabled={busy || messages.length===0}>
+              <RotateCcw size={16}/> Новый диалог</button>
+          </div>
+        </details>
+        <button type="button" className="agro-ai__settings" aria-label="Настройки интерфейса"
+          title="Настройки интерфейса" onClick={onOpenSettings}><Settings2 size={19}/></button>
       </div>
     </div>
 
-    <div className="agro-ai__layout">
-      <aside className={`agro-ai__context ${contextOpen ? 'agro-ai__context--open' : ''}`}>
+    <div className={`agro-ai__layout ${ui.aiContext ? '' : 'agro-ai__layout--chat-only'}`}>
+      {ui.aiContext && <aside className={`agro-ai__context ${contextOpen ? 'agro-ai__context--open' : ''}`}>
         <button type="button" className="agro-ai__context-toggle" aria-expanded={contextOpen} onClick={() => setContextOpen(open => !open)}>
           <span><Leaf size={15}/> Данные поля <strong>{field?.name ?? 'не выбрано'}</strong></span>
           <ChevronDown size={16} aria-hidden="true" />
@@ -175,16 +204,20 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
         </> : <p>Сначала выбери или создай поле.</p>}
         <div className="agro-ai__notice"><ShieldCheck size={16}/> Советы ИИ не заменяют проверку на месте. Сведения из паспорта и журнала введены пользователем, а не подтверждены датчиками.</div>
         </div>
-      </aside>
+      </aside>}
 
       <div className="agro-ai__chat">
-        <div className="agro-ai__chat-top"><span>Диалог об участке</span><button type="button" className="agro-ai__clear" title="Скачать текущий диалог" onClick={exportDialog} disabled={busy || !messages.length}><Download size={14}/> Экспорт</button><button type="button" className="agro-ai__clear" onClick={() => { setMessages([]); setError('') }} disabled={busy || messages.length === 0}><RotateCcw size={14}/> Новый диалог</button></div>
+        {ui.aiActions && <div className="agro-ai__chat-top"><span>Диалог</span>
+          <div className="agro-ai__toolbar-actions">
+            <button type="button" className="agro-ai__clear" onClick={exportDialog} disabled={busy || !messages.length}><Download size={14}/> Экспорт</button>
+            <button type="button" className="agro-ai__clear" onClick={clearConversation} disabled={busy || messages.length===0}><RotateCcw size={14}/> Новый диалог</button>
+          </div></div>}
         <div className="agro-ai__messages" ref={messagesRef} aria-live="polite">
           {messages.length === 0 && <div className="agro-ai__welcome">
             <div className="agro-ai__welcome-icon"><Sparkles size={27}/></div>
             <strong>С чего начнём анализ?</strong>
-            <p>Я учитываю текущие данные выбранного поля, прогноз OpenWeather и общие справочные заметки. Выбери вопрос или напиши свой.</p>
-            <div className="agro-ai__suggestions">{suggested.map(item => <button key={item} type="button" onClick={() => void send(item)} disabled={!status?.configured || !field || busy}>{item}</button>)}</div>
+            <p>Спроси о рисках и действиях для выбранного поля. Советы требуют проверки агрономом.</p>
+            {ui.aiSuggestions && <div className="agro-ai__suggestions">{suggested.map(item => <button key={item} type="button" onClick={() => void send(item)} disabled={!status?.configured || !field || busy}>{item}</button>)}</div>}
           </div>}
           {messages.map((message, index) => <div key={`${index}-${message.role}`} className={`agro-ai__message agro-ai__message--${message.role}`}>
             <span className="agro-ai__message-label">{message.role === 'assistant' ? 'ИИ-АГРОНОМ' : 'ВЫ'}</span>
@@ -201,10 +234,10 @@ export default function AiAgronom({ field }: { field?: FieldContext }) {
           <textarea aria-label="Вопрос ИИ-агроному" placeholder={field ? `Спроси о поле «${field.name}»…` : 'Сначала выбери поле'} value={prompt} maxLength={2000} rows={2} disabled={!field || !status?.configured || busy} onChange={e => setPrompt(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(prompt) } }} />
           <button type="submit" title="Отправить вопрос" disabled={!prompt.trim() || !field || !status?.configured || busy}><Send size={17}/> Отправить</button>
         </form>
-        <div className="agro-ai__footer">
+        {ui.aiTechnicalInfo && <div className="agro-ai__footer">
           <span className="agro-ai__footer-long">DeepSeek · {status?.model ?? 'ожидание'} · Контекст запрашивается у FastAPI перед каждым ответом · Внешний ИИ-сервис получает данные выбранного поля и историю отправляемого диалога.</span>
           <span className="agro-ai__footer-short">DeepSeek получает сведения поля и историю отправленного диалога.</span>
-        </div>
+        </div>}
       </div>
     </div>
   </section>
