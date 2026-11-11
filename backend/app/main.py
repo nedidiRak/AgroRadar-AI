@@ -772,6 +772,10 @@ def reset_field_geometry(field_id: int, request: Request):
 # Printable reports operate on the same already validated field data.
 app.include_router(report_router(find_field, compose_field_resilient, effective_fields))
 
+# Inspection tasks belong to existing fields and keep their own audit trail.
+from .operations_tasks import build_tasks_router
+app.include_router(build_tasks_router(find_field))
+
 # Isolated DeepSeek integration; existing maps, fields and weather endpoints unchanged.
 from .ai_assistant import build_ai_router
 app.include_router(build_ai_router(find_field, compose_field_resilient))
