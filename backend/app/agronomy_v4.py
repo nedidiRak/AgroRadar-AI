@@ -13,7 +13,7 @@ import math
 import os
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -147,17 +147,18 @@ def water_balance_7d(payload: dict) -> dict:
     et0 = daily.get("et0_fao_evapotranspiration")
     if not all(isinstance(seq, list) for seq in (dates, precip, et0)):
         return {**base, "explanation": "Неверный формат суточных рядов."}
-    today = datetime.now(timezone.utc).date().isoformat()
-    rows = []
+    today = datetime.now(timezone.utc).date()
+    expected = [(today - timedelta(days=offset)).isoformat() for offset in range(7, 0, -1)]
+    available = {}
     for day, p, e in zip(dates, precip, et0):
-        if not isinstance(day, str) or not day < today:
-            continue  # today is incomplete and must not be counted
+        if not isinstance(day, str) or day not in expected:
+            continue  # no future/today or out-of-window history
         p, e = _number(p), _number(e)
-        if p is None or e is None or p < 0 or e < 0:
-            continue
-        rows.append((day, p, e))
-    rows = sorted(rows, key=lambda row: row[0])[-7:]
-    if len(rows) != 7 or len({day for day, _, _ in rows}) != 7:
+        if p is not None and e is not None and p >= 0 and e >= 0:
+            available[day] = (day, p, e)
+    rows = [available[day] for day in expected if day in available]
+    # Missing yesterday is missing even if older extra days exist.
+    if len(rows) != 7:
         return {**base, "status": "partial", "label": "Неполная история",
                 "days": len(rows),
                 "explanation": "Не хватает семи полностью завершённых дней осадков и ET₀."}
