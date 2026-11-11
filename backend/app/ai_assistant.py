@@ -6,6 +6,7 @@ unverified claims about yields, soil moisture, pests or plant development.
 from __future__ import annotations
 
 import json
+import hashlib
 import sqlite3
 import os
 import time
@@ -19,12 +20,62 @@ from pydantic import BaseModel, Field
 
 from .agronomy_knowledge import retrieve_notes
 from .monitoring import field_history
+from .agronomy_v4 import wheat_rust_screen
 
 MODEL_DEFAULT = 'deepseek-flash'
 DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/chat/completions'
 # Basic local abuse protection; replace with authenticated, shared rate-limiter before public deployment.
 _LIMIT_LOCK = threading.Lock()
 _CALLS_BY_CLIENT: dict[str, list[float]] = {}
+_AVAILABILITY_CACHE: dict[str, tuple[float, dict]] = {}
+_AVAILABILITY_LOCK = threading.Lock()
+
+
+async def provider_availability(api_key: str, model: str) -> dict:
+    """Free/non-generating availability probe, cached at least 60 seconds.
+
+    GET /models validates API-key access but does NOT guarantee chat credits or
+    that a future request will succeed. Never return a secret or raw provider body.
+    """
+    if not api_key:
+        return {"availability": "not_configured", "description": "Нет API-ключа."}
+    fingerprint = hashlib.sha256((api_key + ":" + model).encode()).hexdigest()
+    with _AVAILABILITY_LOCK:
+        entry = _AVAILABILITY_CACHE.get(fingerprint)
+        if entry and entry[0] > time.monotonic():
+            return entry[1]
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(8.0, connect=4.0)) as client:
+            response = await client.get(
+                "https://api.deepseek.com/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+        if response.status_code == 200:
+            try:
+                available_models = [str(record["id"]) for record in response.json().get("data", [])]
+            except (ValueError, TypeError, KeyError):
+                available_models = []
+            if available_models and model not in available_models:
+                result = {"availability": "model_unknown",
+                          "description": "Доступ подтверждён, но выбранная модель не найдена в списке."}
+            else:
+                result = {"availability": "online",
+                          "description": "Ключ принят DeepSeek при проверке списка моделей; это не проверка баланса."}
+        elif response.status_code in (401, 403):
+            result = {"availability": "invalid_key", "description": "DeepSeek отклонил API-ключ."}
+        elif response.status_code == 429:
+            result = {"availability": "limited", "description": "DeepSeek ограничил частоту запросов."}
+        else:
+            result = {"availability": "unavailable",
+                      "description": "Сервис не подтвердил доступ (HTTP %d)." % response.status_code}
+    except (httpx.RequestError, httpx.TimeoutException):
+        result = {"availability": "unavailable", "description": "Нет ответа от DeepSeek; проверь интернет."}
+    result["checked_at"] = time.time()
+    with _AVAILABILITY_LOCK:
+        if len(_AVAILABILITY_CACHE) > 100:
+            _AVAILABILITY_CACHE.clear()
+        _AVAILABILITY_CACHE[fingerprint] = (time.monotonic() + (300 if result["availability"] == "online" else 60), result)
+    return result
 
 def check_rate_limit(ip: str) -> None:
     now = time.monotonic()
@@ -52,7 +103,7 @@ AgroRisk Engine оценивает погодные факторы на 24 ча�
 Предлагай безопасные общие действия наблюдения и проверки; не давай норм расхода или инструкций по применению пестицидов/опасных веществ.
 Не заявляй, что посетил участок, увидел растения, измерил почву или получил сведения не из JSON.
 Исторические risk snapshots — сохранённые в системе прогнозы, а не фактические измерения на поле; отделяй demo от OpenWeather LIVE.
-При ссылке на локальную базу знаний используй только известные идентификаторы KB из local_reference_notes. Это внутренние прототипные заметки, а не официальные агрономические нормативы; не придумывай внешних ссылок или авторов источников.
+Проверка благоприятных условий для бурой ржавчины пшеницы — только сигнал для осмотра, не диагноз инфекции: влажность на листьях и наличие спор не измерены. При ссылке на локальную базу знаний используй только известные идентификаторы KB из local_reference_notes. Это внутренние прототипные заметки, а не официальные агрономические нормативы; не придумывай внешних ссылок или авторов источников.
 Если запрашивают сведения о других полях, работай только с контекстом выбранного поля и попроси выбрать другое.
 Это вспомогательная оценка, окончательное решение принимает квалифицированный агроном.
 """
@@ -127,6 +178,13 @@ def build_ai_router(
             'model': os.getenv('DEEPSEEK_MODEL', MODEL_DEFAULT).strip() or MODEL_DEFAULT,
         }
 
+    @router.get('/check')
+    async def provider_check():
+        return await provider_availability(
+            os.getenv('DEEPSEEK_API_KEY', '').strip(),
+            os.getenv('DEEPSEEK_MODEL', MODEL_DEFAULT).strip() or MODEL_DEFAULT,
+        )
+
     @router.post('/chat')
     async def chat(payload: ChatRequest, request: Request):
         api_key = os.getenv('DEEPSEEK_API_KEY', '').strip()
@@ -173,6 +231,7 @@ def build_ai_router(
                 'points': (forecast.get('points') or [])[:9],
             },
             'weather_risks': field.get('risk_analysis', {}),
+            'wheat_leaf_rust_conditions_screen': wheat_rust_screen(field, forecast),
             'recent_risk_history_observed_at_dashboard_refresh': previous_risks,
             'temperature_risk': field.get('temperature_risk', field['risk']),
             'local_reference_notes': notes,
