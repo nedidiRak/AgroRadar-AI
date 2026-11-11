@@ -24,13 +24,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 from .risk_engine import analyze_risks, simulate_scenario, DEMO_SCENARIOS
+from .agronomy_v4 import build_agronomy
 
 from .auth import router as auth_router, auth_guard
 from .monitoring import router as monitoring_router, capture_dashboard, record_event
 from .backups import router as backup_router, preserve_previous
 from .reports import report_router
 
-app = FastAPI(title='AgroRadar AI API', version='3.5.0')
+app = FastAPI(title='AgroRadar AI API', version='4.0.0')
 app.middleware('http')(auth_guard)
 app.include_router(auth_router)
 app.include_router(monitoring_router)
@@ -539,7 +540,7 @@ async def compose_field_resilient(field: dict) -> dict:
 
 @app.get('/api/health')
 def health():
-    return {'status': 'ok', 'version': '3.5.0',
+    return {'status': 'ok', 'version': '4.0.0',
             'weather_mode': 'live' if os.getenv('OPENWEATHER_API_KEY', '').strip() else 'demo'}
 
 
@@ -581,6 +582,18 @@ async def field_risks(field_id: int):
             'risk_analysis': details['risk_analysis'],
             'weather': details['weather'], 'forecast': details['forecast'],
             'disclaimer': details['risk_analysis']['disclaimer']}
+
+
+@app.get('/api/fields/{field_id}/agronomy')
+async def field_agronomy(field_id: int):
+    """V4 detail: scientific references and optional 7-day water context.
+
+    Only on explicit selected-field request. Never fetches additional
+    providers for all 500 fields on the main dashboard.
+    """
+    field = find_field(field_id)
+    details = await compose_field_resilient(field)
+    return await build_agronomy(field, details["forecast"])
 
 
 @app.get('/api/risks/scenarios')
