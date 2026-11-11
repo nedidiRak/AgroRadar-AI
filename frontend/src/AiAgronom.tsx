@@ -24,6 +24,7 @@ type FieldContext = {
 type KnowledgeNote = { id: string; text: string; source_kind?: string; expert_validated?: boolean }
 type Message = { role: 'user' | 'assistant'; content: string; knowledge?: KnowledgeNote[] }
 type AiStatus = { configured: boolean; model: string; provider: string }
+type AiHealth = { availability: 'online'|'model_unknown'|'invalid_key'|'limited'|'unavailable'|'not_configured'; description: string; checked_at?: number }
 type ChatResult = {
   answer: string
   model: string
@@ -67,6 +68,7 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
 }) {
   const [status, setStatus] = useState<AiStatus | null>(null)
   const [statusError, setStatusError] = useState('')
+  const [health, setHealth] = useState<AiHealth | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [prompt, setPrompt] = useState('')
   const [busy, setBusy] = useState(false)
@@ -86,6 +88,28 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
       .catch(() => { if (mounted) setStatusError('Не удалось проверить ИИ-сервис. Проверь запуск FastAPI.') })
     return () => { mounted = false }
   }, [])
+  useEffect(() => {
+    if (!status?.configured) return
+    const controller = new AbortController()
+    apiFetch('/api/ai/check', {signal:controller.signal})
+      .then(async response => {
+        if (!response.ok) throw new Error('Не удалось проверить провайдера')
+        return response.json() as Promise<AiHealth>
+      })
+      .then(data => { if (!controller.signal.aborted) setHealth(data) })
+      .catch(() => { if (!controller.signal.aborted) setHealth({availability:'unavailable',description:'Проверка доступности не удалась.'}) })
+    return () => controller.abort()
+  }, [status?.configured])
+
+  const providerText = !status ? statusError || 'Проверка настройки…'
+    : !status.configured ? 'Нет API-ключа'
+    : !health ? 'Ключ настроен · проверка…'
+    : health.availability === 'online' ? 'DeepSeek доступен'
+    : health.availability === 'model_unknown' ? 'Проверить модель'
+    : health.availability === 'invalid_key' ? 'Неверный ключ'
+    : health.availability === 'limited' ? 'Лимит DeepSeek'
+    : 'DeepSeek недоступен'
+
   useEffect(() => { if (messages.length || busy) { const node = messagesRef.current; if (node) node.scrollTop = node.scrollHeight } }, [messages, busy])
 
   async function send(text: string) {
@@ -162,9 +186,9 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
       </div>
       <div className="agro-ai__header-actions">
         {ui.aiStatus && <div className="agro-ai__status" role="status">
-          <span className={`agro-ai__signal ${status?.configured ? 'agro-ai__signal--online' : ''}`} />
-          <span className="agro-ai__status-full">{status ? status.configured ? 'DeepSeek подключён' : 'Требуется API-ключ' : statusError || 'Проверка подключения…'}</span>
-          <span className="agro-ai__status-short">{status ? status.configured ? 'Онлайн' : 'Нет ключа' : statusError ? 'Ошибка' : 'Проверка'}</span>
+          <span className={`agro-ai__signal ${health?.availability === 'online' ? 'agro-ai__signal--online' : ''}`} />
+          <span className="agro-ai__status-full" title={health?.description}>{providerText}</span>
+          <span className="agro-ai__status-short" title={health?.description}>{health?.availability==='online'?'Доступен':status?.configured?'Проверка':'Нет ключа'}</span>
         </div>}
         <details className="agro-ai__more" ref={moreRef}>
           <summary title="Дополнительные действия" aria-label="Дополнительные действия чата"><MoreHorizontal size={20}/></summary>
