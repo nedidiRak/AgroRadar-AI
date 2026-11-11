@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, AlertTriangle, CheckCircle2, Download, FileDown, FileText, History, LockKeyhole, RefreshCcw, ShieldAlert } from 'lucide-react'
+import { Activity, AlertTriangle, CheckCircle2, ClipboardList, Download, FileDown, FileText, History, LockKeyhole, RefreshCcw, ShieldAlert } from 'lucide-react'
 import { apiFetch } from './authClient'
 import './OperationsCenter.css'
+import FieldTasks, { type SuggestedInspection } from './FieldTasks'
 
 type Level = 'high' | 'medium' | 'low' | 'unknown'
 type Field = { id: number; name: string; crop: string; risk: { level: Level } }
@@ -69,6 +70,7 @@ export default function OperationsCenter({ fields, activeId, onPick, canEdit, mo
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [suggestedInspection, setSuggestedInspection] = useState<SuggestedInspection | null>(null)
   const active = useMemo(() => fields.find(f => f.id === activeId), [fields, activeId])
 
   async function refresh() {
@@ -143,13 +145,20 @@ export default function OperationsCenter({ fields, activeId, onPick, canEdit, mo
           <span className={`agr-ops-risk agr-ops-risk--${alert.severity}`}>{alert.severity === 'high' ? 'Высокий' : 'Умеренный'} · {alert.status === 'open' ? 'Открыт' : alert.status === 'acknowledged' ? 'Принят' : 'Завершён'}</span></div>
         <p>{alert.reason}</p><p><b>Проверить:</b> {alert.action}</p>
         <small>Источник: {alert.source} · обновлено {new Date(alert.last_seen).toLocaleString('ru-RU')}</small>
-        {canEdit && alert.status !== 'resolved' && <div className="agr-ops-alert-actions">
-          <button disabled={busy} onClick={()=>void changeAlert(alert, alert.status === 'open' ? 'acknowledged' : 'open')}>
+        {canEdit && <div className="agr-ops-alert-actions">
+          {alert.status !== 'resolved' && <button disabled={busy} onClick={()=>void changeAlert(alert, alert.status === 'open' ? 'acknowledged' : 'open')}>
             <CheckCircle2 size={15}/>{alert.status === 'open' ? 'Принять в работу' : 'Переоткрыть'}
-          </button>
+          </button>}
+          <button type="button" disabled={busy} onClick={()=>setSuggestedInspection({
+            field_id:alert.field_id,alert_id:alert.id,
+            title:'Проверить: '+alert.title,
+            action:alert.action,
+            sequence:Date.now(),
+          })}><ClipboardList size={15}/> Создать задание</button>
         </div>}
       </article>)}</div>
     </div>
+    <FieldTasks fields={fields} canEdit={canEdit} suggested={suggestedInspection}/>
     <div className="agr-ops-panel">
       <div className="agr-ops-panel-title"><div><h2><FileText size={19}/> Отчётность</h2><p>Отчёт содержит источник, дату, правила рисков и действия агронома.</p></div></div>
       <div className="agr-ops-report-actions">
