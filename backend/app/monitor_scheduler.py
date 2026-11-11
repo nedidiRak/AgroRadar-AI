@@ -12,6 +12,7 @@ import logging
 import os
 import threading
 from datetime import datetime, timezone
+from contextlib import asynccontextmanager
 from fastapi import APIRouter, HTTPException
 from typing import Awaitable, Callable
 
@@ -129,5 +130,17 @@ def attach_monitor(
             except asyncio.CancelledError:
                 pass
 
-    app.add_event_handler("startup", on_startup)
-    app.add_event_handler("shutdown", on_shutdown)
+    # Newer FastAPI releases removed app.add_event_handler.
+    # Compose with the existing lifespan rather than replacing it outright.
+    original_lifespan = app.router.lifespan_context
+
+    @asynccontextmanager
+    async def monitor_lifespan(instance):
+        async with original_lifespan(instance):
+            await on_startup()
+            try:
+                yield
+            finally:
+                await on_shutdown()
+
+    app.router.lifespan_context = monitor_lifespan
