@@ -3,6 +3,7 @@ import UserManager from './UserManager'
 import UiSettings from './UiSettings'
 import { loadPreferences, savePreferences, presetPreferences, type UiPreferences, type UiFlag, type UiPreset } from './uiPreferences'
 import OperationsCenter from './OperationsCenter'
+import AgronomyInsights from './AgronomyInsights'
 import { apiFetch } from './authClient'
 import { setCsrfToken, setCurrentUser, getCurrentUser } from './authClient'
 import React, { useCallback, useEffect, useState } from 'react'
@@ -301,7 +302,7 @@ function App() {
       <nav aria-label="Разделы приложения" className="agr-navigation" style={{'--agr-nav-count':canEdit?5:4} as React.CSSProperties}>
         {[...navigation,...(canEdit ? [{id:'users' as View,label:'Пользователи',Icon:Users}] : [])].map(({id,label,Icon})=><button key={id} type="button" className={`menu agr-nav-item ${view===id?'active':''}`} aria-label={label} title={label} aria-current={view===id?'page':undefined} onClick={()=>navigate(id)}><Icon size={19}/><span>{label}</span></button>)}
       </nav>
-      <div className="agr-sidebar-meta"><div className="agr-sidebar-meta__dot"/> {currentUser?.username ?? 'Пользователь'} · {canEdit ? 'Администратор' : 'Наблюдатель'}<br/>AgroRadar · IT-спринт<br/><span>Русагро / Final Suite 3.5</span></div>
+      <div className="agr-sidebar-meta"><div className="agr-sidebar-meta__dot"/> {currentUser?.username ?? 'Пользователь'} · {canEdit ? 'Администратор' : 'Наблюдатель'}<br/>AgroRadar · IT-спринт<br/><span>Русагро / AgroRadar 4.0</span></div>
     </aside>
     <main className="content agr-content">
       <header className="agr-header">
@@ -345,8 +346,8 @@ function App() {
             </>:<p className="agr-empty">Выбери участок, чтобы посмотреть прогноз.</p>}
           </article>}
         </div>
-        {ui.overviewRiskDetails && <RiskDashboard fieldName={active?.name ?? 'не выбрано'} analysis={active?.risk_analysis}/>}
-        {ui.overviewHelp && <details className="agr-disclosure agr-data-info"><summary><Info size={15}/> Как читать показатели <ChevronDown size={15}/></summary><p>{demo?'Погода и прогноз приведены для демонстрации.':'Погодные данные и прогноз получены от OpenWeather; это модельные данные, не датчики непосредственно на участке.'} AgroRisk Engine v3.0 оценивает заморозки, осадки, ветер и сухую жару, показывает неполные данные и проверяемые действия по открытым учебным порогам. Это не подтверждённый прогноз ущерба культуре и не диагноз засухи. Отсутствующие погодные показатели помечаются как «Нет данных». Сценарии для жюри не влияют на реальные поля или контекст DeepSeek. Границы исходных полей могут быть демонстрационными.</p></details>}
+        {ui.overviewRiskDetails && <><RiskDashboard fieldName={active?.name ?? 'не выбрано'} analysis={active?.risk_analysis}/><AgronomyInsights fieldId={active?.id??null}/></>}
+        {ui.overviewHelp && <details className="agr-disclosure agr-data-info"><summary><Info size={15}/> Как читать показатели <ChevronDown size={15}/></summary><p>{demo?'Погода и прогноз приведены для демонстрации.':'Погодные данные и прогноз получены от OpenWeather; это модельные данные, не датчики непосредственно на участке.'} AgroRisk Engine v4.0 оценивает заморозки, осадки, ветер и сухую жару, показывает неполные данные и проверяемые действия по открытым учебным порогам. Это не подтверждённый прогноз ущерба культуре и не диагноз засухи. Отсутствующие погодные показатели помечаются как «Нет данных». Сценарии для жюри не влияют на реальные поля или контекст DeepSeek. Границы исходных полей могут быть демонстрационными.</p></details>}
       </section>
 
       <section className="agr-page agr-page--fields" hidden={view!=='fields'} aria-label="Карта и управление полями">
