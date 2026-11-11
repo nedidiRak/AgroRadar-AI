@@ -37,4 +37,4 @@ def test_invalid_polygons_rejected(monkeypatch, tmp_path):
                  [[36.57,50.60],[36.60,50.63],[36.57,50.63],[36.60,50.60]]):
         response = client.put('/api/fields/1/geometry',json={'coordinates':ring})
         assert response.status_code == 422, (ring,response.text)
-    assert client.get('/api/health').json()['version']=='3.5.0'
+    assert client.get('/api/health').json()['version']==main.app.version

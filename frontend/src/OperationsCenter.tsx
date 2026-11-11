@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, AlertTriangle, CheckCircle2, Download, FileDown, FileText, History, LockKeyhole, RefreshCcw, ShieldAlert } from 'lucide-react'
+import { Activity, AlertTriangle, CheckCircle2, ClipboardList, Download, FileDown, FileText, History, LockKeyhole, RefreshCcw, ShieldAlert } from 'lucide-react'
 import { apiFetch } from './authClient'
 import './OperationsCenter.css'
+import FieldTasks, { type SuggestedInspection } from './FieldTasks'
 
 type Level = 'high' | 'medium' | 'low' | 'unknown'
 type Field = { id: number; name: string; crop: string; risk: { level: Level } }
@@ -18,6 +19,7 @@ type Alert = {
 }
 type Summary = { monitored_fields: number; open_alerts: number; acknowledged_alerts: number; resolved_alerts: number; activity_count: number }
 type Event = { id: number; username: string; action: string; field_id: number | null; created_at: string; details: string }
+type Monitor = {enabled:boolean;weather_configured:boolean;running:boolean;last_finished:string|null;processed_fields:number;last_error:string;degraded_fields:number}
 type Props = { fields: Field[]; activeId: number; onPick: (id: number) => void; canEdit: boolean; mode: 'demo' | 'live_forecast' }
 const levelNames: Record<Level, string> = { high: 'Высокий', medium: 'Умеренный', low: 'Низкий', unknown: 'Нет данных' }
 
@@ -64,23 +66,26 @@ export default function OperationsCenter({ fields, activeId, onPick, canEdit, mo
   const [history, setHistory] = useState<Snapshot[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [events, setEvents] = useState<Event[]>([])
+  const [monitor, setMonitor] = useState<Monitor | null>(null)
   const [status, setStatus] = useState<'all' | 'open' | 'acknowledged' | 'resolved'>('all')
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [suggestedInspection, setSuggestedInspection] = useState<SuggestedInspection | null>(null)
   const active = useMemo(() => fields.find(f => f.id === activeId), [fields, activeId])
 
   async function refresh() {
     setLoading(true); setError('')
     try {
-      const [a, b, c, d] = await Promise.all([
+      const [a, b, c, d, m] = await Promise.all([
         getJson<Summary>('/api/operations/summary'),
         getJson<{snapshots: Snapshot[]}>(`/api/operations/fields/${activeId}/history?limit=60`),
         getJson<{alerts: Alert[]}>(`/api/operations/alerts?status=${status}`),
         canEdit ? getJson<{events: Event[]}>('/api/operations/activity?limit=30') : Promise.resolve({ events: [] as Event[] }),
+        getJson<Monitor>('/api/operations/monitor'),
       ])
-      setSummary(a); setHistory(b.snapshots); setAlerts(c.alerts); setEvents(d.events)
+      setSummary(a); setHistory(b.snapshots); setAlerts(c.alerts); setEvents(d.events); setMonitor(m)
     } catch (err) { setError(err instanceof Error ? err.message : 'Не удалось получить аналитику') }
     finally { setLoading(false) }
   }
@@ -100,6 +105,18 @@ export default function OperationsCenter({ fields, activeId, onPick, canEdit, mo
     finally { setBusy(false) }
   }
 
+  async function forceMonitor() {
+    setBusy(true);setError('');setNotice('')
+    try {
+      const res = await apiFetch('/api/operations/monitor/refresh',{method:'POST'})
+      const info = await res.json().catch(()=>({})) as {detail?:string;queued?:boolean;reason?:string}
+      if(!res.ok) throw new Error(info.detail||'Не удалось начать проверку')
+      setNotice(info.queued ? 'Обновление выбранной партии полей запущено в фоне. Предупреждения обновятся после завершения проверки.' : info.reason||'Проверка уже идёт.')
+      await refresh()
+    } catch(e) { setError(e instanceof Error?e.message:'Не удалось обновить мониторинг') }
+    finally {setBusy(false)}
+  }
+
   const printField = () => {
     if (!active) return
     window.open(`/api/reports/field/${active.id}`, '_blank', 'noopener,noreferrer')
@@ -110,6 +127,17 @@ export default function OperationsCenter({ fields, activeId, onPick, canEdit, mo
     {mode === 'demo' && <div className="agr-ops-demo"><AlertTriangle size={17}/> Демонстрационная погода: история и аналитика не являются наблюдениями реального хозяйства. Рабочие предупреждения создаются только из OpenWeather LIVE.</div>}
     {error && <div className="error" role="alert">{error}</div>}
     {notice && <div className="action-message" role="status">{notice}</div>}
+    <div className="agr-ops-monitor">
+      <div><strong>Фоновый мониторинг · AgroRadar 4.0</strong>
+      <p>{!monitor?'Загружаем статус…':monitor.enabled?'Плановое обновление включено':'Плановое обновление выключено'}.
+      {' '}За последнюю работу обработано {monitor?.processed_fields??0} участков.
+      {monitor?.last_finished&&' Последняя проверка: '+new Date(monitor.last_finished).toLocaleString('ru-RU')+'.'}
+      {monitor?.last_error&&' '+monitor.last_error}</p>
+      {!monitor?.enabled&&<small>Для непрерывной проверки при запущенном сервере: AGRORADAR_AUTO_MONITOR=1. При 500 полях опрос выполняется ограниченными партиями.</small>}
+      </div>
+      {canEdit&&<button type="button" disabled={busy||!monitor?.weather_configured||monitor?.running}
+        onClick={()=>void forceMonitor()}><RefreshCcw size={15}/> Запустить проверку</button>}
+    </div>
     <div className="agr-ops-stats">
       <div><small>Полей с историей</small><strong>{summary?.monitored_fields ?? '—'}</strong></div>
       <div><small>Открытые предупреждения</small><strong>{summary?.open_alerts ?? '—'}</strong></div>
@@ -143,13 +171,20 @@ export default function OperationsCenter({ fields, activeId, onPick, canEdit, mo
           <span className={`agr-ops-risk agr-ops-risk--${alert.severity}`}>{alert.severity === 'high' ? 'Высокий' : 'Умеренный'} · {alert.status === 'open' ? 'Открыт' : alert.status === 'acknowledged' ? 'Принят' : 'Завершён'}</span></div>
         <p>{alert.reason}</p><p><b>Проверить:</b> {alert.action}</p>
         <small>Источник: {alert.source} · обновлено {new Date(alert.last_seen).toLocaleString('ru-RU')}</small>
-        {canEdit && alert.status !== 'resolved' && <div className="agr-ops-alert-actions">
-          <button disabled={busy} onClick={()=>void changeAlert(alert, alert.status === 'open' ? 'acknowledged' : 'open')}>
+        {canEdit && <div className="agr-ops-alert-actions">
+          {alert.status !== 'resolved' && <button disabled={busy} onClick={()=>void changeAlert(alert, alert.status === 'open' ? 'acknowledged' : 'open')}>
             <CheckCircle2 size={15}/>{alert.status === 'open' ? 'Принять в работу' : 'Переоткрыть'}
-          </button>
+          </button>}
+          <button type="button" disabled={busy} onClick={()=>setSuggestedInspection({
+            field_id:alert.field_id,alert_id:alert.id,
+            title:'Проверить: '+alert.title,
+            action:alert.action,
+            sequence:Date.now(),
+          })}><ClipboardList size={15}/> Создать задание</button>
         </div>}
       </article>)}</div>
     </div>
+    <FieldTasks fields={fields} canEdit={canEdit} suggested={suggestedInspection}/>
     <div className="agr-ops-panel">
       <div className="agr-ops-panel-title"><div><h2><FileText size={19}/> Отчётность</h2><p>Отчёт содержит источник, дату, правила рисков и действия агронома.</p></div></div>
       <div className="agr-ops-report-actions">
