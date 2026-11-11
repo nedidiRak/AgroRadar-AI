@@ -163,7 +163,8 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
       <div className="agro-ai__header-actions">
         {ui.aiStatus && <div className="agro-ai__status" role="status">
           <span className={`agro-ai__signal ${status?.configured ? 'agro-ai__signal--online' : ''}`} />
-          {status ? status.configured ? 'DeepSeek подключён' : 'Требуется API-ключ' : statusError || 'Проверка подключения…'}
+          <span className="agro-ai__status-full">{status ? status.configured ? 'DeepSeek подключён' : 'Требуется API-ключ' : statusError || 'Проверка подключения…'}</span>
+          <span className="agro-ai__status-short">{status ? status.configured ? 'Онлайн' : 'Нет ключа' : statusError ? 'Ошибка' : 'Проверка'}</span>
         </div>}
         <details className="agro-ai__more" ref={moreRef}>
           <summary title="Дополнительные действия" aria-label="Дополнительные действия чата"><MoreHorizontal size={20}/></summary>
