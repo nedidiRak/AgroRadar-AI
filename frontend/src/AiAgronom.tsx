@@ -179,7 +179,7 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
       </div>
     </div>
 
-    <div className="agro-ai__layout">
+    <div className={`agro-ai__layout ${ui.aiContext ? '' : 'agro-ai__layout--chat-only'}`}>
       {ui.aiContext && <aside className={`agro-ai__context ${contextOpen ? 'agro-ai__context--open' : ''}`}>
         <button type="button" className="agro-ai__context-toggle" aria-expanded={contextOpen} onClick={() => setContextOpen(open => !open)}>
           <span><Leaf size={15}/> Данные поля <strong>{field?.name ?? 'не выбрано'}</strong></span>
