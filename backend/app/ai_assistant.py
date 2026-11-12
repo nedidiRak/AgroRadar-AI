@@ -163,6 +163,53 @@ async def request_deepseek(messages: list[dict[str, str]], api_key: str, model: 
         raise HTTPException(502, 'DeepSeek вернул некорректный ответ.') from exc
 
 
+def _expert_offline_chat(field: dict, question: str) -> dict:
+    """Visible deterministic demo, never a simulated DeepSeek response."""
+    risk = field.get('risk') or {}
+    weather = field.get('weather') or {}
+    forecast = field.get('forecast') or {}
+    source = str(weather.get('source') or 'неизвестен')
+    lines = [
+        '**ДЕМОНСТРАЦИОННЫЙ РЕЖИМ — ЭТО НЕ DEEPSEEK И НЕ НЕЙРОСЕТЬ.**',
+        '',
+        'Это встроенный пример работы диалога с данными участка без API-ключа.',
+        '',
+        f"**Выбранное поле:** {field.get('name', 'неизвестно')}.",
+        f"**Культура:** {field.get('crop', 'неизвестна')}.",
+        f"**Уровень погодного риска:** {risk.get('label', risk.get('level', 'нет данных'))}.",
+        f"**Источник погоды:** {source.upper()}.",
+    ]
+    measured = weather.get('temperature_c')
+    if isinstance(measured, (float, int)):
+        lines.append(f'**Температура воздуха:** {measured:g} °C.')
+    minimum = forecast.get('min_temperature_next_24h_c')
+    if isinstance(minimum, (float, int)):
+        lines.append(f'**Минимум прогноза на 24 часа:** {minimum:g} °C.')
+    lines += [
+        '',
+        '**Проверки для агронома:** осмотреть выбранное поле, сверить реальные наблюдения '
+        'с модельным прогнозом и проверить фазу развития культуры. '
+        'Не назначать обработку или полив только по этому демонстрационному ответу.',
+        '',
+        '**Как протестировать реального ИИ:** введи отдельный тестовый '
+        'DEEPSEEK_API_KEY в settings.env рядом с программой и перезапусти её. '
+        'В таком режиме ответы генерирует DeepSeek через API.',
+    ]
+    return {
+        'answer': '\n'.join(lines),
+        'model': 'agroradar-expert-offline-rules',
+        'usage': {'total_tokens': None},
+        'field_id': field['id'],
+        'field_name': field['name'],
+        'weather_source': source,
+        'forecast_source': str(forecast.get('source') or 'неизвестен'),
+        'risk_level': str(risk.get('level') or 'unknown'),
+        'knowledge_ids': [],
+        'knowledge_notes': [],
+        'disclaimer': 'Демонстрационный набор правил, не LLM. Решение должен принимать агроном.',
+    }
+
+
 def build_ai_router(
     find_field: Callable[[int], dict],
     compose_field: Callable[[dict], Awaitable[dict]],
@@ -172,14 +219,22 @@ def build_ai_router(
     @router.get('/status')
     def status():
         # Do not expose tokens or raw backend configuration.
+        real_key = bool(os.getenv('DEEPSEEK_API_KEY', '').strip())
+        offline_demo = os.getenv('AGRORADAR_EXPERT_PORTABLE') == '1' and not real_key
         return {
-            'configured': bool(os.getenv('DEEPSEEK_API_KEY', '').strip()),
-            'provider': 'DeepSeek',
-            'model': os.getenv('DEEPSEEK_MODEL', MODEL_DEFAULT).strip() or MODEL_DEFAULT,
+            'configured': real_key or offline_demo,
+            'provider': 'AgroRadar offline rules (НЕ DeepSeek)' if offline_demo else 'DeepSeek',
+            'model': 'agroradar-expert-offline-rules' if offline_demo
+                     else (os.getenv('DEEPSEEK_MODEL', MODEL_DEFAULT).strip() or MODEL_DEFAULT),
         }
 
     @router.get('/check')
     async def provider_check():
+        if os.getenv('AGRORADAR_EXPERT_PORTABLE') == '1' and not os.getenv('DEEPSEEK_API_KEY', '').strip():
+            return {
+                'availability': 'offline_demo',
+                'description': 'Встроенный сценарий для проверки чата, это НЕ DeepSeek. Для живой LLM нужен отдельный API-ключ.',
+            }
         return await provider_availability(
             os.getenv('DEEPSEEK_API_KEY', '').strip(),
             os.getenv('DEEPSEEK_MODEL', MODEL_DEFAULT).strip() or MODEL_DEFAULT,
@@ -188,7 +243,8 @@ def build_ai_router(
     @router.post('/chat')
     async def chat(payload: ChatRequest, request: Request):
         api_key = os.getenv('DEEPSEEK_API_KEY', '').strip()
-        if not api_key:
+        offline_demo = os.getenv('AGRORADAR_EXPERT_PORTABLE') == '1' and not api_key
+        if not api_key and not offline_demo:
             raise HTTPException(503, 'ИИ-агроном ещё не настроен. Добавь DEEPSEEK_API_KEY в backend/.env и перезапусти FastAPI.')
 
         question = payload.message.strip()
@@ -202,6 +258,8 @@ def build_ai_router(
 
         # The server, not the frontend, obtains current field/weather data.
         field = await compose_field(find_field(payload.field_id))
+        if offline_demo:
+            return _expert_offline_chat(field, question)
         notes = retrieve_notes(field.get('crop', ''), field.get('temperature_risk', field['risk'])['level'])
         weather = field['weather']
         forecast = field['forecast']
