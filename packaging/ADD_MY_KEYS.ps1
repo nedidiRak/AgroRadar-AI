@@ -27,7 +27,21 @@ $content = @(
 )
 $archive = Join-Path (Split-Path $Root -Parent) 'AgroRadar-Expert-SEND.zip'
 if (Test-Path $archive) { Remove-Item $archive -Force }
-Compress-Archive -LiteralPath $Root -DestinationPath $archive -CompressionLevel Optimal
+# Include only the executable, bundled runtime and instructions.
+# NEVER ship the local data/ folder containing field observations or accounts.
+$files = @(
+    (Join-Path $Root 'AgroRadar-Expert.exe'),
+    (Join-Path $Root '_internal'),
+    (Join-Path $Root 'README_FIRST.txt'),
+    (Join-Path $Root 'settings.env'),
+    (Join-Path $Root 'settings.env.example'),
+    (Join-Path $Root 'ADD_MY_KEYS.ps1'),
+    (Join-Path $Root 'ADD_MY_KEYS.cmd')
+)
+foreach ($file in $files) {
+    if (-not (Test-Path $file)) { throw "Не хватает файла пакета: $file" }
+}
+Compress-Archive -LiteralPath $files -DestinationPath $archive -CompressionLevel Optimal
 Write-Host ''
 Write-Host "Готов архив: $archive"
 Write-Host 'Получатель распаковывает ZIP и запускает AgroRadar-Expert.exe.'
