@@ -3,6 +3,7 @@ import type { FeatureCollection, Polygon as GeoPolygon } from 'geojson'
 import { Check, Crosshair, Expand, Focus, Layers, Map as MapIcon, Minus, Pencil, Plus, Satellite, Shrink, Undo2, X } from 'lucide-react'
 import './GeoFieldsMap.css'
 import FallbackFieldsMap from './FallbackFieldsMap'
+import { apiFetch } from './authClient'
 
 // API 2.1 provides high-resolution satellite / hybrid / street map layers.
 // It is loaded via the official Yandex script, without an extra React adapter.
@@ -35,40 +36,56 @@ const key = (import.meta.env.VITE_YANDEX_MAPS_API_KEY as string | undefined)?.tr
 // Yandex Maps 2.1 does not ship TypeScript types with this project.
 // The dynamic API is deliberately isolated in this one file.
 declare global { interface Window { ymaps?: any } }
+async function runtimeYandexKey(): Promise<string> {
+  if (key) return key
+  try {
+    // The Yandex JS API key is a *public browser-side* credential, not a
+    // backend secret. Portable builds supply it through settings.env at launch.
+    const response = await apiFetch('/api/public-config')
+    if (!response.ok) return ''
+    const data: unknown = await response.json()
+    if (!data || typeof data !== 'object' || !('yandex_maps_api_key' in data)) return ''
+    const value = (data as {yandex_maps_api_key:unknown}).yandex_maps_api_key
+    return typeof value === 'string' ? value.trim() : ''
+  } catch { return '' }
+}
 let apiPromise: Promise<any> | null = null
 function loadYandexMaps(): Promise<any> {
   if (window.ymaps?.Map) return new Promise((resolve, reject) => {
     window.ymaps.ready(() => resolve(window.ymaps), (e: unknown) => reject(e))
   })
   if (apiPromise) return apiPromise
-  apiPromise = new Promise((resolve, reject) => {
-    if (!key) { reject(new Error('Нет ключа VITE_YANDEX_MAPS_API_KEY в frontend/.env.local')); return }
-    const script = document.createElement('script')
-    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(key)}&lang=ru_RU`
-    script.async = true
-    script.dataset.agroradarYandex = '1'
-    let settled = false
-    const timeout = window.setTimeout(() => fail('Превышено время ожидания Яндекс Карт'), 20000)
-    function fail(message: string) {
-      if (settled) return
-      settled = true
-      window.clearTimeout(timeout)
-      script.remove()
-      reject(new Error(message))
-    }
-    script.onerror = () => fail('Не удалось загрузить JavaScript API 2.1. Проверь сеть и вкладку Network (api-maps.yandex.ru/2.1).')
-    script.onload = () => {
-      if (settled) return
-      if (!window.ymaps?.ready) { fail('Ответ получен, но объект ymaps не создан. Проверь ответ API в Network.'); return }
-      window.ymaps.ready(() => {
+  apiPromise = (async () => {
+    const liveKey = await runtimeYandexKey()
+    if (!liveKey) throw new Error('Нет ключа Яндекс Карт; доступна резервная схема OpenStreetMap.')
+    return new Promise<any>((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(liveKey)}&lang=ru_RU`
+      script.async = true
+      script.dataset.agroradarYandex = '1'
+      let settled = false
+      const timeout = window.setTimeout(() => fail('Превышено время ожидания Яндекс Карт'), 20000)
+      function fail(message: string) {
         if (settled) return
         settled = true
         window.clearTimeout(timeout)
-        resolve(window.ymaps)
-      }, (e: unknown) => fail(`Яндекс Карты не инициализировались: ${String(e)}`))
-    }
-    document.head.appendChild(script)
-  }).catch((error) => { apiPromise = null; throw error })
+        script.remove()
+        reject(new Error(message))
+      }
+      script.onerror = () => fail('Не удалось загрузить API Яндекс Карт.')
+      script.onload = () => {
+        if (settled) return
+        if (!window.ymaps?.ready) { fail('Не получен ответ API Яндекс Карт.'); return }
+        window.ymaps.ready(() => {
+          if (settled) return
+          settled = true
+          window.clearTimeout(timeout)
+          resolve(window.ymaps)
+        }, (e: unknown) => fail(`Яндекс Карты не инициализировались: ${String(e)}`))
+      }
+      document.head.appendChild(script)
+    })
+  })().catch((error) => { apiPromise = null; throw error })
   return apiPromise
 }
 

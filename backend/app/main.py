@@ -36,6 +36,12 @@ app.middleware('http')(auth_guard)
 app.include_router(auth_router)
 app.include_router(monitoring_router)
 app.include_router(backup_router)
+
+@app.get('/api/public-config', include_in_schema=False)
+def public_client_config():
+    """Only the Yandex Maps browser key; never DeepSeek or OpenWeather secrets."""
+    return {'yandex_maps_api_key': os.getenv('VITE_YANDEX_MAPS_API_KEY', '').strip()}
+
 logger = logging.getLogger(__name__)
 app.add_middleware(
     CORSMiddleware,
@@ -52,8 +58,9 @@ FIELDS = [
 ]
 
 # Saved user-traced polygons are persisted separately from demo geometry.
-GEOMETRY_FILE = Path(__file__).resolve().parents[1] / 'data' / 'field_geometries.json'
-CATALOG_FILE = Path(__file__).resolve().parents[1] / 'data' / 'fields.json'
+DATA_DIR = Path(os.getenv('AGRORADAR_DATA_DIR', str(Path(__file__).resolve().parents[1] / 'data')))
+GEOMETRY_FILE = DATA_DIR / 'field_geometries.json'
+CATALOG_FILE = DATA_DIR / 'fields.json'
 CATALOG_LOCK = threading.RLock()
 
 class GeometryUpdate(BaseModel):

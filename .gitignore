@@ -6,6 +6,9 @@ venv/
 .pytest_cache/
 # Secrets
 .env
+settings.env
+**/settings.env
+AgroRadar-Expert-SEND.zip
 *.sqlite3
 # Frontend
 node_modules/

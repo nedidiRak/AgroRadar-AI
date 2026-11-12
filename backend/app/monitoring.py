@@ -7,6 +7,7 @@ Demo weather is historical demonstration data, never a real operational alert.
 from __future__ import annotations
 
 import json
+import os
 from contextlib import contextmanager
 import sqlite3
 import threading
@@ -18,7 +19,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Literal
 
-DATABASE_FILE = Path(__file__).resolve().parents[1] / "data" / "monitoring.sqlite3"
+DATA_DIR = Path(os.getenv('AGRORADAR_DATA_DIR', str(Path(__file__).resolve().parents[1] / 'data')))
+DATABASE_FILE = DATA_DIR / 'monitoring.sqlite3'
 _LOCK = threading.RLock()
 MAX_FIELD_SNAPSHOTS = 240
 router = APIRouter(prefix="/api/operations", tags=["История и предупреждения"])
