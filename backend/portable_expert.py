@@ -66,6 +66,11 @@ def main() -> None:
     os.environ["AGRORADAR_WIFI_ADAPTERS"] = "[]"
     os.environ["AGRORADAR_SECURE_COOKIES"] = "0"
     os.environ["AGRORADAR_AUTO_MONITOR"] = "0"
+    os.environ["AGRORADAR_DATA_DIR"] = str(ROOT / "data")
+    asset_base = Path(getattr(sys, "_MEIPASS", ROOT))
+    os.environ["AGRORADAR_FRONTEND_DIST"] = str(asset_base / "frontend" / "dist")
+    if not (asset_base / "frontend" / "dist" / "index.html").is_file():
+        raise RuntimeError("Нет встроенного интерфейса React. Скачай весь ZIP и распакуй папку целиком.")
     # The password in this disposable local evaluator build is NOT a real secret.
     # Never use these credentials for a real or network-facing deployment.
     os.environ["AGRORADAR_ADMIN_PASSWORD"] = DEFAULT_PASSWORD
