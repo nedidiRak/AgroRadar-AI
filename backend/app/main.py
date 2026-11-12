@@ -52,8 +52,9 @@ FIELDS = [
 ]
 
 # Saved user-traced polygons are persisted separately from demo geometry.
-GEOMETRY_FILE = Path(__file__).resolve().parents[1] / 'data' / 'field_geometries.json'
-CATALOG_FILE = Path(__file__).resolve().parents[1] / 'data' / 'fields.json'
+DATA_DIR = Path(os.getenv('AGRORADAR_DATA_DIR', str(Path(__file__).resolve().parents[1] / 'data')))
+GEOMETRY_FILE = DATA_DIR / 'field_geometries.json'
+CATALOG_FILE = DATA_DIR / 'fields.json'
 CATALOG_LOCK = threading.RLock()
 
 class GeometryUpdate(BaseModel):
