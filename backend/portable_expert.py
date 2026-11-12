@@ -98,9 +98,18 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # PyInstaller Windows runners use a legacy cp1252/866 console when
+    # stdout is redirected. Force Unicode so Russian instructions cannot
+    # crash the real frozen executable before server initialization.
+    if sys.platform == "win32":
+        os.system("chcp 65001 >NUL")
+    for channel in (sys.stdout, sys.stderr):
+        if hasattr(channel, "reconfigure"):
+            channel.reconfigure(encoding="utf-8", errors="replace")
     try:
         main()
     except Exception as exc:
         print("\n[ERROR] Не удалось запустить AgroRadar:", type(exc).__name__, str(exc), flush=True)
-        input("Нажми Enter для выхода...")
+        if sys.stdin and sys.stdin.isatty():
+            input("Нажми Enter для выхода...")
         raise
