@@ -28,8 +28,9 @@ from pydantic import BaseModel, Field
 COOKIE_NAME = "agroradar_session"
 SESSION_SECONDS = 8 * 60 * 60
 HASH_ITERATIONS = 260_000
-PASSWORD_FILE = Path(__file__).resolve().parents[1] / "data" / "admin_access.txt"
-USERS_FILE = Path(__file__).resolve().parents[1] / "data" / "viewer_accounts.json"
+DATA_DIR = Path(os.getenv('AGRORADAR_DATA_DIR', str(Path(__file__).resolve().parents[1] / 'data')))
+PASSWORD_FILE = DATA_DIR / 'admin_access.txt'
+USERS_FILE = DATA_DIR / 'viewer_accounts.json'
 
 _LOCK = threading.RLock()
 # opaque cookie token -> (expiry, csrf, username, immutable account id)
