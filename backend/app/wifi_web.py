@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+FRONTEND_DIST = Path(os.getenv('AGRORADAR_FRONTEND_DIST', str(Path(__file__).resolve().parents[2] / 'frontend' / 'dist')))
 
 
 def demo_addresses() -> list[str]:
