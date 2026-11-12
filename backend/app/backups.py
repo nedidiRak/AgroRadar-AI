@@ -20,7 +20,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+DATA_DIR = Path(os.getenv('AGRORADAR_DATA_DIR', str(Path(__file__).resolve().parents[1] / 'data')))
 BACKUP_DIR = DATA_DIR / "backups"
 MAX_BACKUPS_PER_FILE = 15
 router = APIRouter(prefix="/api/admin", tags=["Резервные копии"])
