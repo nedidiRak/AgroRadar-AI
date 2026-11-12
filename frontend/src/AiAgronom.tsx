@@ -24,7 +24,7 @@ type FieldContext = {
 type KnowledgeNote = { id: string; text: string; source_kind?: string; expert_validated?: boolean }
 type Message = { role: 'user' | 'assistant'; content: string; knowledge?: KnowledgeNote[] }
 type AiStatus = { configured: boolean; model: string; provider: string }
-type AiHealth = { availability: 'online'|'model_unknown'|'invalid_key'|'limited'|'unavailable'|'not_configured'; description: string; checked_at?: number }
+type AiHealth = { availability: 'online'|'model_unknown'|'invalid_key'|'limited'|'unavailable'|'not_configured'|'offline_demo'; description: string; checked_at?: number }
 type ChatResult = {
   answer: string
   model: string
@@ -105,6 +105,7 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
     : !status.configured ? 'Нет API-ключа'
     : !health ? 'Ключ настроен · проверка…'
     : health.availability === 'online' ? 'DeepSeek доступен'
+    : health.availability === 'offline_demo' ? 'Демо-диалог · не DeepSeek'
     : health.availability === 'model_unknown' ? 'Проверить модель'
     : health.availability === 'invalid_key' ? 'Неверный ключ'
     : health.availability === 'limited' ? 'Лимит DeepSeek'
@@ -188,7 +189,7 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
         {ui.aiStatus && <div className="agro-ai__status" role="status">
           <span className={`agro-ai__signal ${health?.availability === 'online' ? 'agro-ai__signal--online' : ''}`} />
           <span className="agro-ai__status-full" title={health?.description}>{providerText}</span>
-          <span className="agro-ai__status-short" title={health?.description}>{health?.availability==='online'?'Доступен':status?.configured?'Проверка':'Нет ключа'}</span>
+          <span className="agro-ai__status-short" title={health?.description}>{health?.availability==='online'?'Доступен':health?.availability==='offline_demo'?'Демо':status?.configured?'Проверка':'Нет ключа'}</span>
         </div>}
         <details className="agro-ai__more" ref={moreRef}>
           <summary title="Дополнительные действия" aria-label="Дополнительные действия чата"><MoreHorizontal size={20}/></summary>
