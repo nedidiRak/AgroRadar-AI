@@ -36,7 +36,6 @@ const key = (import.meta.env.VITE_YANDEX_MAPS_API_KEY as string | undefined)?.tr
 // Yandex Maps 2.1 does not ship TypeScript types with this project.
 // The dynamic API is deliberately isolated in this one file.
 declare global { interface Window { ymaps?: any } }
-let apiPromise: Promise<any> | null = null
 async function runtimeYandexKey(): Promise<string> {
   if (key) return key
   try {
