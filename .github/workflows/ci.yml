@@ -99,3 +99,45 @@ jobs:
       - name: Launch real LAN Uvicorn and smoke-test SPA / QR / login
         run: python tests/smoke_wifi_server.py
         working-directory: backend
+
+  expert_portable:
+    name: Expert portable Windows EXE (zero-install + CRUD smoke)
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build expert frontend (public key loaded at runtime)
+        working-directory: frontend
+        env:
+          VITE_YANDEX_MAPS_API_KEY: ''
+        run: |
+          npm ci
+          npm run build
+      - name: Install backend and Windows packager
+        run: python -m pip install -r backend/requirements.txt pyinstaller
+      - name: Freeze fully bundled local expert evaluator
+        shell: pwsh
+        run: .\packaging\build_expert.ps1
+      - name: Real EXE startup and expert CRUD smoke
+        env:
+          DEEPSEEK_API_KEY: ''
+          OPENWEATHER_API_KEY: ''
+          AGRORADAR_WATER_CONTEXT: '0'
+        run: python backend/tests/smoke_expert_portable.py
+      - name: Upload READY-TO-SEND Windows expert archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: AgroRadar-Expert-Windows-v4
+          path: dist/AgroRadar-Expert/
+          if-no-files-found: error
+          retention-days: 30
