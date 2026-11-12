@@ -16,6 +16,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
 BUILT = ROOT / "dist" / "AgroRadar-Expert"
@@ -126,6 +127,44 @@ def main():
                 except subprocess.TimeoutExpired:
                     proc.kill()
                     proc.wait(timeout=5)
+
+        # PowerShell 5.1 on a clean Windows machine MUST be able to create
+        # a SEND archive after the real EXE created local demo records.
+        # Verify secret injection and exclusion of all local user data.
+        helper = dest / "ADD_MY_KEYS.ps1"
+        assert helper.read_bytes().isascii(), "Legacy PowerShell 5.1 requires ASCII-only script or UTF8-BOM."
+        result = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+             "-File", str(helper), "-NonInteractive",
+             "-OpenWeatherKey", "CI_OPENWEATHER",
+             "-DeepSeekKey", "CI_DEEPSEEK",
+             "-YandexKey", "CI_YANDEX"],
+            cwd=dest, capture_output=True, text=True, timeout=120,
+        )
+        assert result.returncode == 0, (
+            "PowerShell 5.1 ADD_MY_KEYS failed:\n"
+            + result.stdout[-5000:] + "\n" + result.stderr[-5000:]
+        )
+        send = dest.parent / "AgroRadar-Expert-SEND.zip"
+        assert send.is_file(), "SEND ZIP is missing"
+        with zipfile.ZipFile(send) as archive:
+            assert archive.testzip() is None
+            names = archive.namelist()
+            assert "AgroRadar-Expert.exe" in names
+            assert "ADD_MY_KEYS.cmd" in names
+            assert "ADD_MY_KEYS.ps1" in names
+            assert "settings.env" in names
+            assert any(name.startswith("_internal/") for name in names)
+            assert not any(
+                name.startswith("data/") or name.endswith("admin_access.txt")
+                or name.endswith("viewer_accounts.json") or name.endswith(".sqlite3")
+                for name in names
+            ), "SEND ZIP leaked local evaluator data"
+            env_settings = archive.read("settings.env").decode("utf-8")
+            assert "OPENWEATHER_API_KEY=CI_OPENWEATHER" in env_settings
+            assert "DEEPSEEK_API_KEY=CI_DEEPSEEK" in env_settings
+            assert "VITE_YANDEX_MAPS_API_KEY=CI_YANDEX" in env_settings
+        print("POWERSHELL 5.1 KEY HELPER SMOKE: real ZIP and all keys passed; data excluded", flush=True)
 
 
 if __name__ == "__main__":
