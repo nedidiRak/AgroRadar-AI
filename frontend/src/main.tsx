@@ -63,6 +63,7 @@ function TemperatureTimeline({forecast}:{forecast:Forecast}) {
       <text x="14" y="116" fill="#95b5a5" fontSize="10">{time(points[0].timestamp)}</text>
       <text x="338" y="116" fill="#95b5a5" fontSize="10" textAnchor="end">{time(points[points.length-1].timestamp)}</text>
     </svg>
+    <div className="timeline-legend" aria-label="Обозначения прогноза"><span>°C — температура воздуха</span><span>☔ % — вероятность осадков</span></div>
     <div className="timeline-data">{points.map(p=><div key={p.timestamp} title={p.precipitation_probability_pct===null?'Нет данных о вероятности осадков':`Вероятность осадков: ${p.precipitation_probability_pct}%`}><small>{time(p.timestamp)}</small><strong>{p.temperature_c > 0 ? '+' : ''}{p.temperature_c}°</strong><span>{p.precipitation_probability_pct===null?'—':`☔ ${p.precipitation_probability_pct}%`}</span></div>)}</div>
     <p className="timeline-disclaimer">Значения — прогнозные точки модели, не измерения на поле. Минимум риска рассчитан по температурным минимумам 3-часовых интервалов.</p>
   </section>
