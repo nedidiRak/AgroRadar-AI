@@ -87,3 +87,23 @@ async def test_http_error_sanitized(monkeypatch):
         await ai_assistant.request_deepseek([{'role':'user','content':'hi'}], 'DUMMY', 'deepseek-flash')
     assert ex.value.status_code == 502
     assert 'secret debug message' not in str(ex.value.detail)
+
+
+def test_expert_offline_preview_reacts_to_first_question():
+    """Independent first turns must not all return the same canned greeting."""
+    field = {
+        'id': 1, 'name': 'Поле Северное', 'crop': 'Пшеница',
+        'weather': {'source': 'demo', 'temperature_c': 7.2, 'wind_ms': 14.1},
+        'forecast': {'min_temperature_next_24h_c': 3.5, 'source': 'demo'},
+        'risk': {'level': 'medium', 'label': 'Умеренный'},
+    }
+    who = ai_assistant._expert_offline_chat(field, 'Кто ты?')['answer']
+    risks = ai_assistant._expert_offline_chat(field, 'Оцени погодные риски')['answer']
+    wind = ai_assistant._expert_offline_chat(field, 'Какая скорость ветра?')['answer']
+    unknown = ai_assistant._expert_offline_chat(field, 'Расскажи шутку')['answer']
+    assert 'не DeepSeek' in who or 'НЕ DEEPSEEK' in who
+    assert 'демонстрационный помощник' in who
+    assert 'Погодные показатели' in risks
+    assert '14.1 м/с' in wind
+    assert 'недостаточно' in unknown
+    assert len({who, risks, wind, unknown}) == 4
