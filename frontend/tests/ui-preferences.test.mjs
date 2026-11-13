@@ -134,7 +134,7 @@ test('all review-critical panels use the active palette rather than hard-coded f
       '.agr-summary-strip', '.agr-weather-summary>div',
       '.agr-ops-banner', '.agr-ops-stats>div', '.agr-ops-monitor',
       '.agr-ops-alert', '.agr-ops-panel', '.agro-ai__message--assistant',
-      '.agr-theme-choices', '.agr-settings-preset', '.agr-risk-engine',
+      '.agr-theme-choice', '.agr-settings-preset', '.agr-risk-engine',
     ]) {
       assert.ok(
         coverage.includes('agr-theme--'+theme+' '+component) ||
