@@ -4,6 +4,7 @@ import { Check, Crosshair, Expand, Focus, Layers, Map as MapIcon, Minus, Pencil,
 import './GeoFieldsMap.css'
 import FallbackFieldsMap from './FallbackFieldsMap'
 import { apiFetch } from './authClient'
+import type { UiTheme } from './uiAppearance'
 
 // API 2.1 provides high-resolution satellite / hybrid / street map layers.
 // It is loaded via the official Yandex script, without an extra React adapter.
@@ -22,6 +23,7 @@ type Props = {
   onSaveGeometry: (fieldId: number, points: [number, number][]) => Promise<boolean>;
   onCreateOutline: (points: [number, number][]) => void;
   canEdit?: boolean;
+  theme?: UiTheme;
 }
 type LayerName = 'satellite' | 'hybrid' | 'map'
 type LatLon = [number, number]
@@ -101,7 +103,7 @@ function boundsOf(fields: Field[]): LatLon[] | null {
   return [[minLat - latPad, minLon - lonPad], [maxLat + latPad, maxLon + lonPad]]
 }
 
-export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSaveGeometry, onCreateOutline, canEdit = true }: Props) {
+export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSaveGeometry, onCreateOutline, canEdit = true, theme = 'forest' }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const drawnObjectsRef = useRef<any>(null)
@@ -292,20 +294,21 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
     const api = window.ymaps
     collection.removeAll()
     if (drawing && points.length > 0) {
-      const line = new api.Polyline(points, {}, { strokeColor: '#48e6aa', strokeWidth: 4, strokeStyle: 'dash' })
+      const drawColor = theme === 'ocean' ? '#71ceff' : theme === 'graphite' ? '#ebbe76' : '#48e6aa'
+      const line = new api.Polyline(points, {}, { strokeColor: drawColor, strokeWidth: 4, strokeStyle: 'dash' })
       collection.add(line)
       if (points.length >= 3) {
         collection.add(new api.Polygon([points], {}, {
-          strokeColor: '#48e6aa', strokeWidth: 2, fillColor: '#48e6aa', fillOpacity: 0.22,
+          strokeColor: drawColor, strokeWidth: 2, fillColor: drawColor, fillOpacity: 0.22,
         }))
       }
       // Small vertex marks help with precise boundary drawing.
       points.forEach(p => collection.add(new api.Circle([p, 7], {}, {
-        fillColor: '#48e6aa', fillOpacity: 1, strokeColor: '#ffffff', strokeWidth: 1.5,
+        fillColor: drawColor, fillOpacity: 1, strokeColor: '#ffffff', strokeWidth: 1.5,
       })))
     }
     collection.options.set('interactivityModel', 'default#silent')
-  }, [loaded, drawing, points])
+  }, [loaded, drawing, points, theme])
 
   useEffect(() => {
     if (!loaded || !mapRef.current || !centersKey || drawing) return
