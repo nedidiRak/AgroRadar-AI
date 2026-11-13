@@ -1,7 +1,8 @@
 import AuthGate from './AuthGate'
 import UserManager from './UserManager'
 import UiSettings from './UiSettings'
-import { loadPreferences, savePreferences, presetPreferences, type UiPreferences, type UiFlag, type UiPreset } from './uiPreferences'
+import { loadPreferences, savePreferences, presetPreferences, presetOf, type UiPreferences, type UiFlag, type UiPreset } from './uiPreferences'
+import { loadAppearance, saveAppearance, type UiAppearance } from './uiAppearance'
 import OperationsCenter from './OperationsCenter'
 import AgronomyInsights from './AgronomyInsights'
 import { apiFetch } from './authClient'
@@ -20,6 +21,7 @@ import './layout-v1.2.css'
 import './mobile-v1.3.css'
 import './agronomy-v2.1.css'
 import './ui-mobile-fixes.css'
+import './ui-appearance.css'
 
 type Weather = { temperature_c:number|null;humidity_pct:number|null;wind_ms:number|null;source:string;observed_at:string|null }
 type ForecastPoint = {timestamp:number;temperature_c:number;precipitation_probability_pct:number|null;rain_mm_3h:number|null}
@@ -76,11 +78,17 @@ function App() {
     try { storage = window.localStorage } catch { /* private browsing */ }
     return loadPreferences(storage, username, window.matchMedia?.('(max-width: 650px)').matches ?? false)
   })
+  const [appearance, setAppearance] = useState<UiAppearance>(() => {
+    try { return loadAppearance(window.localStorage, username) } catch { return loadAppearance(null, username) }
+  })
   const [settingsOpen, setSettingsOpen] = useState(false)
   const closeSettings = useCallback(() => setSettingsOpen(false), [])
   useEffect(() => {
     try { savePreferences(window.localStorage, username, ui) } catch { /* storage disabled */ }
   }, [username, ui])
+  useEffect(() => {
+    try { saveAppearance(window.localStorage, username, appearance) } catch { /* browser storage disabled */ }
+  }, [username, appearance])
   function setVisibility(key: UiFlag, visible: boolean) {
     setUi(previous => ({ ...previous, [key]: visible }))
   }
@@ -294,7 +302,7 @@ function App() {
     {!active && <option value="">Нет полей</option>}
     {data?.fields.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
   </select>
-  return <div className={`shell agr-shell ${view === 'assistant' ? 'agr-shell--assistant' : ''} ${ui.navLabels ? '' : 'agr-shell--hide-nav-labels'}`}>
+  return <div className={`shell agr-shell ${view === 'assistant' ? 'agr-shell--assistant' : ''} ${ui.navLabels ? '' : 'agr-shell--hide-nav-labels'} agr-density--${presetOf(ui)} agr-theme--${appearance.theme} agr-font--${appearance.fontSize}`}>
     <aside className="sidebar agr-sidebar">
       <div className="brand agr-brand"><div className="brand-icon"><Leaf size={23}/></div><div><strong>AgroRadar <span>AI</span></strong><small>Аналитика сельхозполей</small></div></div>
       <button type="button" className="agr-settings-launch agr-settings-launch--brand" aria-label="Настройки интерфейса" title="Настройки интерфейса" onClick={()=>setSettingsOpen(true)}><Settings2 size={19}/></button>
@@ -402,7 +410,7 @@ function App() {
       </section>
       {canEdit && <section className="agr-page agr-page--users" hidden={view!=='users'} aria-label="Управление пользователями">{view==='users' && <UserManager/>}</section>}
       {ui.footer && <footer className="agr-footer">AgroRadar AI · Конкурсный прототип · Карта: Яндекс Карты · Данные исходных участков могут быть демонстрационными</footer>}
-      {settingsOpen && <UiSettings value={ui} onChange={setVisibility} onPreset={useUiPreset} onClose={closeSettings}/>}
+      {settingsOpen && <UiSettings value={ui} appearance={appearance} onAppearance={setAppearance} onChange={setVisibility} onPreset={useUiPreset} onClose={closeSettings}/>}
       {canEdit && dialog && <div className="field-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget && !busy) setDialog(null)}}>
         <div className="field-modal" role="dialog" aria-modal="true" aria-labelledby="field-dialog-title">
           <form onSubmit={e=>void submitField(e)}>
