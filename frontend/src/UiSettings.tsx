@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Eye, RotateCcw, Settings2, X } from 'lucide-react'
+import type { UiAppearance, UiTheme, UiFontSize } from './uiAppearance'
 import {
   presetOf, type UiFlag, type UiPreferences, type UiPreset,
 } from './uiPreferences'
@@ -32,18 +33,20 @@ const sections: {title:string;hint:string;items:Entry[]}[] = [
   ]},
 ]
 const presets: {id:UiPreset;title:string;subtitle:string}[]=[
-  {id:'compact',title:'Компактный',subtitle:'Удобно для телефона и защиты'},
-  {id:'balanced',title:'Обычный',subtitle:'Для повседневной работы'},
-  {id:'expert',title:'Экспертный',subtitle:'Все блоки и подписи'},
+  {id:'compact',title:'Только главное',subtitle:'Без плиток и длинных объяснений'},
+  {id:'balanced',title:'Рабочий',subtitle:'Сводка, карта, основные детали'},
+  {id:'expert',title:'Экспертный',subtitle:'Все показатели и пояснения'},
 ]
 
 type Props = {
   value:UiPreferences
+  appearance:UiAppearance
+  onAppearance:(next:UiAppearance)=>void
   onChange:(key:UiFlag,visible:boolean)=>void
   onPreset:(preset:UiPreset)=>void
   onClose:()=>void
 }
-export default function UiSettings({value,onChange,onPreset,onClose}:Props) {
+export default function UiSettings({value,appearance,onAppearance,onChange,onPreset,onClose}:Props) {
   const dialog = useRef<HTMLElement>(null)
   const close = useRef<HTMLButtonElement>(null)
 
@@ -77,7 +80,7 @@ export default function UiSettings({value,onChange,onPreset,onClose}:Props) {
   const current=presetOf(value)
   return createPortal(<div className="agr-settings-backdrop" role="presentation"
     onMouseDown={event=>{if(event.target===event.currentTarget)onClose()}}>
-    <section className="agr-settings-panel" ref={dialog} role="dialog" aria-modal="true"
+    <section className={'agr-settings-panel agr-theme--'+appearance.theme} ref={dialog} role="dialog" aria-modal="true"
       aria-labelledby="agr-settings-title" aria-describedby="agr-settings-description">
       <header className="agr-settings-header">
         <div className="agr-settings-icon"><Settings2 size={21}/></div>
@@ -101,6 +104,34 @@ export default function UiSettings({value,onChange,onPreset,onClose}:Props) {
             <small>{p.subtitle}</small>
           </button>)}
         </div>
+        <section className="agr-settings-appearance" aria-label="Оформление">
+          <div className="agr-settings-subheading"><strong>Тема оформления</strong><span>Меняется сразу</span></div>
+          <div className="agr-theme-choices" role="group" aria-label="Цветовая тема">
+            {([
+              {id:'forest',name:'Агро',subtitle:'Зелёная'},
+              {id:'ocean',name:'Север',subtitle:'Сине-голубая'},
+              {id:'graphite',name:'Графит',subtitle:'Нейтральная'},
+            ] as {id:UiTheme;name:string;subtitle:string}[]).map(theme=><button type="button" key={theme.id}
+              className={'agr-theme-choice agr-theme-choice--'+theme.id+(appearance.theme===theme.id?' is-selected':'')}
+              aria-pressed={appearance.theme===theme.id}
+              onClick={()=>onAppearance({...appearance,theme:theme.id})}>
+              <span className="agr-theme-swatch" aria-hidden="true"><span/><span/><span/></span>
+              <strong>{theme.name}</strong><small>{theme.subtitle}</small>
+              {appearance.theme===theme.id&&<Check size={15} className="agr-theme-check"/>}
+            </button>)}
+          </div>
+          <div className="agr-settings-subheading agr-settings-font-heading"><strong>Размер текста</strong><span>Прогнозы, подписи, чат</span></div>
+          <div className="agr-font-choices" role="group" aria-label="Размер текста">
+            {([
+              {id:'standard',name:'Обычный'},
+              {id:'comfortable',name:'Крупнее'},
+              {id:'large',name:'Максимальный'},
+            ] as {id:UiFontSize;name:string}[]).map(option=><button key={option.id} type="button"
+              aria-pressed={appearance.fontSize===option.id}
+              className={appearance.fontSize===option.id?'is-selected':''}
+              onClick={()=>onAppearance({...appearance,fontSize:option.id})}>{option.name}</button>)}
+          </div>
+        </section>
         <p className="agr-settings-scope">Настройки автоматически сохраняются в этом браузере отдельно для каждого логина. Они меняют только внешний вид, не данные или права доступа.</p>
         {sections.map(section=><section className="agr-settings-section" key={section.title}>
           <div className="agr-settings-section-head"><strong>{section.title}</strong><small>{section.hint}</small></div>

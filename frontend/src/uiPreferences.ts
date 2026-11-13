@@ -11,14 +11,15 @@ export type UiPreferences = Record<UiFlag, boolean>
 export type UiPreset = 'compact' | 'balanced' | 'expert'
 
 const compact: UiPreferences = {
-  viewerNotice:false, weatherBadge:false, overviewStats:true,
-  overviewFieldList:true, overviewForecast:true, overviewRiskDetails:true,
+  viewerNotice:false, weatherBadge:false, overviewStats:false,
+  overviewFieldList:true, overviewForecast:true, overviewRiskDetails:false,
   overviewHelp:false, aiFieldPicker:true, aiMapShortcut:false,
   aiContext:false, aiSuggestions:false, aiActions:false,
   aiTechnicalInfo:false, aiStatus:true, navLabels:true, footer:false,
 }
 const balanced: UiPreferences = {
-  ...compact, viewerNotice:false, weatherBadge:true, aiMapShortcut:true,
+  ...compact, viewerNotice:false, weatherBadge:true, overviewStats:true,
+  overviewRiskDetails:true, aiMapShortcut:true,
   aiContext:true, aiSuggestions:true, aiActions:false, footer:true,
 }
 const expert: UiPreferences = Object.fromEntries(

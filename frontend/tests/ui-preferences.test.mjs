@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { loadAppearance, saveAppearance, appearanceStorageKey } from '../src/uiAppearance.ts'
 import {
   UI_FLAGS, initialPreferences, loadPreferences, savePreferences,
   preferencesStorageKey, presetOf, presetPreferences,
@@ -88,4 +89,34 @@ test('the mobile bottom bar accommodates all 4 viewer or 5 admin destinations', 
   assert.ok(app.includes("'--agr-nav-count':canEdit?5:4"))
   assert.ok(app.includes("onOpenSettings={()=>setSettingsOpen(true)}"))
   assert.ok(app.includes('ui.viewerNotice'))
+})
+
+
+test('visual themes and readable text options persist separately per user', () => {
+  const browser = store()
+  assert.deepEqual(loadAppearance(browser, 'a'), {theme:'forest',fontSize:'comfortable'})
+  saveAppearance(browser, 'a', {theme:'ocean',fontSize:'large'})
+  assert.deepEqual(loadAppearance(browser, 'a'), {theme:'ocean',fontSize:'large'})
+  assert.deepEqual(loadAppearance(browser, 'b'), {theme:'forest',fontSize:'comfortable'})
+  browser.setItem(appearanceStorageKey('a'), '{"theme":"script","fontSize":"tiny"}')
+  assert.deepEqual(loadAppearance(browser, 'a'), {theme:'forest',fontSize:'comfortable'})
+  browser.setItem(appearanceStorageKey('a'), '{broken')
+  assert.deepEqual(loadAppearance(browser, 'a'), {theme:'forest',fontSize:'comfortable'})
+})
+
+test('compact and balanced presets visibly differ in statistics and risk details', () => {
+  const compact=presetPreferences('compact')
+  const balanced=presetPreferences('balanced')
+  const expert=presetPreferences('expert')
+  assert.equal(compact.overviewStats, false)
+  assert.equal(compact.overviewRiskDetails, false)
+  assert.equal(balanced.overviewStats, true)
+  assert.equal(balanced.overviewRiskDetails, true)
+  assert.equal(expert.aiTechnicalInfo, true)
+  const css=readFileSync(new URL('../src/ui-appearance.css', import.meta.url),'utf8')
+  for (const name of ['forest','ocean','graphite']) {
+    assert.ok(readFileSync(new URL('../src/UiSettings.tsx', import.meta.url),'utf8').includes("id:'"+name+"'"))
+  }
+  assert.ok(css.includes('.agr-shell.agr-font--large .timeline-data strong'))
+  assert.ok(css.includes('.agr-ops-alert-actions button'))
 })

@@ -164,37 +164,78 @@ async def request_deepseek(messages: list[dict[str, str]], api_key: str, model: 
 
 
 def _expert_offline_chat(field: dict, question: str) -> dict:
-    """Visible deterministic demo, never a simulated DeepSeek response."""
+    """Question-aware, clearly labeled OFFLINE preview; never imitates DeepSeek.
+
+    No recommendation here is a verified field diagnosis or live measurement.
+    Unsupported questions receive an honest limitation, not a fake LLM answer.
+    """
     risk = field.get('risk') or {}
     weather = field.get('weather') or {}
     forecast = field.get('forecast') or {}
     source = str(weather.get('source') or 'неизвестен')
-    lines = [
-        '**ДЕМОНСТРАЦИОННЫЙ РЕЖИМ — ЭТО НЕ DEEPSEEK И НЕ НЕЙРОСЕТЬ.**',
-        '',
-        'Это встроенный пример работы диалога с данными участка без API-ключа.',
-        '',
-        f"**Выбранное поле:** {field.get('name', 'неизвестно')}.",
-        f"**Культура:** {field.get('crop', 'неизвестна')}.",
-        f"**Уровень погодного риска:** {risk.get('label', risk.get('level', 'нет данных'))}.",
-        f"**Источник погоды:** {source.upper()}.",
-    ]
-    measured = weather.get('temperature_c')
-    if isinstance(measured, (float, int)):
-        lines.append(f'**Температура воздуха:** {measured:g} °C.')
-    minimum = forecast.get('min_temperature_next_24h_c')
-    if isinstance(minimum, (float, int)):
-        lines.append(f'**Минимум прогноза на 24 часа:** {minimum:g} °C.')
-    lines += [
-        '',
-        '**Проверки для агронома:** осмотреть выбранное поле, сверить реальные наблюдения '
-        'с модельным прогнозом и проверить фазу развития культуры. '
-        'Не назначать обработку или полив только по этому демонстрационному ответу.',
-        '',
-        '**Как протестировать реального ИИ:** введи отдельный тестовый '
-        'DEEPSEEK_API_KEY в settings.env рядом с программой и перезапусти её. '
-        'В таком режиме ответы генерирует DeepSeek через API.',
-    ]
+    name = str(field.get('name') or 'неизвестное поле')
+    crop = str(field.get('crop') or 'неизвестная культура')
+    level = str(risk.get('label') or risk.get('level') or 'нет данных')
+    q = question.casefold()
+
+    def number(value: object, unit: str) -> str:
+        return f'{value:g} {unit}' if isinstance(value, (float, int)) and not isinstance(value, bool) else 'нет данных'
+
+    temperature = number(weather.get('temperature_c'), '°C')
+    minimum = number(forecast.get('min_temperature_next_24h_c'), '°C')
+    wind = number(weather.get('wind_ms'), 'м/с')
+    lines = ['**ОФЛАЙН-ДЕМО · НЕ DEEPSEEK.** Это ответ по встроенным правилам, а не генерация нейросетью.', '']
+    if any(word in q for word in ('кто ты', 'ты кто', 'кем ты', 'что ты умеешь', 'что можешь', 'как тебя зовут', 'привет', 'здравствуй', 'здравствуйте')):
+        lines += [
+            '**Я — демонстрационный помощник AgroRadar.**',
+            'Без ключа DeepSeek могу показать известные показатели поля, рассказать о погодных факторах и подсказать, какие наблюдения собрать.',
+            'Для свободных вопросов и полноценного ИИ-диалога подключи DeepSeek.',
+        ]
+    elif any(word in q for word in ('ветер', 'ветр', 'порыв', 'опрыскиван', 'распылен')):
+        lines += [
+            f'**Ветер на поле «{name}»:** {wind}. Источник: {source}.',
+            'При сильном ветре нужно перепроверить прогноз и фактические условия перед полевыми работами.',
+            'Скорость ветра в этой карточке не является индивидуальным разрешением на обработку: учитывай препарат, технику и местный регламент.',
+        ]
+    elif any(word in q for word in ('замороз', 'мороз', 'холод', 'температур', 'похолод')):
+        lines += [
+            f'**Температурный контекст «{name}»:** сейчас {temperature}, минимум за 24 часа {minimum}.',
+            f'**Риск системы:** {level}. Источник: {source}.',
+            'Проверь прогноз по часам, фазу развития культуры и измерения на месте. Модельный минимум не является температурой растений.',
+        ]
+    elif any(word in q for word in ('дожд', 'осад', 'засух', 'полив', 'влаг', 'сухо', 'увлажнен')):
+        lines += [
+            f'**Водный контекст «{name}»:** культура — {crop}; общий погодный риск — {level}.',
+            'Для решения о поливе нужны осадки, влажность почвы, фаза развития и состояние корневой зоны. Только по прогнозу нельзя вычислить норму полива.',
+            'Проверь почву на участке и сравни наблюдения с динамикой осадков. При отсутствии данных от датчиков это лишь предварительная подсказка.',
+        ]
+    elif any(word in q for word in ('болезн', 'ржавчин', 'вредител', 'грибк', 'обработ')):
+        lines += [
+            f'**Проверка фитосанитарного состояния:** {crop}, поле «{name}».',
+            'Погодный индикатор — не диагноз болезни и не доказательство заражения.',
+            'Осмотри растения в разных точках поля, зафиксируй симптомы и фазу развития. Решение об обработке принимает специалист по подтверждённым данным и регламенту.',
+        ]
+    elif any(word in q for word in ('делать', 'действ', 'провер', 'осмотр', 'задан', 'сегодня', 'рекоменд')):
+        lines += [
+            f'**План проверки поля «{name}»:**',
+            f'1. Сверить прогноз: текущая температура {temperature}, минимум за 24 часа {minimum}, ветер {wind}.',
+            f'2. Проверить причину уровня «{level}» в AgroRisk и полноту источника «{source}».',
+            '3. Осмотреть культуру, записать реальные наблюдения и при необходимости создать задание в Центре решений.',
+        ]
+    elif any(word in q for word in ('риск', 'опасност', 'угроз', 'погод', 'прогноз')):
+        lines += [
+            f'**Риски для поля «{name}» ({crop}):** {level}.',
+            f'Погодные показатели: {temperature} сейчас, минимум {minimum} за 24 часа, ветер {wind}. Источник: {source}.',
+            'Это предварительная оценка погодных факторов. Открой объяснение AgroRisk, чтобы увидеть основания и ограничения, затем проверь условия непосредственно в поле.',
+        ]
+    else:
+        lines += [
+            f'**Вопрос получен:** {question[:180]}',
+            'В офлайн-версии нет генеративной модели: по этому запросу встроенных правил недостаточно для содержательного ответа.',
+            f'Доступный контекст: поле «{name}», культура {crop}, погодный риск {level}.',
+            'Подключи реальный DeepSeek, чтобы получить ответ на произвольный вопрос.',
+        ]
+    lines += ['', '_Данные могут быть модельными или демонстрационными. Советы не заменяют оценку агронома._']
     return {
         'answer': '\n'.join(lines),
         'model': 'agroradar-expert-offline-rules',
@@ -206,7 +247,7 @@ def _expert_offline_chat(field: dict, question: str) -> dict:
         'risk_level': str(risk.get('level') or 'unknown'),
         'knowledge_ids': [],
         'knowledge_notes': [],
-        'disclaimer': 'Демонстрационный набор правил, не LLM. Решение должен принимать агроном.',
+        'disclaimer': 'Демонстрационные правила, не LLM. Решение должен принимать агроном.',
     }
 
 
