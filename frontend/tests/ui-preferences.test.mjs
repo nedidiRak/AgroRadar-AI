@@ -120,3 +120,35 @@ test('compact and balanced presets visibly differ in statistics and risk details
   assert.ok(css.includes('.agr-shell.agr-font--large .timeline-data strong'))
   assert.ok(css.includes('.agr-ops-alert-actions button'))
 })
+
+
+test('all review-critical panels use the active palette rather than hard-coded forest greens', () => {
+  const coverage = readFileSync(new URL('../src/ui-palette-coverage.css', import.meta.url), 'utf8')
+  const accents = readFileSync(new URL('../src/ui-appearance.css', import.meta.url), 'utf8')
+  const app = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8')
+  const map = readFileSync(new URL('../src/GeoFieldsMap.tsx', import.meta.url), 'utf8')
+
+  assert.match(app, /import '\.\/ui-palette-coverage\.css'\s+import '\.\/ui-appearance\.css'/)
+  for (const theme of ['ocean', 'graphite']) {
+    for (const component of [
+      '.agr-summary-strip', '.agr-weather-summary>div',
+      '.agr-ops-banner', '.agr-ops-stats>div', '.agr-ops-monitor',
+      '.agr-ops-alert', '.agr-ops-panel', '.agro-ai__message--assistant',
+      '.agr-theme-choices', '.agr-settings-preset', '.agr-risk-engine',
+    ]) {
+      assert.ok(
+        coverage.includes('agr-theme--'+theme+' '+component) ||
+        accents.includes('agr-theme--'+theme+' '+component),
+        theme+' is missing themed component '+component,
+      )
+    }
+    assert.ok(coverage.includes('.agr-settings-panel.agr-theme--'+theme+' .agr-settings-switch'))
+    assert.ok(accents.includes('.agr-shell.agr-theme--'+theme+' .agr-ops-chart svg path'))
+  }
+  assert.ok(map.includes('theme = \'forest\''))
+  assert.ok(map.includes("theme === 'ocean'"))
+  assert.ok(map.includes("theme === 'graphite'"))
+  assert.ok(app.includes('theme={appearance.theme}'))
+  assert.match(accents, /Preserve semantic risk colors/)
+  assert.doesNotMatch(coverage, /(?:width|height|font-size|padding|display|grid-template-columns):/)
+})
