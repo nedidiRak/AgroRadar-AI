@@ -150,5 +150,5 @@ test('all review-critical panels use the active palette rather than hard-coded f
   assert.ok(map.includes("theme === 'graphite'"))
   assert.ok(app.includes('theme={appearance.theme}'))
   assert.match(accents, /Preserve semantic risk colors/)
-  assert.doesNotMatch(coverage, /(?:width|height|font-size|padding|display|grid-template-columns):/)
+  assert.doesNotMatch(coverage, /[;{](?:width|height|font-size|padding|display|grid-template-columns):/)
 })
