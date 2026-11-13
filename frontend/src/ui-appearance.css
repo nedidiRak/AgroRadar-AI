@@ -186,3 +186,8 @@
   .agr-theme-choice strong{font-size:12px}
   .agr-font-choices button{font-size:11px}
 }
+
+.agr-shell .timeline-legend{display:flex;gap:7px 15px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin:5px 0 10px;color:#c2dfcf;font-size:12px;line-height:1.5}
+.agr-shell.agr-font--large .timeline-legend{font-size:14px}
+.agr-shell.agr-theme--ocean .timeline-legend{color:#c3ddf0}
+.agr-shell.agr-theme--graphite .timeline-legend{color:#e2d8c5}
