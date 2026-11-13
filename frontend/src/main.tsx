@@ -21,6 +21,7 @@ import './layout-v1.2.css'
 import './mobile-v1.3.css'
 import './agronomy-v2.1.css'
 import './ui-mobile-fixes.css'
+import './ui-palette-coverage.css'
 import './ui-appearance.css'
 
 type Weather = { temperature_c:number|null;humidity_pct:number|null;wind_ms:number|null;source:string;observed_at:string|null }
