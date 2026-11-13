@@ -98,6 +98,8 @@ def test_expert_offline_preview_reacts_to_first_question():
         'risk': {'level': 'medium', 'label': 'Умеренный'},
     }
     who = ai_assistant._expert_offline_chat(field, 'Кто ты?')['answer']
+    who_reversed = ai_assistant._expert_offline_chat(field, 'Ты кто?')['answer']
+    assert 'демонстрационный помощник' in who_reversed
     risks = ai_assistant._expert_offline_chat(field, 'Оцени погодные риски')['answer']
     wind = ai_assistant._expert_offline_chat(field, 'Какая скорость ветра?')['answer']
     unknown = ai_assistant._expert_offline_chat(field, 'Расскажи шутку')['answer']
