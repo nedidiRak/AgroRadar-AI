@@ -191,3 +191,69 @@
 .agr-shell.agr-font--large .timeline-legend{font-size:14px}
 .agr-shell.agr-theme--ocean .timeline-legend{color:#c3ddf0}
 .agr-shell.agr-theme--graphite .timeline-legend{color:#e2d8c5}
+
+
+/* Chart strokes and dots are SVG presentation attributes, not regular CSS colors.
+   Red subzero/high-risk dots and yellow zero-threshold lines deliberately stay semantic. */
+.agr-shell.agr-theme--ocean .timeline-chart path,
+.agr-shell.agr-theme--ocean .agr-ops-chart svg path { stroke:#80d0ff; }
+.agr-shell.agr-theme--graphite .timeline-chart path,
+.agr-shell.agr-theme--graphite .agr-ops-chart svg path { stroke:#e5c17f; }
+.agr-shell.agr-theme--ocean .timeline-chart circle[fill="#72e1b4"],
+.agr-shell.agr-theme--ocean .agr-ops-chart circle[fill="#90e7b7"] { fill:#80d0ff; }
+.agr-shell.agr-theme--graphite .timeline-chart circle[fill="#72e1b4"],
+.agr-shell.agr-theme--graphite .agr-ops-chart circle[fill="#90e7b7"] { fill:#e5c17f; }
+.agr-shell.agr-theme--ocean .agr-ops-chart svg line[stroke="#385a4a"] { stroke:#476780; }
+.agr-shell.agr-theme--graphite .agr-ops-chart svg line[stroke="#385a4a"] { stroke:#5b5d65; }
+.agr-shell.agr-theme--ocean .timeline-chart text[fill="#95b5a5"],
+.agr-shell.agr-theme--ocean .agr-ops-chart svg text[fill="#a4bda9"] { fill:#a8c8de; }
+.agr-shell.agr-theme--graphite .timeline-chart text[fill="#95b5a5"],
+.agr-shell.agr-theme--graphite .agr-ops-chart svg text[fill="#a4bda9"] { fill:#c6c4c2; }
+
+/* The settings dialog lives in a React portal; application-scoped colors
+   cannot reach it, so it needs its own matching palette. */
+.agr-settings-panel.agr-theme--ocean .agr-theme-choice,
+.agr-settings-panel.agr-theme--ocean .agr-font-choices button {
+  background:#1c3854;border-color:#497393;color:#e6f5ff;
+}
+.agr-settings-panel.agr-theme--ocean .agr-theme-choice small {color:#afc9dc}
+.agr-settings-panel.agr-theme--ocean .agr-theme-choice.is-selected {
+  outline-color:#87ceff;background:#28506f;
+}
+.agr-settings-panel.agr-theme--ocean .agr-font-choices button.is-selected {
+  background:#286796;border-color:#78c6f0;color:#fff;
+}
+.agr-settings-panel.agr-theme--graphite .agr-theme-choice,
+.agr-settings-panel.agr-theme--graphite .agr-font-choices button {
+  background:#383941;border-color:#68686f;color:#f2f0e9;
+}
+.agr-settings-panel.agr-theme--graphite .agr-theme-choice small {color:#c8c4be}
+.agr-settings-panel.agr-theme--graphite .agr-theme-choice.is-selected {
+  outline-color:#e6c17f;background:#4d4942;
+}
+.agr-settings-panel.agr-theme--graphite .agr-font-choices button.is-selected {
+  background:#665439;border-color:#e6c17f;color:#fff4d9;
+}
+
+/* Preserve semantic risk colors, even when general interface tint changes. */
+.agr-shell.agr-theme--ocean .agr-risk-low,
+.agr-shell.agr-theme--graphite .agr-risk-low { background:#62dbad; }
+.agr-shell.agr-theme--ocean .agr-risk-medium,
+.agr-shell.agr-theme--graphite .agr-risk-medium { background:#f6c65b; }
+.agr-shell.agr-theme--ocean .agr-risk-high,
+.agr-shell.agr-theme--graphite .agr-risk-high { background:#f87171; }
+
+
+/* Low/medium/high are data semantics, not branding: keep the 3-color risk scale. */
+.agr-shell.agr-theme--ocean .green,
+.agr-shell.agr-theme--graphite .green,
+.agr-shell.agr-theme--ocean .agr-map-shell .agr-map-risk--low,
+.agr-shell.agr-theme--graphite .agr-map-shell .agr-map-risk--low {background:#62dbad}
+.agr-shell.agr-theme--ocean .risk-low,
+.agr-shell.agr-theme--graphite .risk-low {background:#1c493a;color:#9df1c8}
+.agr-shell.agr-theme--ocean .agr-risk-engine__overall--low,
+.agr-shell.agr-theme--graphite .agr-risk-engine__overall--low {color:#63e2af;background:#1b4534}
+.agr-shell.agr-theme--ocean .agr-risk-card--low,
+.agr-shell.agr-theme--graphite .agr-risk-card--low {border-top-color:#5cdaad}
+.agr-shell.agr-theme--ocean .agr-risk-card__level--low,
+.agr-shell.agr-theme--graphite .agr-risk-card__level--low {color:#8ce6be;background:#1f4234}
