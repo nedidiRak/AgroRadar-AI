@@ -117,7 +117,7 @@ test('compact and balanced presets visibly differ in statistics and risk details
   for (const name of ['forest','ocean','graphite']) {
     assert.ok(readFileSync(new URL('../src/UiSettings.tsx', import.meta.url),'utf8').includes("id:'"+name+"'"))
   }
-  assert.ok(css.includes('.agr-shell.agr-font--large .timeline-data strong'))
+  assert.ok(css.includes('.agr-shell.agr-font--large,'))
   assert.ok(css.includes('.agr-ops-alert-actions button'))
 })
 
@@ -151,4 +151,37 @@ test('all review-critical panels use the active palette rather than hard-coded f
   assert.ok(app.includes('theme={appearance.theme}'))
   assert.match(accents, /Preserve semantic risk colors/)
   assert.doesNotMatch(coverage, /[;{](?:width|height|font-size|padding|display|grid-template-columns):/)
+})
+
+test('all fixed text sizes follow the chosen scale, including phone, dialogs, charts and navigation', () => {
+  const filenames = [
+    'AgronomyInsights.css', 'AiAgronom.css', 'AuthGate.css', 'FallbackFieldsMap.css',
+    'FieldTasks.css', 'FieldsManager.css', 'GeoFieldsMap.css', 'OperationsCenter.css',
+    'RiskDashboard.css', 'UiSettings.css', 'UserManager.css', 'agronomy-v2.1.css',
+    'layout-v1.2.css', 'mobile-v1.3.css', 'style.css', 'ui-appearance.css',
+    'ui-mobile-fixes.css',
+  ]
+  let checked = 0
+  for (const filename of filenames) {
+    const css = readFileSync(new URL('../src/'+filename, import.meta.url),'utf8')
+    for (const match of css.matchAll(/font-size\s*:\s*([^;}\n]+)/g)) {
+      const value=match[1].trim()
+      // Intentional icon-only mobile controls use 0. Relative em units inherit size.
+      if (value==='0' || value==='0px' || value==='0.9em') continue
+      assert.ok(value.includes('var(--agr-font-scale'), filename+' unscaled font-size: '+value)
+      checked++
+    }
+  }
+  assert.ok(checked >= 300, 'Expected to cover app typography rules')
+  const appearance = readFileSync(new URL('../src/ui-appearance.css', import.meta.url),'utf8')
+  for (const [mode, factor] of [['standard','1'], ['comfortable','1.14'], ['large','1.30']]) {
+    assert.ok(appearance.includes('.agr-shell.agr-font--'+mode))
+    assert.ok(appearance.includes('.agr-settings-panel.agr-font--'+mode))
+    assert.ok(appearance.includes('--agr-font-scale:'+factor))
+  }
+  const panel = readFileSync(new URL('../src/UiSettings.tsx', import.meta.url),'utf8')
+  assert.ok(panel.includes("' agr-font--'+appearance.fontSize"), 'Portal must receive scale class')
+  const app = readFileSync(new URL('../src/main.tsx', import.meta.url),'utf8')
+  assert.ok(app.includes('agr-font--') && app.includes('appearance.fontSize'), 'App shell must receive scale class')
+  assert.ok(appearance.includes('svg text[font-size="11"]'))
 })

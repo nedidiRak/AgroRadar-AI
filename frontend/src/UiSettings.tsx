@@ -80,7 +80,7 @@ export default function UiSettings({value,appearance,onAppearance,onChange,onPre
   const current=presetOf(value)
   return createPortal(<div className="agr-settings-backdrop" role="presentation"
     onMouseDown={event=>{if(event.target===event.currentTarget)onClose()}}>
-    <section className={'agr-settings-panel agr-theme--'+appearance.theme} ref={dialog} role="dialog" aria-modal="true"
+    <section className={'agr-settings-panel agr-theme--'+appearance.theme+' agr-font--'+appearance.fontSize} ref={dialog} role="dialog" aria-modal="true"
       aria-labelledby="agr-settings-title" aria-describedby="agr-settings-description">
       <header className="agr-settings-header">
         <div className="agr-settings-icon"><Settings2 size={21}/></div>
@@ -120,7 +120,7 @@ export default function UiSettings({value,appearance,onAppearance,onChange,onPre
               {appearance.theme===theme.id&&<Check size={15} className="agr-theme-check"/>}
             </button>)}
           </div>
-          <div className="agr-settings-subheading agr-settings-font-heading"><strong>Размер текста</strong><span>Прогнозы, подписи, чат</span></div>
+          <div className="agr-settings-subheading agr-settings-font-heading"><strong>Размер текста</strong><span>Все разделы, кнопки и графики</span></div>
           <div className="agr-font-choices" role="group" aria-label="Размер текста">
             {([
               {id:'standard',name:'Обычный'},

@@ -81,27 +81,27 @@
 
 /* Forecast text: legibility beats squeezing eight tiny numbers into a row. */
 .agr-shell .forecast-timeline{padding:16px}
-.agr-shell .timeline-header strong{font-size:15px;line-height:1.4}
-.agr-shell .timeline-header span{font-size:12px;line-height:1.45}
-.agr-shell .timeline-header .timeline-live,.agr-shell .timeline-header .timeline-demo{font-size:11px}
+.agr-shell .timeline-header strong{font-size:calc(15px * var(--agr-font-scale,1));line-height:1.4}
+.agr-shell .timeline-header span{font-size:calc(12px * var(--agr-font-scale,1));line-height:1.45}
+.agr-shell .timeline-header .timeline-live,.agr-shell .timeline-header .timeline-demo{font-size:calc(11px * var(--agr-font-scale,1))}
 .agr-shell .timeline-data{gap:8px}
 .agr-shell .timeline-data>div{padding:11px 7px;min-height:74px}
-.agr-shell .timeline-data small,.agr-shell .timeline-data span{font-size:12px;line-height:1.45}
-.agr-shell .timeline-data strong{font-size:17px}
-.agr-shell .timeline-disclaimer{font-size:12px;line-height:1.65}
+.agr-shell .timeline-data small,.agr-shell .timeline-data span{font-size:calc(12px * var(--agr-font-scale,1));line-height:1.45}
+.agr-shell .timeline-data strong{font-size:calc(17px * var(--agr-font-scale,1))}
+.agr-shell .timeline-disclaimer{font-size:calc(12px * var(--agr-font-scale,1));line-height:1.65}
 .agr-shell .timeline-chart{max-height:175px}
-.agr-shell .agr-weather-summary span{font-size:12px}
-.agr-shell .agr-risk-note p{font-size:13px}
-.agr-shell .agr-ops-alert p{font-size:13px;line-height:1.6}
-.agr-shell .agr-ops-alert small{font-size:12px;line-height:1.55}
+.agr-shell .agr-weather-summary span{font-size:calc(12px * var(--agr-font-scale,1))}
+.agr-shell .agr-risk-note p{font-size:calc(13px * var(--agr-font-scale,1))}
+.agr-shell .agr-ops-alert p{font-size:calc(13px * var(--agr-font-scale,1));line-height:1.6}
+.agr-shell .agr-ops-alert small{font-size:calc(12px * var(--agr-font-scale,1));line-height:1.55}
 .agr-shell .agr-ops-alert-actions{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;margin-top:15px}
-.agr-shell .agr-ops-alert-actions button{display:inline-flex;justify-content:center;align-items:center;gap:7px;min-height:42px;padding:11px 13px;font-size:13px;flex:0 1 auto;margin:0}
-.agr-shell .agr-ops-alert-head strong{font-size:15px}
-.agr-shell .agro-ai__markdown{font-size:14px;line-height:1.75}
-.agr-shell .agro-ai__message{font-size:14px;line-height:1.7}
-.agr-shell .agro-ai__message-label{font-size:12px}
-.agr-shell .agro-ai__welcome p{font-size:14px}
-.agr-shell .agro-ai__suggestions button{font-size:13px;min-height:43px}
+.agr-shell .agr-ops-alert-actions button{display:inline-flex;justify-content:center;align-items:center;gap:7px;min-height:42px;padding:11px 13px;font-size:calc(13px * var(--agr-font-scale,1));flex:0 1 auto;margin:0}
+.agr-shell .agr-ops-alert-head strong{font-size:calc(15px * var(--agr-font-scale,1))}
+.agr-shell .agro-ai__markdown{font-size:calc(14px * var(--agr-font-scale,1));line-height:1.75}
+.agr-shell .agro-ai__message{font-size:calc(14px * var(--agr-font-scale,1));line-height:1.7}
+.agr-shell .agro-ai__message-label{font-size:calc(12px * var(--agr-font-scale,1))}
+.agr-shell .agro-ai__welcome p{font-size:calc(14px * var(--agr-font-scale,1))}
+.agr-shell .agro-ai__suggestions button{font-size:calc(13px * var(--agr-font-scale,1));min-height:43px}
 
 /* Three visibly distinct workspace densities. This complements the actual flags. */
 .agr-shell.agr-density--compact .agr-content{padding-top:19px}
@@ -116,32 +116,26 @@
 .agr-shell.agr-density--expert .agr-ops-panel{padding:23px}
 .agr-shell.agr-density--expert .agro-ai__messages{height:clamp(420px,60vh,720px)}
 
-/* Text sizing affects real content, not just the settings dialog. */
-.agr-shell.agr-font--standard .timeline-data small,.agr-shell.agr-font--standard .timeline-data span{font-size:11px}
-.agr-shell.agr-font--standard .timeline-data strong{font-size:15px}
-.agr-shell.agr-font--standard .agro-ai__markdown,.agr-shell.agr-font--standard .agro-ai__message{font-size:13px}
-.agr-shell.agr-font--standard .agr-ops-alert p{font-size:12px}
-.agr-shell.agr-font--large .timeline-header strong{font-size:18px}
-.agr-shell.agr-font--large .timeline-header span,.agr-shell.agr-font--large .timeline-data small,
-.agr-shell.agr-font--large .timeline-data span,.agr-shell.agr-font--large .timeline-disclaimer{font-size:14px}
-.agr-shell.agr-font--large .timeline-data strong{font-size:20px}
-.agr-shell.agr-font--large .agro-ai__markdown,.agr-shell.agr-font--large .agro-ai__message,
-.agr-shell.agr-font--large .agro-ai__plain-text{font-size:17px;line-height:1.7}
-.agr-shell.agr-font--large .agro-ai__markdown h3{font-size:19px}
-.agr-shell.agr-font--large .agro-ai__message-label,.agr-shell.agr-font--large .agro-ai__status{font-size:13px}
-.agr-shell.agr-font--large .agr-ops-alert p,.agr-shell.agr-font--large .agr-ops-alert-actions button{font-size:16px}
-.agr-shell.agr-font--large .agr-ops-alert small,.agr-shell.agr-font--large .agr-ops-note{font-size:14px}
-.agr-shell.agr-font--large .agr-field-row__text strong,.agr-shell.agr-font--large .agr-selected-card__meta{font-size:15px}
-.agr-shell.agr-font--large .agr-field-row__text small{font-size:13px}
-.agr-shell.agr-font--large .agr-header p{font-size:15px}
+/* Unified text scale: one multiplier for content, buttons, labels and the portal. */
+.agr-shell.agr-font--standard,
+.agr-settings-panel.agr-font--standard{--agr-font-scale:1}
+.agr-shell.agr-font--comfortable,
+.agr-settings-panel.agr-font--comfortable{--agr-font-scale:1.14}
+.agr-shell.agr-font--large,
+.agr-settings-panel.agr-font--large{--agr-font-scale:1.30}
+
+/* SVG presentation attributes do not inherit other component font rules. */
+.agr-shell .timeline-chart text[font-size="10"]{font-size:calc(10px * var(--agr-font-scale,1))}
+.agr-shell .agr-ops-chart svg text[font-size="11"]{font-size:calc(11px * var(--agr-font-scale,1))}
+.agr-shell .agr-ops-chart svg text[font-size="12"]{font-size:calc(12px * var(--agr-font-scale,1))}
 
 /* Modal appearance controls */
 .agr-settings-appearance{padding:17px 0 4px}
 .agr-theme-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:11px}
 .agr-theme-choice{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;position:relative;background:#19372b;border:1px solid #3f684f;border-radius:11px;padding:9px;color:#dff8e9}
 .agr-theme-choice.is-selected{outline:2px solid #93e2b5;outline-offset:1px}
-.agr-theme-choice strong{font-size:13px}
-.agr-theme-choice small{font-size:11px;color:#b7d2c3}
+.agr-theme-choice strong{font-size:calc(13px * var(--agr-font-scale,1))}
+.agr-theme-choice small{font-size:calc(11px * var(--agr-font-scale,1));color:#b7d2c3}
 .agr-theme-swatch{display:flex;gap:5px;align-items:center;width:100%;height:28px;padding:4px;border-radius:6px;background:#0a1814}
 .agr-theme-swatch span{height:20px;flex:1;border-radius:3px;background:#2a6e50}
 .agr-theme-swatch span:nth-child(2){background:#4ca783}.agr-theme-swatch span:nth-child(3){background:#81d9b4}
@@ -156,7 +150,7 @@
 .agr-theme-check{position:absolute;right:10px;bottom:9px}
 .agr-settings-font-heading{margin-top:21px}
 .agr-font-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
-.agr-font-choices button{justify-content:center;min-height:44px;padding:8px 5px;font-size:12px;background:#183a2c;border:1px solid #456b54;color:#daf4e3}
+.agr-font-choices button{justify-content:center;min-height:44px;padding:8px 5px;font-size:calc(12px * var(--agr-font-scale,1));background:#183a2c;border:1px solid #456b54;color:#daf4e3}
 .agr-font-choices button.is-selected{background:#2b8057;border-color:#89d3aa;color:white;font-weight:750}
 .agr-settings-panel.agr-theme--ocean{background:#13253b;border-left-color:#4c779d}
 .agr-settings-panel.agr-theme--ocean .agr-settings-header,
@@ -183,12 +177,11 @@
   .agr-shell .timeline-data>div{min-height:69px}
   .agr-shell.agr-density--compact .agr-content{padding-top:12px}
   .agr-theme-choice{padding:7px}
-  .agr-theme-choice strong{font-size:12px}
-  .agr-font-choices button{font-size:11px}
+  .agr-theme-choice strong{font-size:calc(12px * var(--agr-font-scale,1))}
+  .agr-font-choices button{font-size:calc(11px * var(--agr-font-scale,1))}
 }
 
-.agr-shell .timeline-legend{display:flex;gap:7px 15px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin:5px 0 10px;color:#c2dfcf;font-size:12px;line-height:1.5}
-.agr-shell.agr-font--large .timeline-legend{font-size:14px}
+.agr-shell .timeline-legend{display:flex;gap:7px 15px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin:5px 0 10px;color:#c2dfcf;font-size:calc(12px * var(--agr-font-scale,1));line-height:1.5}
 .agr-shell.agr-theme--ocean .timeline-legend{color:#c3ddf0}
 .agr-shell.agr-theme--graphite .timeline-legend{color:#e2d8c5}
 
