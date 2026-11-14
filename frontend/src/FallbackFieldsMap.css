@@ -1,4 +1,4 @@
 .agr-fallback-map{position:absolute;inset:0;background:#dce8db;z-index:1}
 .agr-fallback-map .leaflet-container{height:100%;width:100%;font-family:inherit}
 .agr-fallback-map .leaflet-popup-content,.agr-fallback-map .leaflet-tooltip{color:#173a29}
-.agr-fallback-map .leaflet-control-attribution{font-size:10px}
+.agr-fallback-map .leaflet-control-attribution{font-size:calc(10px * var(--agr-font-scale,1))}
