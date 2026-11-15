@@ -25,6 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 from .risk_engine import analyze_risks, simulate_scenario, DEMO_SCENARIOS
 from .agronomy_v4 import build_agronomy
+from .five_day import build_five_day_forecast
 
 from .auth import router as auth_router, auth_guard
 from .monitoring import router as monitoring_router, capture_dashboard, record_event
@@ -370,10 +371,18 @@ def _demo_data(field: dict) -> dict:
                'precipitation_probability_pct': None,
                'rain_mm_3h': None, 'humidity_pct': None, 'wind_ms': None, 'wind_gust_ms': None}
               for index, factor in enumerate(offsets)]
+    # All five days are explicitly synthetic when no OpenWeather key is set.
+    extended = points + [
+        {**points[index % 8],
+         'timestamp': start + index * 10800,
+         'temperature_c': round(points[index % 8]['temperature_c'] + ((index // 8) % 3 - 1) * 1.2, 1)}
+        for index in range(8, 40)
+    ]
     return {'weather': {**sample, 'source': 'demo', 'observed_at': None},
             'forecast': {'min_temperature_next_24h_c': minimum,
                          'source': 'demo', 'sample_count': len(points),
-                         'period_hours': 24, 'points': points}}
+                         'period_hours': 24, 'points': points},
+            'five_day_forecast': build_five_day_forecast(extended, 'demo', field, issued_at=now)}
 
 
 # Limit simultaneous external calls: one page load may request weather for many fields.
@@ -431,20 +440,22 @@ async def field_conditions(field: dict) -> dict:
             _openweather_request('forecast', field, key),
         )
         now = datetime.now(timezone.utc).timestamp()
-        timestamps = [entry for entry in future['list']
-                      if now <= float(entry['dt']) <= now + 24 * 3600]
+        all_timestamps = [entry for entry in future['list']
+                          if now <= float(entry['dt']) < now + 5 * 24 * 3600]
+        timestamps = [entry for entry in all_timestamps if float(entry['dt']) <= now + 24 * 3600]
         # Values are from three-hour forecast intervals; they are NOT field observations.
         if not timestamps:
             raise ValueError('В прогнозе нет точек на ближайшие 24 часа')
-        timestamps.sort(key=lambda entry: entry['dt'])
+        all_timestamps.sort(key=lambda entry: entry['dt'])
         minimum = round(min(float(entry['main']['temp_min']) for entry in timestamps), 1)
-        points = []
-        for entry in timestamps:
+        all_points = []
+        for entry in all_timestamps:
             probability = entry.get('pop')
             rain = entry.get('rain') or {}
-            points.append({
+            all_points.append({
                 'timestamp': int(entry['dt']),
                 'temperature_c': round(float(entry['main']['temp']), 1),
+                'minimum_temperature_c': round(float(entry['main']['temp_min']), 1),
                 'precipitation_probability_pct': (
                     round(max(0, min(1, float(probability))) * 100)
                     if probability is not None else None
@@ -454,6 +465,7 @@ async def field_conditions(field: dict) -> dict:
                 'wind_ms': (round(float(entry['wind']['speed']), 1) if 'speed' in entry.get('wind', {}) else None),
                 'wind_gust_ms': (round(float(entry['wind']['gust']), 1) if 'gust' in entry.get('wind', {}) else None),
             })
+        points = [p for p in all_points if p['timestamp'] <= now + 24 * 3600]
         return {
             'weather': {
                 'temperature_c': round(float(current['main']['temp']), 1),
@@ -466,6 +478,8 @@ async def field_conditions(field: dict) -> dict:
                          'source': 'openweather_forecast_3h',
                          'sample_count': len(timestamps), 'period_hours': 24,
                          'points': points},
+            'five_day_forecast': build_five_day_forecast(
+                all_points, 'openweather_forecast_3h', field, issued_at=int(now)),
         }
     except httpx.HTTPStatusError as exc:
         code = exc.response.status_code
@@ -530,6 +544,7 @@ def unavailable_field(field: dict, detail: str) -> dict:
     }
     return {
         **field, 'weather': weather, 'forecast': forecast,
+        'five_day_forecast': build_five_day_forecast([], 'unavailable', field, issued_at=int(time.time())),
         'risk': analysis['overall'], 'temperature_risk': temperature_risk,
         'risk_analysis': analysis, 'weather_error': detail,
     }
@@ -579,6 +594,12 @@ async def field_weather(field_id: int):
 @app.get('/api/fields/{field_id}/forecast')
 async def field_forecast(field_id: int):
     return (await field_conditions(find_field(field_id)))['forecast']
+
+
+@app.get('/api/fields/{field_id}/five-day-forecast')
+async def field_five_day_forecast(field_id: int):
+    details = await compose_field_resilient(find_field(field_id))
+    return details['five_day_forecast']
 
 
 @app.get('/api/fields/{field_id}/risks')
