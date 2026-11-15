@@ -12,6 +12,8 @@ import { createRoot } from 'react-dom/client'
 import GeoFieldsMap from './GeoFieldsMap'
 import AiAgronom from './AiAgronom'
 import RiskDashboard from './RiskDashboard'
+import FiveDayForecast from './FiveDayForecast'
+import type { FiveDayData } from './FiveDayForecast'
 import type { RiskAnalysis } from './RiskDashboard'
 import { Activity, Leaf, MapPinned, ShieldAlert, RefreshCcw, Pencil, Trash2, X, Save, Bot, ArrowRight, ChevronDown, Search, SlidersHorizontal, Info, Thermometer, Wind, Droplets, CheckCircle2, LogOut, Users, ChartNoAxesCombined, Settings2 } from 'lucide-react'
 import type { FeatureCollection, Polygon } from 'geojson'
@@ -29,7 +31,7 @@ type ForecastPoint = {timestamp:number;temperature_c:number;precipitation_probab
 type Forecast = { min_temperature_next_24h_c:number|null;source:string;sample_count:number;period_hours:number;points?:ForecastPoint[] }
 type Risk = {level:'high'|'medium'|'low'|'unknown';label:string;reason:string;basis:string;rule:string;min_temperature_next_24h_c:number|null}
 type Observation = {id:string;observed_on:string;recorded_at:string;text:string;source:'manual'}
-type Field = {id:number;name:string;crop:string;description:string;sowing_date?:string;growth_stage?:string;soil_type?:string;observations?:Observation[];kind:'demo'|'user';area_ha:number;lat:number;lon:number;geometry_source?:string;weather:Weather;forecast:Forecast;risk:Risk; risk_analysis?:RiskAnalysis;temperature_risk?:Risk}
+type Field = {id:number;name:string;crop:string;description:string;sowing_date?:string;growth_stage?:string;soil_type?:string;observations?:Observation[];kind:'demo'|'user';area_ha:number;lat:number;lon:number;geometry_source?:string;weather:Weather;forecast:Forecast;risk:Risk; risk_analysis?:RiskAnalysis;temperature_risk?:Risk;five_day_forecast?:FiveDayData}
 type Dashboard = { fields:Field[];count:number;high_risk_count:number;degraded_count?:number;degraded_field_ids?:number[];mode:'demo'|'live_forecast' }
 type View = 'overview' | 'fields' | 'operations' | 'assistant' | 'users'
 const navigation: {id: View; label:string; Icon: typeof Activity}[] = [
@@ -294,7 +296,7 @@ function App() {
   const filteredFields = (data?.fields ?? []).filter(f=>`${f.name} ${f.crop}`.toLocaleLowerCase('ru-RU').includes(fieldQuery.toLocaleLowerCase('ru-RU')))
   const sortedFields = [...(data?.fields ?? [])].sort((a,b)=>(riskOrder[a.risk.level]-riskOrder[b.risk.level]))
   const pageInfo = {
-    overview:['Обзор хозяйства','Погода и риски — самое важное за ближайшие 24 часа.'],
+    overview:['Обзор хозяйства','Прогноз рисков на ближайшие сутки и следующие пять дней, архив прежних прогнозов.'],
     fields:['Карта и поля', canEdit?'Управляй участками, границами и карточками культур.':'Просматривай карту, контуры и карточки культур.'],
     operations:['Центр решений','История прогнозов, предупреждения и отчёты по полям.'],
     assistant:['ИИ-агроном','Обсуди выбранный участок с помощником DeepSeek.'],
@@ -356,6 +358,7 @@ function App() {
             </>:<p className="agr-empty">Выбери участок, чтобы посмотреть прогноз.</p>}
           </article>}
         </div>
+        {ui.overviewForecast && <FiveDayForecast fieldId={active?.id ?? null} forecast={active?.five_day_forecast}/>}
         {ui.overviewRiskDetails && <><RiskDashboard fieldName={active?.name ?? 'не выбрано'} analysis={active?.risk_analysis}/><AgronomyInsights fieldId={active?.id??null}/></>}
         {ui.overviewHelp && <details className="agr-disclosure agr-data-info"><summary><Info size={15}/> Как читать показатели <ChevronDown size={15}/></summary><p>{demo?'Погода и прогноз приведены для демонстрации.':'Погодные данные и прогноз получены от OpenWeather; это модельные данные, не датчики непосредственно на участке.'} AgroRisk Engine v4.0 оценивает заморозки, осадки, ветер и сухую жару, показывает неполные данные и проверяемые действия по открытым учебным порогам. Это не подтверждённый прогноз ущерба культуре и не диагноз засухи. Отсутствующие погодные показатели помечаются как «Нет данных». Сценарии для жюри не влияют на реальные поля или контекст DeepSeek. Границы исходных полей могут быть демонстрационными.</p></details>}
       </section>
