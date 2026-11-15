@@ -54,7 +54,7 @@ export default function CropRiskPanel({analysis, children}: {analysis?: CropRisk
     <p className="agr-crop-risk__reason">{analysis?.reason || 'Загрузка исследовательских данных…'}</p>
     {analysis?.assessments.map(item => <article className={`agr-crop-risk__item agr-crop-risk__item--${item.level}`} key={item.rule_id}>
       <div className="agr-crop-risk__top">
-        <strong>{item.factor.replaceAll('_', ' ')} · {item.title}</strong>
+        <strong>{item.factor.replace(/_/g, ' ')} · {item.title}</strong>
         <span>{item.level === 'medium' ? 'Требует внимания' : 'Недостаточно данных'}</span>
       </div>
       <p>{item.reason}</p>
