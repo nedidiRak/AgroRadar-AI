@@ -143,7 +143,7 @@ def normalise_agronomy(payload: FieldMetadata) -> dict:
         result['crop_id'] = cid
     if payload.crop_stage_code is not None:
         stage = payload.crop_stage_code.strip()
-        cid = payload.crop_id or resolve_crop_id(payload.crop)
+        cid = payload.crop_id or ''
         if stage and (not cid or stage not in {x['code'] for x in crop_stages(cid)}):
             raise HTTPException(422, 'Стадия не поддерживается для выбранной культуры.')
         result['crop_stage_code'] = stage
