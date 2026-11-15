@@ -1,0 +1,2648 @@
+{
+  "schema_version": "0.3.1-reconstructed",
+  "title": "AgroRadar AI cautious research extraction — 50 crops",
+  "extraction_date_utc": "2026-11-15",
+  "origin": "Completed Deep Research report archived in the user Library; original sandbox JSON/CSV from the separate research execution are not available in this runtime.",
+  "warning": "NOT identical to original claimed 152-record research dataset. Rebuilt conservatively from report text; NOT validated crop-loss model. null means unknown, not zero.",
+  "measurand_policy": "Air, soil, canopy/tissue, and tillering-node temperatures must never be interchanged.",
+  "forecast_policy": "OpenWeather 5day/3h forecast values are points; exposure duration approximations must be labeled approximate and cannot prove 14-day treatment.",
+  "risk_colors": {
+    "green": "applicable screened risk not triggered (not guarantee of safety)",
+    "yellow": "candidate warning or uncertainty requiring checking",
+    "red": "strong stage-specific warning only with appropriate measurements and validated rule",
+    "grey": "unknown/missing data/no approved rule"
+  },
+  "crops": [
+    {
+      "crop_id": "winter_wheat",
+      "name_ru": "Пшеница озимая",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "spring_wheat",
+      "name_ru": "Пшеница яровая",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "winter_barley",
+      "name_ru": "Ячмень озимый",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "spring_barley",
+      "name_ru": "Ячмень яровой",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "rye",
+      "name_ru": "Рожь",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "oats",
+      "name_ru": "Овёс",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "grain_maize",
+      "name_ru": "Кукуруза на зерно",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "silage_maize",
+      "name_ru": "Кукуруза на силос",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "millet",
+      "name_ru": "Просо",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "buckwheat",
+      "name_ru": "Гречиха",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "rice",
+      "name_ru": "Рис",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "sorghum",
+      "name_ru": "Сорго",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "triticale",
+      "name_ru": "Тритикале",
+      "group": "cereals"
+    },
+    {
+      "crop_id": "sunflower",
+      "name_ru": "Подсолнечник",
+      "group": "oilseeds_industrial"
+    },
+    {
+      "crop_id": "sugar_beet",
+      "name_ru": "Сахарная свёкла",
+      "group": "oilseeds_industrial"
+    },
+    {
+      "crop_id": "winter_rapeseed",
+      "name_ru": "Рапс озимый",
+      "group": "oilseeds_industrial"
+    },
+    {
+      "crop_id": "spring_rapeseed",
+      "name_ru": "Рапс яровой",
+      "group": "oilseeds_industrial"
+    },
+    {
+      "crop_id": "soybean",
+      "name_ru": "Соя",
+      "group": "oilseeds_industrial"
+    },
+    {
+      "crop_id": "flax",
+      "name_ru": "Лён",
+      "group": "oilseeds_industrial"
+    },
+    {
+      "crop_id": "mustard",
+      "name_ru": "Горчица",
+      "group": "oilseeds_industrial"
+    },
+    {
+      "crop_id": "safflower",
+      "name_ru": "Сафлор",
+      "group": "oilseeds_industrial"
+    },
+    {
+      "crop_id": "camelina",
+      "name_ru": "Рыжик посевной",
+      "group": "oilseeds_industrial"
+    },
+    {
+      "crop_id": "pea",
+      "name_ru": "Горох",
+      "group": "legumes"
+    },
+    {
+      "crop_id": "chickpea",
+      "name_ru": "Нут",
+      "group": "legumes"
+    },
+    {
+      "crop_id": "lentil",
+      "name_ru": "Чечевица",
+      "group": "legumes"
+    },
+    {
+      "crop_id": "common_bean",
+      "name_ru": "Фасоль",
+      "group": "legumes"
+    },
+    {
+      "crop_id": "faba_bean",
+      "name_ru": "Кормовые бобы",
+      "group": "legumes"
+    },
+    {
+      "crop_id": "lupin",
+      "name_ru": "Люпин",
+      "group": "legumes"
+    },
+    {
+      "crop_id": "potato",
+      "name_ru": "Картофель",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "tomato",
+      "name_ru": "Томат",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "cucumber",
+      "name_ru": "Огурец",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "cabbage",
+      "name_ru": "Капуста",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "carrot",
+      "name_ru": "Морковь",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "onion",
+      "name_ru": "Лук репчатый",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "garlic",
+      "name_ru": "Чеснок",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "pepper",
+      "name_ru": "Перец",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "eggplant",
+      "name_ru": "Баклажан",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "zucchini",
+      "name_ru": "Кабачок",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "pumpkin",
+      "name_ru": "Тыква",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "watermelon",
+      "name_ru": "Арбуз",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "melon",
+      "name_ru": "Дыня",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "table_beet",
+      "name_ru": "Свёкла столовая",
+      "group": "vegetables"
+    },
+    {
+      "crop_id": "alfalfa",
+      "name_ru": "Люцерна",
+      "group": "forages"
+    },
+    {
+      "crop_id": "clover",
+      "name_ru": "Клевер",
+      "group": "forages"
+    },
+    {
+      "crop_id": "sudan_grass",
+      "name_ru": "Суданская трава",
+      "group": "forages"
+    },
+    {
+      "crop_id": "perennial_grasses",
+      "name_ru": "Многолетние злаковые травы",
+      "group": "forages"
+    },
+    {
+      "crop_id": "radish",
+      "name_ru": "Редис",
+      "group": "additional"
+    },
+    {
+      "crop_id": "turnip",
+      "name_ru": "Репа",
+      "group": "additional"
+    },
+    {
+      "crop_id": "spinach",
+      "name_ru": "Шпинат",
+      "group": "additional"
+    },
+    {
+      "crop_id": "lettuce",
+      "name_ru": "Салат листовой",
+      "group": "additional"
+    }
+  ],
+  "sources": {
+    "SRC_FAO_WHEAT": {
+      "title": "FAO wheat growth and physiology",
+      "url": "https://www.fao.org/4/y4011e/y4011e06.htm"
+    },
+    "SRC_FAO_FROST": {
+      "title": "FAO Frost protection: fundamentals, practice, and economics",
+      "url": "https://www.fao.org/4/y7223e/y7223e0a.htm"
+    },
+    "SRC_ROSSELKHOZ": {
+      "title": "Россельхозцентр: перезимовка озимых культур",
+      "url": "https://rosselhoscenter.ru/ob-uchrezhdenii/filialy/privolzhskiy/nizhegorodskaya-oblast/perezimovka-ozimykh-kultur-vozmozhnye-riski/"
+    },
+    "SRC_PSU_CHILL": {
+      "title": "Penn State: Chilling Injury in Newly Planted Corn and Soybeans",
+      "url": "https://extension.psu.edu/chilling-injury-in-newly-planted-corn-and-soybeans"
+    },
+    "SRC_UMN_CORN": {
+      "title": "UMN Extension: Dry conditions during corn pollination",
+      "url": "https://extension.umn.edu/growing-corn/dry-conditions-during-corn-pollination"
+    },
+    "SRC_WHEAT_REVIEW": {
+      "title": "Ullah et al. wheat reproductive heat stress",
+      "url": "https://onlinelibrary.wiley.com/doi/abs/10.1111/jac.12572"
+    },
+    "SRC_WHEAT_EXPERIMENT": {
+      "title": "Nuttall et al. acute wheat heat",
+      "url": "https://onlinelibrary.wiley.com/doi/10.2134/agronj2017.07.0392"
+    },
+    "SRC_SOY_EXPERIMENT": {
+      "title": "Djanaguiraman et al. Soybean pollen heat",
+      "url": "https://onlinelibrary.wiley.com/doi/10.1111/jac.12005"
+    },
+    "SRC_RAPE_EXP": {
+      "title": "Transient daily heat stress during the early reproductive phase in rapeseed",
+      "url": "https://onlinelibrary.wiley.com/doi/full/10.1002/fes3.262"
+    },
+    "SRC_RAPE_CRITICAL": {
+      "title": "Critical period for yield in canola",
+      "url": "https://www.sciencedirect.com/science/article/pii/S0378429018302843"
+    },
+    "SRC_BEET_FROST": {
+      "title": "Evaluation of frost tolerance in sugar beet cultivars",
+      "url": "https://link.springer.com/article/10.1007/s12355-024-01398-w"
+    },
+    "SRC_SUNFLOWER": {
+      "title": "Physiological heat effects on anthesis in sunflower",
+      "url": "https://agris.fao.org/search/en/providers/124728/records/68381de7605041422d142f57"
+    },
+    "SRC_PSU_SEEDS": {
+      "title": "Penn State Seed and Seedling Biology",
+      "url": "https://extension.psu.edu/seed-and-seedling-biology"
+    },
+    "SRC_UMN_VEG": {
+      "title": "UMN Extension vegetable climate resilience",
+      "url": "https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/climate-resilience-resources-for-vegetable-growers-in-minnesota"
+    },
+    "SRC_FAO_KC": {
+      "title": "FAO Chapter 3 Crop Water Needs",
+      "url": "https://www.fao.org/4/s2022e/s2022e07.htm"
+    },
+    "SRC_OPENWEATHER": {
+      "title": "OpenWeather 5 Day / 3 Hour Forecast API",
+      "url": "https://openweathermap.org/api/forecast5"
+    },
+    "SRC_REPO_AGRO": {
+      "title": "AgroRadar-AI agronomy_v4 engineering proxy",
+      "url": "https://raw.githubusercontent.com/nedidiRak/AgroRadar-AI/main/backend/app/agronomy_v4.py"
+    }
+  },
+  "rules": [
+    {
+      "rule_id": "R0001",
+      "crop_id": "winter_wheat",
+      "stage": "germination",
+      "bbch": null,
+      "factor": "temperature",
+      "measurement_type": "soil_or_seedbed_temperature",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": 4,
+        "max": 37,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "scientific_range",
+      "risk_hint": "screening_only",
+      "confidence": "high",
+      "evidence_class": "physiological_range",
+      "source_ids": [
+        "SRC_FAO_WHEAT"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/y4011e/y4011e06.htm"
+      ],
+      "data_requirement": [
+        "soil_temperature"
+      ],
+      "limitations": "Диапазон прорастания, НЕ границы повреждения и НЕ разрешение на красную тревогу."
+    },
+    {
+      "rule_id": "R0002",
+      "crop_id": "winter_wheat",
+      "stage": "flowering",
+      "bbch": null,
+      "factor": "heat",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": ">",
+        "value": 30,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "review",
+      "source_ids": [
+        "SRC_WHEAT_REVIEW"
+      ],
+      "source_urls": [
+        "https://onlinelibrary.wiley.com/doi/abs/10.1111/jac.12572"
+      ],
+      "data_requirement": [
+        "bbch_confirmed",
+        "air_temperature"
+      ],
+      "limitations": "Фаза формирования пыльцы особенно чувствительна; нет универсального % потери урожая при кратком превышении."
+    },
+    {
+      "rule_id": "R0003",
+      "crop_id": "winter_wheat",
+      "stage": "around_anthesis",
+      "bbch": null,
+      "factor": "heat_dose",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": ">",
+        "value": 32,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "experimental_response",
+      "risk_hint": "screening_only",
+      "confidence": "high",
+      "evidence_class": "controlled_experiment",
+      "source_ids": [
+        "SRC_WHEAT_EXPERIMENT"
+      ],
+      "source_urls": [
+        "https://onlinelibrary.wiley.com/doi/10.2134/agronj2017.07.0392"
+      ],
+      "data_requirement": [
+        "bbch_confirmed",
+        "subhourly_or_hourly_temperature",
+        "exposure_duration"
+      ],
+      "limitations": "Порог базы температурной дозы (°C·h), НЕ порог накопленной дозы и НЕ универсальный порог гибели. 3-часовые точки требуют approximate quality."
+    },
+    {
+      "rule_id": "R0004",
+      "crop_id": "spring_wheat",
+      "stage": "germination",
+      "bbch": null,
+      "factor": "temperature",
+      "measurement_type": "soil_or_seedbed_temperature",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": 4,
+        "max": 37,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "scientific_range",
+      "risk_hint": "screening_only",
+      "confidence": "high",
+      "evidence_class": "physiological_range",
+      "source_ids": [
+        "SRC_FAO_WHEAT"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/y4011e/y4011e06.htm"
+      ],
+      "data_requirement": [
+        "soil_temperature"
+      ],
+      "limitations": "Диапазон прорастания, НЕ границы повреждения и НЕ разрешение на красную тревогу."
+    },
+    {
+      "rule_id": "R0005",
+      "crop_id": "spring_wheat",
+      "stage": "flowering",
+      "bbch": null,
+      "factor": "heat",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": ">",
+        "value": 30,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "review",
+      "source_ids": [
+        "SRC_WHEAT_REVIEW"
+      ],
+      "source_urls": [
+        "https://onlinelibrary.wiley.com/doi/abs/10.1111/jac.12572"
+      ],
+      "data_requirement": [
+        "bbch_confirmed",
+        "air_temperature"
+      ],
+      "limitations": "Фаза формирования пыльцы особенно чувствительна; нет универсального % потери урожая при кратком превышении."
+    },
+    {
+      "rule_id": "R0006",
+      "crop_id": "spring_wheat",
+      "stage": "around_anthesis",
+      "bbch": null,
+      "factor": "heat_dose",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": ">",
+        "value": 32,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "experimental_response",
+      "risk_hint": "screening_only",
+      "confidence": "high",
+      "evidence_class": "controlled_experiment",
+      "source_ids": [
+        "SRC_WHEAT_EXPERIMENT"
+      ],
+      "source_urls": [
+        "https://onlinelibrary.wiley.com/doi/10.2134/agronj2017.07.0392"
+      ],
+      "data_requirement": [
+        "bbch_confirmed",
+        "subhourly_or_hourly_temperature",
+        "exposure_duration"
+      ],
+      "limitations": "Порог базы температурной дозы (°C·h), НЕ порог накопленной дозы и НЕ универсальный порог гибели. 3-часовые точки требуют approximate quality."
+    },
+    {
+      "rule_id": "R0007",
+      "crop_id": "winter_wheat",
+      "stage": "winter_dormancy",
+      "bbch": null,
+      "factor": "freeze",
+      "measurement_type": "tillering_node_temperature",
+      "threshold": {
+        "operator": "range",
+        "value": null,
+        "min": -19,
+        "max": -17,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "extension_reference",
+      "source_ids": [
+        "SRC_ROSSELKHOZ"
+      ],
+      "source_urls": [
+        "https://rosselhoscenter.ru/ob-uchrezhdenii/filialy/privolzhskiy/nizhegorodskaya-oblast/perezimovka-ozimykh-kultur-vozmozhnye-riski/"
+      ],
+      "data_requirement": [
+        "tillering_node_temperature",
+        "snow_cover",
+        "hardening_state",
+        "exposure_duration"
+      ],
+      "limitations": "Длительное охлаждение узла кущения, не воздуха на 2 м; не переносить как threshold для воздуха."
+    },
+    {
+      "rule_id": "R0008",
+      "crop_id": "spring_wheat",
+      "stage": "flowering",
+      "bbch": null,
+      "factor": "frost",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": "range",
+        "value": null,
+        "min": -2,
+        "max": -1,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "frost_reference",
+      "source_ids": [
+        "SRC_FAO_FROST"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/y7223e/y7223e0a.htm"
+      ],
+      "data_requirement": [
+        "flowering_confirmed",
+        "field_temperature"
+      ],
+      "limitations": "Оценочные ориентиры фазового повреждения; микроклимат и время экспозиции влияют."
+    },
+    {
+      "rule_id": "R0009",
+      "crop_id": "spring_barley",
+      "stage": "early_vegetative",
+      "bbch": null,
+      "factor": "frost",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": "range",
+        "value": null,
+        "min": -8,
+        "max": -7,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "frost_reference",
+      "source_ids": [
+        "SRC_FAO_FROST"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/y7223e/y7223e0a.htm"
+      ],
+      "data_requirement": [
+        "bbch_confirmed",
+        "field_temperature"
+      ],
+      "limitations": "Не переносить на озимый ячмень и цветение."
+    },
+    {
+      "rule_id": "R0010",
+      "crop_id": "oats",
+      "stage": "early_vegetative",
+      "bbch": null,
+      "factor": "frost",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": "range",
+        "value": null,
+        "min": -9,
+        "max": -8,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "frost_reference",
+      "source_ids": [
+        "SRC_FAO_FROST"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/y7223e/y7223e0a.htm"
+      ],
+      "data_requirement": [
+        "bbch_confirmed",
+        "field_temperature"
+      ],
+      "limitations": "Оценочный ориентир из справочной таблицы, не % повреждения."
+    },
+    {
+      "rule_id": "R0011",
+      "crop_id": "pea",
+      "stage": "flowering",
+      "bbch": null,
+      "factor": "frost",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": "range",
+        "value": null,
+        "min": -3,
+        "max": -2,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "frost_reference",
+      "source_ids": [
+        "SRC_FAO_FROST"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/y7223e/y7223e0a.htm"
+      ],
+      "data_requirement": [
+        "bbch_confirmed",
+        "field_temperature"
+      ],
+      "limitations": "Не переносить на вегетативную морозостойкость."
+    },
+    {
+      "rule_id": "R0012",
+      "crop_id": "lentil",
+      "stage": "flowering",
+      "bbch": null,
+      "factor": "frost",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": "range",
+        "value": null,
+        "min": -3,
+        "max": -2,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "frost_reference",
+      "source_ids": [
+        "SRC_FAO_FROST"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/y7223e/y7223e0a.htm"
+      ],
+      "data_requirement": [
+        "bbch_confirmed",
+        "field_temperature"
+      ],
+      "limitations": "Не переносить на вегетативную морозостойкость."
+    },
+    {
+      "rule_id": "R0013",
+      "crop_id": "grain_maize",
+      "stage": "germination_imbibition",
+      "bbch": null,
+      "factor": "chilling",
+      "measurement_type": "soil_temperature_5cm",
+      "threshold": {
+        "operator": "<",
+        "value": 10,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "extension_reference",
+      "source_ids": [
+        "SRC_PSU_CHILL"
+      ],
+      "source_urls": [
+        "https://extension.psu.edu/chilling-injury-in-newly-planted-corn-and-soybeans"
+      ],
+      "data_requirement": [
+        "soil_temperature_5cm",
+        "sowing_date"
+      ],
+      "limitations": "Особенно существенны первые 24–48 часов водопоглощения; air temperature нельзя подменять soil temperature."
+    },
+    {
+      "rule_id": "R0014",
+      "crop_id": "silage_maize",
+      "stage": "germination_imbibition",
+      "bbch": null,
+      "factor": "chilling",
+      "measurement_type": "soil_temperature_5cm",
+      "threshold": {
+        "operator": "<",
+        "value": 10,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "extension_reference",
+      "source_ids": [
+        "SRC_PSU_CHILL"
+      ],
+      "source_urls": [
+        "https://extension.psu.edu/chilling-injury-in-newly-planted-corn-and-soybeans"
+      ],
+      "data_requirement": [
+        "soil_temperature_5cm",
+        "sowing_date"
+      ],
+      "limitations": "Особенно существенны первые 24–48 часов водопоглощения; air temperature нельзя подменять soil temperature."
+    },
+    {
+      "rule_id": "R0015",
+      "crop_id": "soybean",
+      "stage": "germination_imbibition",
+      "bbch": null,
+      "factor": "chilling",
+      "measurement_type": "soil_temperature_5cm",
+      "threshold": {
+        "operator": "<",
+        "value": 10,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "extension_reference",
+      "source_ids": [
+        "SRC_PSU_CHILL"
+      ],
+      "source_urls": [
+        "https://extension.psu.edu/chilling-injury-in-newly-planted-corn-and-soybeans"
+      ],
+      "data_requirement": [
+        "soil_temperature_5cm",
+        "sowing_date"
+      ],
+      "limitations": "Особенно существенны первые 24–48 часов водопоглощения; air temperature нельзя подменять soil temperature."
+    },
+    {
+      "rule_id": "R0016",
+      "crop_id": "grain_maize",
+      "stage": "pollination",
+      "bbch": null,
+      "factor": "heat_dry",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": ">",
+        "value": 30,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "extension_reference",
+      "source_ids": [
+        "SRC_UMN_CORN"
+      ],
+      "source_urls": [
+        "https://extension.umn.edu/growing-corn/dry-conditions-during-corn-pollination"
+      ],
+      "data_requirement": [
+        "pollination_confirmed",
+        "soil_moisture"
+      ],
+      "limitations": "Риск усиливается при сухой почве. Если влажность почвы неизвестна — не подтверждать drought damage."
+    },
+    {
+      "rule_id": "R0017",
+      "crop_id": "grain_maize",
+      "stage": "pollination",
+      "bbch": null,
+      "factor": "heat",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": ">",
+        "value": 33,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "extension_reference",
+      "source_ids": [
+        "SRC_UMN_CORN"
+      ],
+      "source_urls": [
+        "https://extension.umn.edu/growing-corn/dry-conditions-during-corn-pollination"
+      ],
+      "data_requirement": [
+        "pollination_confirmed"
+      ],
+      "limitations": "Повышенный риск опыления даже при лучшем влагообеспечении. Без длительности нельзя выводить % потерь."
+    },
+    {
+      "rule_id": "R0018",
+      "crop_id": "silage_maize",
+      "stage": "pollination",
+      "bbch": null,
+      "factor": "heat_dry",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": ">",
+        "value": 30,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "extension_reference",
+      "source_ids": [
+        "SRC_UMN_CORN"
+      ],
+      "source_urls": [
+        "https://extension.umn.edu/growing-corn/dry-conditions-during-corn-pollination"
+      ],
+      "data_requirement": [
+        "pollination_confirmed",
+        "soil_moisture"
+      ],
+      "limitations": "Риск усиливается при сухой почве. Если влажность почвы неизвестна — не подтверждать drought damage."
+    },
+    {
+      "rule_id": "R0019",
+      "crop_id": "silage_maize",
+      "stage": "pollination",
+      "bbch": null,
+      "factor": "heat",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": ">",
+        "value": 33,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "extension_reference",
+      "source_ids": [
+        "SRC_UMN_CORN"
+      ],
+      "source_urls": [
+        "https://extension.umn.edu/growing-corn/dry-conditions-during-corn-pollination"
+      ],
+      "data_requirement": [
+        "pollination_confirmed"
+      ],
+      "limitations": "Повышенный риск опыления даже при лучшем влагообеспечении. Без длительности нельзя выводить % потерь."
+    },
+    {
+      "rule_id": "R0020",
+      "crop_id": "soybean",
+      "stage": "flowering",
+      "bbch": null,
+      "factor": "heat_long_exposure",
+      "measurement_type": "day_night_air_temperatures",
+      "threshold": {
+        "operator": "experimental_38_28",
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "experimental_response",
+      "risk_hint": "screening_only",
+      "confidence": "high",
+      "evidence_class": "controlled_experiment",
+      "source_ids": [
+        "SRC_SOY_EXPERIMENT"
+      ],
+      "source_urls": [
+        "https://onlinelibrary.wiley.com/doi/10.1111/jac.12005"
+      ],
+      "data_requirement": [
+        "day_max",
+        "night_min",
+        "growth_stage",
+        "14_days_exposure"
+      ],
+      "limitations": "38°C день/28°C ночь в течение 14 суток — условия опыта, не универсальная граница. 5-дневный прогноз не позволяет утверждать выполнение 14 суток."
+    },
+    {
+      "rule_id": "R0021",
+      "crop_id": "sugar_beet",
+      "stage": "seedling",
+      "bbch": null,
+      "factor": "frost",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": "<",
+        "value": 0,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "controlled_experiment",
+      "source_ids": [
+        "SRC_BEET_FROST"
+      ],
+      "source_urls": [
+        "https://link.springer.com/article/10.1007/s12355-024-01398-w"
+      ],
+      "data_requirement": [
+        "seedling_stage_confirmed",
+        "local_temperature"
+      ],
+      "limitations": "В работе исследуются -2/-4/-8°C; 0°C — ориентир скрининга, а не порог гарантированного ущерба."
+    },
+    {
+      "rule_id": "R0022",
+      "crop_id": "sunflower",
+      "stage": "anthesis",
+      "bbch": null,
+      "factor": "heat",
+      "measurement_type": "inflorescence_temperature",
+      "threshold": {
+        "operator": ">=",
+        "value": 40,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "experimental_response",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "plant_physiology_experiment",
+      "source_ids": [
+        "SRC_SUNFLOWER"
+      ],
+      "source_urls": [
+        "https://agris.fao.org/search/en/providers/124728/records/68381de7605041422d142f57"
+      ],
+      "data_requirement": [
+        "inflorescence_temperature",
+        "anthesis_confirmed"
+      ],
+      "limitations": "Температура корзинки/репродуктивных тканей не равна температуре воздуха на 2 м."
+    },
+    {
+      "rule_id": "R0023",
+      "crop_id": "winter_rapeseed",
+      "stage": "flowering_early_reproductive",
+      "bbch": null,
+      "factor": "heat",
+      "measurement_type": "air_temperature_max",
+      "threshold": {
+        "operator": "range",
+        "value": null,
+        "min": 30,
+        "max": 35,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "experimental_response",
+      "source_ids": [
+        "SRC_RAPE_EXP",
+        "SRC_RAPE_CRITICAL"
+      ],
+      "source_urls": [
+        "https://onlinelibrary.wiley.com/doi/full/10.1002/fes3.262",
+        "https://www.sciencedirect.com/science/article/pii/S0378429018302843"
+      ],
+      "data_requirement": [
+        "stage_confirmed",
+        "daily_tmax",
+        "duration_days_7_to_14"
+      ],
+      "limitations": "Диапазон повышенного риска и длительность лабораторных воздействий; 5-дневный прогноз не подтверждает 7–14 суток."
+    },
+    {
+      "rule_id": "R0024",
+      "crop_id": "spring_rapeseed",
+      "stage": "flowering_early_reproductive",
+      "bbch": null,
+      "factor": "heat",
+      "measurement_type": "air_temperature_max",
+      "threshold": {
+        "operator": "range",
+        "value": null,
+        "min": 30,
+        "max": 35,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "candidate",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "experimental_response",
+      "source_ids": [
+        "SRC_RAPE_EXP",
+        "SRC_RAPE_CRITICAL"
+      ],
+      "source_urls": [
+        "https://onlinelibrary.wiley.com/doi/full/10.1002/fes3.262",
+        "https://www.sciencedirect.com/science/article/pii/S0378429018302843"
+      ],
+      "data_requirement": [
+        "stage_confirmed",
+        "daily_tmax",
+        "duration_days_7_to_14"
+      ],
+      "limitations": "Диапазон повышенного риска и длительность лабораторных воздействий; 5-дневный прогноз не подтверждает 7–14 суток."
+    },
+    {
+      "rule_id": "R0025",
+      "crop_id": "winter_wheat",
+      "stage": "mid_season",
+      "bbch": null,
+      "factor": "water_demand_parameter",
+      "measurement_type": "crop_coefficient_kc_mid",
+      "threshold": {
+        "operator": "=",
+        "value": 1.15,
+        "min": null,
+        "max": null,
+        "unit": "dimensionless"
+      },
+      "duration_hours": null,
+      "interpretation": "model_parameter",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "fao_reference",
+      "source_ids": [
+        "SRC_FAO_KC"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/s2022e/s2022e07.htm"
+      ],
+      "data_requirement": [
+        "ET0",
+        "growth_stage",
+        "soil_water_capacity"
+      ],
+      "limitations": "Kc_mid — коэффициент ETc=Kc×ET0, НЕ порог засухи. Поправки на климат, стадию, ветер, RH обязательны."
+    },
+    {
+      "rule_id": "R0026",
+      "crop_id": "spring_wheat",
+      "stage": "mid_season",
+      "bbch": null,
+      "factor": "water_demand_parameter",
+      "measurement_type": "crop_coefficient_kc_mid",
+      "threshold": {
+        "operator": "=",
+        "value": 1.15,
+        "min": null,
+        "max": null,
+        "unit": "dimensionless"
+      },
+      "duration_hours": null,
+      "interpretation": "model_parameter",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "fao_reference",
+      "source_ids": [
+        "SRC_FAO_KC"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/s2022e/s2022e07.htm"
+      ],
+      "data_requirement": [
+        "ET0",
+        "growth_stage",
+        "soil_water_capacity"
+      ],
+      "limitations": "Kc_mid — коэффициент ETc=Kc×ET0, НЕ порог засухи. Поправки на климат, стадию, ветер, RH обязательны."
+    },
+    {
+      "rule_id": "R0027",
+      "crop_id": "winter_barley",
+      "stage": "mid_season",
+      "bbch": null,
+      "factor": "water_demand_parameter",
+      "measurement_type": "crop_coefficient_kc_mid",
+      "threshold": {
+        "operator": "=",
+        "value": 1.15,
+        "min": null,
+        "max": null,
+        "unit": "dimensionless"
+      },
+      "duration_hours": null,
+      "interpretation": "model_parameter",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "fao_reference",
+      "source_ids": [
+        "SRC_FAO_KC"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/s2022e/s2022e07.htm"
+      ],
+      "data_requirement": [
+        "ET0",
+        "growth_stage",
+        "soil_water_capacity"
+      ],
+      "limitations": "Kc_mid — коэффициент ETc=Kc×ET0, НЕ порог засухи. Поправки на климат, стадию, ветер, RH обязательны."
+    },
+    {
+      "rule_id": "R0028",
+      "crop_id": "spring_barley",
+      "stage": "mid_season",
+      "bbch": null,
+      "factor": "water_demand_parameter",
+      "measurement_type": "crop_coefficient_kc_mid",
+      "threshold": {
+        "operator": "=",
+        "value": 1.15,
+        "min": null,
+        "max": null,
+        "unit": "dimensionless"
+      },
+      "duration_hours": null,
+      "interpretation": "model_parameter",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "fao_reference",
+      "source_ids": [
+        "SRC_FAO_KC"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/s2022e/s2022e07.htm"
+      ],
+      "data_requirement": [
+        "ET0",
+        "growth_stage",
+        "soil_water_capacity"
+      ],
+      "limitations": "Kc_mid — коэффициент ETc=Kc×ET0, НЕ порог засухи. Поправки на климат, стадию, ветер, RH обязательны."
+    },
+    {
+      "rule_id": "R0029",
+      "crop_id": "oats",
+      "stage": "mid_season",
+      "bbch": null,
+      "factor": "water_demand_parameter",
+      "measurement_type": "crop_coefficient_kc_mid",
+      "threshold": {
+        "operator": "=",
+        "value": 1.15,
+        "min": null,
+        "max": null,
+        "unit": "dimensionless"
+      },
+      "duration_hours": null,
+      "interpretation": "model_parameter",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "fao_reference",
+      "source_ids": [
+        "SRC_FAO_KC"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/s2022e/s2022e07.htm"
+      ],
+      "data_requirement": [
+        "ET0",
+        "growth_stage",
+        "soil_water_capacity"
+      ],
+      "limitations": "Kc_mid — коэффициент ETc=Kc×ET0, НЕ порог засухи. Поправки на климат, стадию, ветер, RH обязательны."
+    },
+    {
+      "rule_id": "R0030",
+      "crop_id": "grain_maize",
+      "stage": "mid_season",
+      "bbch": null,
+      "factor": "water_demand_parameter",
+      "measurement_type": "crop_coefficient_kc_mid",
+      "threshold": {
+        "operator": "=",
+        "value": 1.15,
+        "min": null,
+        "max": null,
+        "unit": "dimensionless"
+      },
+      "duration_hours": null,
+      "interpretation": "model_parameter",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "fao_reference",
+      "source_ids": [
+        "SRC_FAO_KC"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/s2022e/s2022e07.htm"
+      ],
+      "data_requirement": [
+        "ET0",
+        "growth_stage",
+        "soil_water_capacity"
+      ],
+      "limitations": "Kc_mid — коэффициент ETc=Kc×ET0, НЕ порог засухи. Поправки на климат, стадию, ветер, RH обязательны."
+    },
+    {
+      "rule_id": "R0031",
+      "crop_id": "silage_maize",
+      "stage": "mid_season",
+      "bbch": null,
+      "factor": "water_demand_parameter",
+      "measurement_type": "crop_coefficient_kc_mid",
+      "threshold": {
+        "operator": "=",
+        "value": 1.15,
+        "min": null,
+        "max": null,
+        "unit": "dimensionless"
+      },
+      "duration_hours": null,
+      "interpretation": "model_parameter",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "fao_reference",
+      "source_ids": [
+        "SRC_FAO_KC"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/s2022e/s2022e07.htm"
+      ],
+      "data_requirement": [
+        "ET0",
+        "growth_stage",
+        "soil_water_capacity"
+      ],
+      "limitations": "Kc_mid — коэффициент ETc=Kc×ET0, НЕ порог засухи. Поправки на климат, стадию, ветер, RH обязательны."
+    },
+    {
+      "rule_id": "R0032",
+      "crop_id": "sunflower",
+      "stage": "mid_season",
+      "bbch": null,
+      "factor": "water_demand_parameter",
+      "measurement_type": "crop_coefficient_kc_mid",
+      "threshold": {
+        "operator": "=",
+        "value": 1.15,
+        "min": null,
+        "max": null,
+        "unit": "dimensionless"
+      },
+      "duration_hours": null,
+      "interpretation": "model_parameter",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "fao_reference",
+      "source_ids": [
+        "SRC_FAO_KC"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/s2022e/s2022e07.htm"
+      ],
+      "data_requirement": [
+        "ET0",
+        "growth_stage",
+        "soil_water_capacity"
+      ],
+      "limitations": "Kc_mid — коэффициент ETc=Kc×ET0, НЕ порог засухи. Поправки на климат, стадию, ветер, RH обязательны."
+    },
+    {
+      "rule_id": "R0033",
+      "crop_id": "sugar_beet",
+      "stage": "mid_season",
+      "bbch": null,
+      "factor": "water_demand_parameter",
+      "measurement_type": "crop_coefficient_kc_mid",
+      "threshold": {
+        "operator": "=",
+        "value": 1.15,
+        "min": null,
+        "max": null,
+        "unit": "dimensionless"
+      },
+      "duration_hours": null,
+      "interpretation": "model_parameter",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "fao_reference",
+      "source_ids": [
+        "SRC_FAO_KC"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/s2022e/s2022e07.htm"
+      ],
+      "data_requirement": [
+        "ET0",
+        "growth_stage",
+        "soil_water_capacity"
+      ],
+      "limitations": "Kc_mid — коэффициент ETc=Kc×ET0, НЕ порог засухи. Поправки на климат, стадию, ветер, RH обязательны."
+    },
+    {
+      "rule_id": "R0034",
+      "crop_id": "soybean",
+      "stage": "mid_season",
+      "bbch": null,
+      "factor": "water_demand_parameter",
+      "measurement_type": "crop_coefficient_kc_mid",
+      "threshold": {
+        "operator": "=",
+        "value": 1.1,
+        "min": null,
+        "max": null,
+        "unit": "dimensionless"
+      },
+      "duration_hours": null,
+      "interpretation": "model_parameter",
+      "risk_hint": "screening_only",
+      "confidence": "medium",
+      "evidence_class": "fao_reference",
+      "source_ids": [
+        "SRC_FAO_KC"
+      ],
+      "source_urls": [
+        "https://www.fao.org/4/s2022e/s2022e07.htm"
+      ],
+      "data_requirement": [
+        "ET0",
+        "growth_stage",
+        "soil_water_capacity"
+      ],
+      "limitations": "Kc_mid — коэффициент ETc=Kc×ET0, НЕ порог засухи. Поправки на климат, стадию, ветер, RH обязательны."
+    },
+    {
+      "rule_id": "R0035",
+      "crop_id": "winter_wheat",
+      "stage": "vegetative",
+      "bbch": null,
+      "factor": "disease_weather_screen",
+      "measurement_type": "air_temperature_2m",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": 15,
+        "max": 25,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "engineering_proxy",
+      "risk_hint": "screening_only",
+      "confidence": "low",
+      "evidence_class": "engineering_proxy",
+      "source_ids": [
+        "SRC_REPO_AGRO"
+      ],
+      "source_urls": [
+        "https://raw.githubusercontent.com/nedidiRak/AgroRadar-AI/main/backend/app/agronomy_v4.py"
+      ],
+      "data_requirement": [
+        "relative_humidity",
+        "rain_3h",
+        "repeated_forecast_points"
+      ],
+      "limitations": "Для бурой ржавчины: RH>=90%, дождь, >=2 соседних трёхчасовых точек — только погодный скрининг, не диагноз и не научный infection threshold."
+    },
+    {
+      "rule_id": "R0036",
+      "crop_id": "winter_wheat",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0037",
+      "crop_id": "spring_wheat",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0038",
+      "crop_id": "winter_barley",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0039",
+      "crop_id": "spring_barley",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0040",
+      "crop_id": "rye",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0041",
+      "crop_id": "oats",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0042",
+      "crop_id": "grain_maize",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0043",
+      "crop_id": "silage_maize",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0044",
+      "crop_id": "millet",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0045",
+      "crop_id": "buckwheat",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0046",
+      "crop_id": "rice",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0047",
+      "crop_id": "sorghum",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0048",
+      "crop_id": "triticale",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0049",
+      "crop_id": "sunflower",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0050",
+      "crop_id": "sugar_beet",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0051",
+      "crop_id": "winter_rapeseed",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0052",
+      "crop_id": "spring_rapeseed",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0053",
+      "crop_id": "soybean",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0054",
+      "crop_id": "flax",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0055",
+      "crop_id": "mustard",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0056",
+      "crop_id": "safflower",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0057",
+      "crop_id": "camelina",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0058",
+      "crop_id": "pea",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0059",
+      "crop_id": "chickpea",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0060",
+      "crop_id": "lentil",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0061",
+      "crop_id": "common_bean",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0062",
+      "crop_id": "faba_bean",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0063",
+      "crop_id": "lupin",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0064",
+      "crop_id": "potato",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0065",
+      "crop_id": "tomato",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0066",
+      "crop_id": "cucumber",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0067",
+      "crop_id": "cabbage",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0068",
+      "crop_id": "carrot",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0069",
+      "crop_id": "onion",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0070",
+      "crop_id": "garlic",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0071",
+      "crop_id": "pepper",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0072",
+      "crop_id": "eggplant",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0073",
+      "crop_id": "zucchini",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0074",
+      "crop_id": "pumpkin",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0075",
+      "crop_id": "watermelon",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0076",
+      "crop_id": "melon",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0077",
+      "crop_id": "table_beet",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0078",
+      "crop_id": "alfalfa",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0079",
+      "crop_id": "clover",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0080",
+      "crop_id": "sudan_grass",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0081",
+      "crop_id": "perennial_grasses",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0082",
+      "crop_id": "radish",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0083",
+      "crop_id": "turnip",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0084",
+      "crop_id": "spinach",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    },
+    {
+      "rule_id": "R0085",
+      "crop_id": "lettuce",
+      "stage": "unspecified_or_not_validated",
+      "bbch": null,
+      "factor": "quantitative_damage_threshold",
+      "measurement_type": "crop_and_stage_specific_metric",
+      "threshold": {
+        "operator": null,
+        "value": null,
+        "min": null,
+        "max": null,
+        "unit": "°C"
+      },
+      "duration_hours": null,
+      "interpretation": "unknown",
+      "risk_hint": "unknown",
+      "confidence": "insufficient",
+      "evidence_class": "insufficient_data",
+      "source_ids": [],
+      "source_urls": [],
+      "data_requirement": [],
+      "limitations": "Не вводить автоматическое зелёное/красное значение без подтверждённых диапазона BBCH, типа измерения, экспозиции и локальной проверки. Это пробел знаний, не числовой порог."
+    }
+  ],
+  "statistics": {
+    "crop_count": 50,
+    "rule_or_gap_record_count": 85,
+    "insufficient_data_records": 50
+  }
+}
