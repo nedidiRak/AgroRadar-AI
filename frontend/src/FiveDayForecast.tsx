@@ -4,7 +4,10 @@ import './FiveDayForecast.css'
 
 type Level = 'high' | 'medium' | 'low' | 'unknown'
 
+import type { CropRiskAnalysis } from './CropRiskPanel'
+
 type ForecastDay = {
+  crop_risk_analysis?: CropRiskAnalysis
   day: number
   start: string
   end: string
@@ -110,6 +113,7 @@ export default function FiveDayForecast({
         return <article key={day.day} className={`agr-five-day__card agr-five-day__card--${day.risk.level}`}>
           <div className="agr-five-day__date"><strong>День {day.day}</strong><span>{dateTime(day.start)} — {dateTime(day.end)}</span></div>
           <span className={`agr-risk-pill agr-risk-pill--${day.risk.level}`}>{day.risk.label}</span>
+          {day.crop_risk_analysis && <p className="agr-five-day__hint"><b>Для культуры:</b> {day.crop_risk_analysis.overall.label}</p>}
           <div className="agr-five-day__metrics">
             <span>Мин.: <b>{number(day.min_temperature_c, '°C')}</b></span>
             <span>Макс.: <b>{number(day.max_temperature_c, '°C')}</b></span>
