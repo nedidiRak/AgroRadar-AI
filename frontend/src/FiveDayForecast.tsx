@@ -101,7 +101,7 @@ export default function FiveDayForecast({
     {fieldId && loading && <p className="agr-five-day__hint">Читаем архив из базы данных…</p>}
     {error && <p className="agr-five-day__error" role="alert">{error}. Сам текущий прогноз остаётся доступен.</p>}
     {selectedArchive && <p className="agr-five-day__hint">
-      Показан сохранённый ${dateTime(selectedArchive.recorded_at)} прогноз, а не фактическая погода за прошедшие дни.
+      Показан сохранённый {dateTime(selectedArchive.recorded_at)} прогноз, а не фактическая погода за прошедшие дни.
     </p>}
     {isDemo && <p className="agr-five-day__hint">ДЕМО: синтетический прогноз. Он не архивируется как реальная погода.</p>}
     {current && <div className="agr-five-day__grid">
