@@ -10,6 +10,7 @@ $arguments = @(
     '--clean','--noconfirm','--onedir','--console',
     '--name','AgroRadar-Expert',
     '--add-data','frontend/dist;frontend/dist',
+    '--add-data','backend/app/agrorisk_research.json;app',
     '--collect-submodules','uvicorn',
     '--collect-submodules','app',
     '--hidden-import','uvicorn.protocols.http.auto',
