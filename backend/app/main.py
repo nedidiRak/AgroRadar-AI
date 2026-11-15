@@ -26,6 +26,8 @@ load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 from .risk_engine import analyze_risks, simulate_scenario, DEMO_SCENARIOS
 from .agronomy_v4 import build_agronomy
 from .five_day import build_five_day_forecast
+from .crop_risk import (router as crop_risk_router, evaluate_crop_risk,
+                        crop_by_id, crop_stages, resolve_crop_id)
 
 from .auth import router as auth_router, auth_guard
 from .monitoring import router as monitoring_router, capture_dashboard, record_event
@@ -36,6 +38,7 @@ app = FastAPI(title='AgroRadar AI API', version='4.0.0')
 app.middleware('http')(auth_guard)
 app.include_router(auth_router)
 app.include_router(monitoring_router)
+app.include_router(crop_risk_router)
 app.include_router(backup_router)
 
 @app.get('/api/public-config', include_in_schema=False)
@@ -76,6 +79,8 @@ class FieldMetadata(BaseModel):
     sowing_date: str | None = None
     growth_stage: str | None = None
     soil_type: str | None = None
+    crop_id: str | None = None
+    crop_stage_code: str | None = None
 
 
 class FieldObservationCreate(BaseModel):
@@ -129,6 +134,19 @@ def normalise_agronomy(payload: FieldMetadata) -> dict:
             result[key] = value
     if payload.sowing_date is not None:
         result['sowing_date'] = validate_iso_date(payload.sowing_date, 'Дата посева')
+    if payload.crop_id is not None:
+        cid = payload.crop_id.strip()
+        if cid and not crop_by_id(cid):
+            raise HTTPException(422, 'Культура отсутствует в научном справочнике.')
+        if cid and payload.crop.strip().casefold().replace('ё','е') != crop_by_id(cid)['name_ru'].casefold().replace('ё','е'):
+            raise HTTPException(422, 'Название культуры и выбранный crop_id не совпадают.')
+        result['crop_id'] = cid
+    if payload.crop_stage_code is not None:
+        stage = payload.crop_stage_code.strip()
+        cid = payload.crop_id or ''
+        if stage and (not cid or stage not in {x['code'] for x in crop_stages(cid)}):
+            raise HTTPException(422, 'Стадия не поддерживается для выбранной культуры.')
+        result['crop_stage_code'] = stage
     return result
 
 
@@ -279,6 +297,8 @@ def effective_fields() -> list[dict]:
         field.setdefault('kind', 'demo')
         field.setdefault('sowing_date', '')
         field.setdefault('growth_stage', '')
+        field.setdefault('crop_id', '')
+        field.setdefault('crop_stage_code', '')
         field.setdefault('soil_type', '')
         field.setdefault('observations', [])
         override = stored.get(str(field['id']))
@@ -514,7 +534,9 @@ async def compose_field(field: dict) -> dict:
     temperature_risk = risk_from_temperature(forecast['min_temperature_next_24h_c'],
                                           'forecast_24h' if forecast['source'] != 'demo' else 'demo_forecast_24h')
     analysis = analyze_risks(conditions['weather'], forecast, field)
+    crop_analysis = evaluate_crop_risk(field, forecast)
     return {**field, **conditions,
+            'crop_risk_analysis': crop_analysis,
             'risk': analysis['overall'],  # backward-compatible color/level used by map
             'temperature_risk': temperature_risk,
             'risk_analysis': analysis}
@@ -546,7 +568,9 @@ def unavailable_field(field: dict, detail: str) -> dict:
         **field, 'weather': weather, 'forecast': forecast,
         'five_day_forecast': build_five_day_forecast([], 'unavailable', field, issued_at=int(time.time())),
         'risk': analysis['overall'], 'temperature_risk': temperature_risk,
-        'risk_analysis': analysis, 'weather_error': detail,
+        'risk_analysis': analysis,
+        'crop_risk_analysis': evaluate_crop_risk(field, forecast),
+        'weather_error': detail,
     }
 
 
@@ -608,6 +632,7 @@ async def field_risks(field_id: int):
     return {'field_id': field_id, 'risk_type': 'multi_weather_screening_24h',
             'risk': details['risk'], 'temperature_risk': details['temperature_risk'],
             'risk_analysis': details['risk_analysis'],
+            'crop_risk_analysis': details['crop_risk_analysis'],
             'weather': details['weather'], 'forecast': details['forecast'],
             'disclaimer': details['risk_analysis']['disclaimer']}
 
@@ -696,6 +721,9 @@ def edit_field(field_id: int, payload: FieldMetadata, request: Request):
         target = next((f for f in catalog['fields'] if f['id'] == field_id), None)
         if target is None:
             raise HTTPException(404, 'Поле не найдено')
+        if target.get('crop') != meta['crop'] and payload.crop_id is None:
+            target['crop_id'] = ''
+            target['crop_stage_code'] = ''
         target.update(meta)
         save_catalog(catalog)
     log_change(request, 'field_updated', field_id, meta['name'])

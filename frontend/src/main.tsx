@@ -12,6 +12,8 @@ import { createRoot } from 'react-dom/client'
 import GeoFieldsMap from './GeoFieldsMap'
 import AiAgronom from './AiAgronom'
 import RiskDashboard from './RiskDashboard'
+import CropRiskPanel from './CropRiskPanel'
+import type { CropRiskAnalysis } from './CropRiskPanel'
 import FiveDayForecast from './FiveDayForecast'
 import type { FiveDayData } from './FiveDayForecast'
 import type { RiskAnalysis } from './RiskDashboard'
@@ -31,7 +33,8 @@ type ForecastPoint = {timestamp:number;temperature_c:number;precipitation_probab
 type Forecast = { min_temperature_next_24h_c:number|null;source:string;sample_count:number;period_hours:number;points?:ForecastPoint[] }
 type Risk = {level:'high'|'medium'|'low'|'unknown';label:string;reason:string;basis:string;rule:string;min_temperature_next_24h_c:number|null}
 type Observation = {id:string;observed_on:string;recorded_at:string;text:string;source:'manual'}
-type Field = {id:number;name:string;crop:string;description:string;sowing_date?:string;growth_stage?:string;soil_type?:string;observations?:Observation[];kind:'demo'|'user';area_ha:number;lat:number;lon:number;geometry_source?:string;weather:Weather;forecast:Forecast;risk:Risk; risk_analysis?:RiskAnalysis;temperature_risk?:Risk;five_day_forecast?:FiveDayData}
+type CropChoice = {crop_id:string;name_ru:string;group:string;stages:{code:string;label:string;bbch:null}[]}
+type Field = {id:number;name:string;crop:string;crop_id?:string;crop_stage_code?:string;crop_risk_analysis?:CropRiskAnalysis;description:string;sowing_date?:string;growth_stage?:string;soil_type?:string;observations?:Observation[];kind:'demo'|'user';area_ha:number;lat:number;lon:number;geometry_source?:string;weather:Weather;forecast:Forecast;risk:Risk; risk_analysis?:RiskAnalysis;temperature_risk?:Risk;five_day_forecast?:FiveDayData}
 type Dashboard = { fields:Field[];count:number;high_risk_count:number;degraded_count?:number;degraded_field_ids?:number[];mode:'demo'|'live_forecast' }
 type View = 'overview' | 'fields' | 'operations' | 'assistant' | 'users'
 const navigation: {id: View; label:string; Icon: typeof Activity}[] = [
@@ -74,6 +77,16 @@ function TemperatureTimeline({forecast}:{forecast:Forecast}) {
 
 function App() {
   const [data,setData] = useState<Dashboard|null>(null)
+  const [crops,setCrops] = useState<CropChoice[]>([])
+  const [cropSearch,setCropSearch] = useState('')
+  useEffect(() => {
+    const controller = new AbortController()
+    apiFetch('/api/crops', {signal: controller.signal})
+      .then(response => response.ok ? response.json() : Promise.reject(new Error('Недоступен справочник')))
+      .then(value => {if (!controller.signal.aborted) setCrops(Array.isArray(value.crops) ? value.crops : [])})
+      .catch(() => { /* Legacy editing remains available without the research catalog. */ })
+    return () => controller.abort()
+  }, [])
   const currentUser = getCurrentUser()
   const canEdit = currentUser?.role === 'admin'
   const username = currentUser?.username
@@ -104,7 +117,7 @@ function App() {
   const [loading,setLoading] = useState(false)
   const [actionMessage,setActionMessage] = useState('')
   const [dialog,setDialog] = useState<{mode:'create'|'edit';id?:number;outline?:[number,number][]}|null>(null)
-  const [form,setForm] = useState({name:'',crop:'',description:'',sowing_date:'',growth_stage:'',soil_type:''})
+  const [form,setForm] = useState({name:'',crop:'',crop_id:'',crop_stage_code:'',description:'',sowing_date:'',growth_stage:'',soil_type:''})
   const [formError,setFormError] = useState('')
   const [busy,setBusy] = useState(false)
   const [view,setView] = useState<View>('overview')
@@ -152,12 +165,14 @@ function App() {
   }
   useEffect(()=>{void refresh()},[])
   function openCreate(outline:[number,number][]) {
-    setForm({name:'',crop:'',description:'',sowing_date:'',growth_stage:'',soil_type:''})
+    setForm({name:'',crop:'',crop_id:'',crop_stage_code:'',description:'',sowing_date:'',growth_stage:'',soil_type:''})
+    setCropSearch('')
     setFormError('')
     setDialog({mode:'create',outline})
   }
   function openEdit(field:Field) {
-    setForm({name:field.name,crop:field.crop,description:field.description??'',sowing_date:field.sowing_date??'',growth_stage:field.growth_stage??'',soil_type:field.soil_type??''})
+    setForm({name:field.name,crop:field.crop,crop_id:field.crop_id??'',crop_stage_code:field.crop_stage_code??'',description:field.description??'',sowing_date:field.sowing_date??'',growth_stage:field.growth_stage??'',soil_type:field.soil_type??''})
+    setCropSearch('')
     setFormError('')
     setDialog({mode:'edit',id:field.id})
   }
@@ -359,7 +374,7 @@ function App() {
           </article>}
         </div>
         {ui.overviewForecast && <FiveDayForecast fieldId={active?.id ?? null} forecast={active?.five_day_forecast}/>}
-        {ui.overviewRiskDetails && <><RiskDashboard fieldName={active?.name ?? 'не выбрано'} analysis={active?.risk_analysis}/><AgronomyInsights fieldId={active?.id??null}/></>}
+        {ui.overviewRiskDetails && <><RiskDashboard fieldName={active?.name ?? 'не выбрано'} analysis={active?.risk_analysis}/><CropRiskPanel analysis={active?.crop_risk_analysis}/><AgronomyInsights fieldId={active?.id??null}/></>}
         {ui.overviewHelp && <details className="agr-disclosure agr-data-info"><summary><Info size={15}/> Как читать показатели <ChevronDown size={15}/></summary><p>{demo?'Погода и прогноз приведены для демонстрации.':'Погодные данные и прогноз получены от OpenWeather; это модельные данные, не датчики непосредственно на участке.'} AgroRisk Engine v4.0 оценивает заморозки, осадки, ветер и сухую жару, показывает неполные данные и проверяемые действия по открытым учебным порогам. Это не подтверждённый прогноз ущерба культуре и не диагноз засухи. Отсутствующие погодные показатели помечаются как «Нет данных». Сценарии для жюри не влияют на реальные поля или контекст DeepSeek. Границы исходных полей могут быть демонстрационными.</p></details>}
       </section>
 
@@ -426,14 +441,33 @@ function App() {
             <label htmlFor="field-name-input">Название поля <em>*</em></label>
             <input id="field-name-input" autoFocus required maxLength={100} value={form.name} onChange={e=>setForm(prev=>({...prev,name:e.target.value}))} placeholder="Например, Поле Лесное" />
             <label htmlFor="field-crop-input">Культура <em>*</em></label>
-            <input id="field-crop-input" required maxLength={80} value={form.crop} onChange={e=>setForm(prev=>({...prev,crop:e.target.value}))} placeholder="Например, озимая пшеница" list="agro-crops" />
+            <input id="field-crop-input" required maxLength={80} value={form.crop} onChange={e=>setForm(prev=>({...prev,crop:e.target.value,crop_id:'',crop_stage_code:''}))} placeholder="Например, озимая пшеница" list="agro-crops" />
             <datalist id="agro-crops"><option value="Пшеница"/><option value="Озимая пшеница"/><option value="Подсолнечник"/><option value="Кукуруза"/><option value="Ячмень"/><option value="Соя"/><option value="Рапс"/><option value="Сахарная свёкла"/></datalist>
+            <label htmlFor="crop-catalog-search">Научный справочник · 50 культур</label>
+            <input id="crop-catalog-search" className="agr-crop-catalog-search" type="search" value={cropSearch} onChange={e=>setCropSearch(e.target.value)} placeholder="Найти культуру в каталоге…" />
+            <select className="agr-crop-catalog-select" aria-label="Выбрать культуру из научного каталога" value={form.crop_id} onChange={e=>{
+              const item=crops.find(c=>c.crop_id===e.target.value)
+              setForm(prev=>({...prev,crop_id:item?.crop_id??'',crop:item?.name_ru??prev.crop,crop_stage_code:'',growth_stage:''}))
+            }}>
+              <option value="">Не выбрана / свободное название</option>
+              {crops.filter(item=>item.name_ru.toLocaleLowerCase('ru-RU').includes(cropSearch.toLocaleLowerCase('ru-RU')) || item.crop_id===form.crop_id).map(item=><option key={item.crop_id} value={item.crop_id}>{item.name_ru}</option>)}
+            </select>
+            <p className="field-modal__hint">Справочник нужен для научного анализа. Без выбора из списка старый погодный расчёт продолжит работать.</p>
             <div className="agr-agronomy-form-divider"><Leaf size={16}/> Агрономический паспорт <span>необязательно</span></div>
             <label htmlFor="field-sowing-input">Дата посева</label>
             <input id="field-sowing-input" type="date" value={form.sowing_date} onChange={e=>setForm(prev=>({...prev,sowing_date:e.target.value}))}/>
             <label htmlFor="field-stage-input">Фаза развития культуры</label>
-            <input id="field-stage-input" maxLength={100} value={form.growth_stage} onChange={e=>setForm(prev=>({...prev,growth_stage:e.target.value}))} placeholder="Например, кущение или 4 листа" list="agro-stages" />
+            <input id="field-stage-input" maxLength={100} value={form.growth_stage} onChange={e=>setForm(prev=>({...prev,growth_stage:e.target.value,crop_stage_code:''}))} placeholder="Например, кущение или 4 листа" list="agro-stages" />
             <datalist id="agro-stages"><option value="Всходы"/><option value="Кущение"/><option value="Выход в трубку"/><option value="Колошение"/><option value="Цветение"/><option value="Созревание"/></datalist>
+            <label htmlFor="agr-stage-catalog">Стадия для научного анализа (выбирается вручную)</label>
+            <select id="agr-stage-catalog" className="agr-crop-catalog-select" value={form.crop_stage_code} disabled={!form.crop_id} onChange={e=>{
+              const item=crops.find(c=>c.crop_id===form.crop_id)?.stages.find(s=>s.code===e.target.value)
+              setForm(prev=>({...prev,crop_stage_code:item?.code??'',growth_stage:item?.label??prev.growth_stage}))
+            }}>
+              <option value="">Не знаю / недостаточно данных</option>
+              {crops.find(c=>c.crop_id===form.crop_id)?.stages.map(stage=><option key={stage.code} value={stage.code}>{stage.label}</option>)}
+            </select>
+            <p className="field-modal__hint">Фаза указана пользователем, не подтверждена полевыми датчиками или BBCH. Поэтому правила остаются предварительными.</p>
             <label htmlFor="field-soil-input">Тип почвы</label>
             <input id="field-soil-input" maxLength={100} value={form.soil_type} onChange={e=>setForm(prev=>({...prev,soil_type:e.target.value}))} placeholder="Например, чернозём типичный" list="agro-soils" />
             <datalist id="agro-soils"><option value="Чернозём"/><option value="Суглинок"/><option value="Супесь"/><option value="Песчаная почва"/><option value="Глинистая почва"/></datalist>

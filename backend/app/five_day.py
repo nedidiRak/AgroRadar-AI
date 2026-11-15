@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .risk_engine import analyze_risks, numeric
+from .crop_risk import evaluate_crop_risk
 
 DAY_SECONDS = 24 * 3600
 MAX_DAYS = 5
@@ -69,6 +70,7 @@ def build_five_day_forecast(
             "max_temperature_c": max(temperatures) if temperatures else None,
             "precipitation_mm": total_rain,
             "risk": analysis["overall"],
+            "crop_risk_analysis": evaluate_crop_risk(field, {"source": source if segment else "unavailable", "points": segment}),
             "assessments": analysis["assessments"],
             "unknown_count": analysis["unknown_count"],
             "data_quality": analysis["data_quality"],
