@@ -80,6 +80,18 @@ def connection():
             details TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_activity_time ON activity(id DESC);
+        CREATE TABLE IF NOT EXISTS forecast_archives (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            field_id INTEGER NOT NULL,
+            archived_day TEXT NOT NULL,
+            recorded_at TEXT NOT NULL,
+            source TEXT NOT NULL,
+            current_temperature_c REAL,
+            forecast_json TEXT NOT NULL,
+            UNIQUE(field_id, archived_day)
+        );
+        CREATE INDEX IF NOT EXISTS idx_forecast_archive_field_day
+            ON forecast_archives(field_id, archived_day DESC);
     """)
     try:
         yield conn
@@ -147,6 +159,31 @@ def capture_dashboard(fields: list[dict]) -> dict:
                         """DELETE FROM snapshots WHERE field_id=? AND id NOT IN
                            (SELECT id FROM snapshots WHERE field_id=? ORDER BY id DESC LIMIT ?)""",
                         (field["id"], field["id"], MAX_FIELD_SNAPSHOTS),
+                    )
+                # One latest forecast copy per UTC day and field. It is a historical
+                # ARCHIVE OF PREDICTIONS, not measurements of past actual weather.
+                # DEMO and unavailable forecasts never enter the live archive.
+                five_day = field.get("five_day_forecast") or {}
+                if (item["source"] == "openweather_forecast_3h"
+                        and five_day.get("source") == "openweather_forecast_3h"
+                        and any(day.get("sample_count", 0) for day in five_day.get("days", []))):
+                    conn.execute(
+                        """INSERT INTO forecast_archives
+                        (field_id,archived_day,recorded_at,source,current_temperature_c,forecast_json)
+                        VALUES(?,?,?,?,?,?)
+                        ON CONFLICT(field_id,archived_day) DO UPDATE SET
+                            recorded_at=excluded.recorded_at,
+                            source=excluded.source,
+                            current_temperature_c=excluded.current_temperature_c,
+                            forecast_json=excluded.forecast_json""",
+                        (field["id"], now[:10], now, item["source"],
+                         item["current_temperature_c"],
+                         json.dumps(five_day, ensure_ascii=False, allow_nan=False)),
+                    )
+                    conn.execute(
+                        """DELETE FROM forecast_archives
+                           WHERE field_id=? AND archived_day < date('now', '-45 days')""",
+                        (field["id"],),
                     )
                 if item["source"] not in ("openweather_forecast_3h",):
                     continue
@@ -238,6 +275,39 @@ def field_history(field_id: int, limit: int = 60):
             ).fetchall()
     return {"field_id": field_id, "snapshots": list(reversed([_row(row) for row in rows])),
             "notice": "История сохраняется при открытии сводки; данные demo помечены как демонстрационные."}
+
+
+@router.get("/fields/{field_id}/forecast-archive")
+def field_forecast_archive(field_id: int, limit: int = 14):
+    """Return daily copies of earlier forecast runs, not actual historical weather."""
+    if field_id <= 0 or not 1 <= limit <= 45:
+        raise HTTPException(422, "Некорректное поле или лимит архива (1–45).")
+    with _LOCK:
+        with connection() as conn:
+            rows = conn.execute(
+                """SELECT archived_day,recorded_at,source,current_temperature_c,forecast_json
+                   FROM forecast_archives WHERE field_id=?
+                   ORDER BY archived_day DESC LIMIT ?""",
+                (field_id, limit),
+            ).fetchall()
+    return {
+        "field_id": field_id,
+        "entries": [
+            {
+                "date": row["archived_day"],
+                "recorded_at": row["recorded_at"],
+                "source": row["source"],
+                "current_temperature_c": row["current_temperature_c"],
+                "forecast": json.loads(row["forecast_json"]),
+            }
+            for row in rows
+        ],
+        "notice": (
+            "Это сохранённые в дни обращения прогнозы OpenWeather, а не фактическая "
+            "погода за прошлые дни. Хранятся до 45 дней; старые дни до включения "
+            "функции восстановить из этого архива нельзя."
+        ),
+    }
 
 
 @router.get("/alerts")
