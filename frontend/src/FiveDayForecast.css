@@ -1,0 +1,28 @@
+.agr-five-day {
+  margin: 1rem 0;
+  padding: clamp(14px, 2vw, 24px);
+  border: 1px solid var(--border, rgba(140, 160, 150, .24));
+  border-radius: 18px;
+  background: var(--panel, rgba(100, 110, 100, .06));
+}
+.agr-five-day__header { display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:18px; }
+.agr-five-day__header h2 { margin:5px 0 6px; font-size:1.25rem; }
+.agr-five-day__header p, .agr-five-day__disclaimer { font-size:.83rem; opacity:.8; line-height:1.5; }
+.agr-five-day__selector { display:flex; flex-direction:column; gap:6px; font-size:.82rem; min-width:220px; }
+.agr-five-day__selector select { color:inherit; background:var(--surface, rgba(100,120,105,.12)); border:1px solid var(--border, #657e75); border-radius:8px; padding:9px; max-width:100%; }
+.agr-five-day__grid { display:grid; grid-template-columns:repeat(5,minmax(170px,1fr)); gap:10px; overflow-x:auto; padding-bottom:5px; }
+.agr-five-day__card { padding:13px; border-radius:12px; border:1px solid var(--border, rgba(140,160,150,.2)); background:var(--card, rgba(80,100,90,.08)); border-top:4px solid #94a3b8; min-width:0; }
+.agr-five-day__card--high { border-top-color:#f87171; }
+.agr-five-day__card--medium { border-top-color:#f6c65b; }
+.agr-five-day__card--low { border-top-color:#62dbad; }
+.agr-five-day__date { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; font-size:.82rem; }
+.agr-five-day__date span { font-size:.68rem; opacity:.75; }
+.agr-five-day__metrics { display:flex; flex-direction:column; gap:7px; padding-top:12px; font-size:.8rem; }
+.agr-five-day__metrics span { display:flex; gap:5px; justify-content:space-between; }
+.agr-five-day__incomplete { color:#d59b41; font-size:.76rem; line-height:1.4; }
+.agr-five-day__card details { font-size:.76rem; margin-top:10px; }
+.agr-five-day__card ul { padding-left:17px; line-height:1.45; }
+.agr-five-day__hint { font-size:.79rem; opacity:.83; margin-top:12px; }
+.agr-five-day__error { color:#ec7777; font-size:.8rem; }
+@media (max-width:1000px) { .agr-five-day__grid { grid-template-columns:repeat(5,minmax(175px,1fr)); } }
+@media (max-width:650px) { .agr-five-day__selector { width:100%; } .agr-five-day__grid { scroll-snap-type:x proximity; } .agr-five-day__card { scroll-snap-align:start; } }
