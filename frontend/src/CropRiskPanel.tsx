@@ -24,6 +24,7 @@ export type CropRiskAnalysis = {
   crop_id: string | null
   crop_name: string | null
   stage_code: string | null
+  stage_label?: string | null
   source: string
   simulated: boolean
   overall: {level: Level; label: string}
@@ -47,14 +48,14 @@ export default function CropRiskPanel({analysis, children}: {analysis?: CropRisk
     </header>
     <div className="agr-crop-risk__profile">
       <span>Культура: <strong>{analysis?.crop_name || 'не выбрана из справочника'}</strong></span>
-      <span>Стадия: <strong>{analysis?.stage_code || 'не указана'}</strong></span>
+      <span>Стадия: <strong>{analysis?.stage_label || 'не указана'}</strong></span>
       <span>Версия: <strong>{analysis?.ruleset_version || '—'}</strong></span>
     </div>
     {analysis?.simulated && <p className="agr-crop-risk__notice">Демонстрационная погода: предупреждения не относятся к реальным полям.</p>}
     <p className="agr-crop-risk__reason">{analysis?.reason || 'Загрузка исследовательских данных…'}</p>
     {analysis?.assessments.map(item => <article className={`agr-crop-risk__item agr-crop-risk__item--${item.level}`} key={item.rule_id}>
       <div className="agr-crop-risk__top">
-        <strong>{item.factor.replace(/_/g, ' ')} · {item.title}</strong>
+        <strong>{({heat:"Тепловой стресс",frost:"Заморозки",chilling:"Холодовая нагрузка",temperature:"Температура",freeze:"Вымерзание",heat_dose:"Тепловая доза",heat_dry:"Жара и сухая почва",heat_long_exposure:"Длительная жара",water_demand_parameter:"Водный коэффициент",disease_weather_screen:"Погодный риск болезни"} as Record<string,string>)[item.factor] || item.factor} · {item.title}</strong>
         <span>{item.level === 'medium' ? 'Требует внимания' : 'Недостаточно данных'}</span>
       </div>
       <p>{item.reason}</p>
