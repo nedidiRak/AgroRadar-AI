@@ -1,0 +1,20 @@
+.agr-crop-risk { margin:14px 0; padding:clamp(14px,2vw,24px); background:#10231e; color:#e9f8ef; border:1px solid #2d6150; border-radius:17px; }
+.agr-crop-risk__header { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; align-items:flex-start; }
+.agr-crop-risk__header h2 { margin:5px 0; font-size:1.3rem; }
+.agr-crop-risk__header p, .agr-crop-risk__disclaimer { color:#a9cabe; font-size:.81rem; line-height:1.55; }
+.agr-crop-risk__pill { border-radius:20px; padding:7px 12px; font-weight:700; font-size:.8rem; }
+.agr-crop-risk__pill--medium { background:#5c461b; color:#ffdc90; }
+.agr-crop-risk__pill--unknown { background:#343e3b; color:#d2dcda; }
+.agr-crop-risk__profile { display:flex; flex-wrap:wrap; gap:8px 18px; margin:14px 0; font-size:.84rem; color:#c8dfd7; }
+.agr-crop-risk__reason { font-size:.89rem; margin:8px 0 12px; }
+.agr-crop-risk__item { padding:12px 14px; border:1px solid #355246; background:#152d25; border-radius:10px; margin:9px 0; border-left:4px solid #929e98; }
+.agr-crop-risk__item--medium { border-left-color:#ecc369; }
+.agr-crop-risk__top { display:flex; gap:10px; justify-content:space-between; align-items:start; }
+.agr-crop-risk__top span { font-size:.8rem; color:#e9d39c; }
+.agr-crop-risk__item p, .agr-crop-risk__item details { font-size:.81rem; line-height:1.6; }
+.agr-crop-risk__item a { color:#80dfb8; text-decoration:underline; }
+.agr-crop-risk__item summary { cursor:pointer; }
+.agr-crop-risk__disclaimer { margin:16px 0 0; }
+.agr-crop-risk__notice { color:#ffdc90; font-size:.8rem; }
+.agr-crop-catalog-search { padding:10px; border:1px solid #779c89; border-radius:8px; margin:0 0 9px; width:100%; }
+.agr-crop-catalog-select { width:100%; padding:10px; border-radius:8px; margin-bottom:12px; }
