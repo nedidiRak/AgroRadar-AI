@@ -34,74 +34,74 @@ def timestamp() -> str:
 def connection():
     DATABASE_FILE.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DATABASE_FILE), timeout=10)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA busy_timeout=10000")
-    conn.execute("PRAGMA foreign_keys=ON")
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS snapshots (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            field_id INTEGER NOT NULL,
-            created_at TEXT NOT NULL,
-            created_epoch INTEGER NOT NULL,
-            level TEXT NOT NULL,
-            source TEXT NOT NULL,
-            min_temperature_c REAL,
-            current_temperature_c REAL,
-            known_factors INTEGER NOT NULL DEFAULT 0,
-            unknown_factors INTEGER NOT NULL DEFAULT 4,
-            fingerprint TEXT NOT NULL
-        );
-        CREATE INDEX IF NOT EXISTS idx_snapshots_field_time
-            ON snapshots(field_id, id DESC);
-        CREATE TABLE IF NOT EXISTS alerts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            field_id INTEGER NOT NULL,
-            field_name TEXT NOT NULL,
-            factor TEXT NOT NULL,
-            title TEXT NOT NULL,
-            severity TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'open',
-            reason TEXT NOT NULL,
-            action TEXT NOT NULL,
-            source TEXT NOT NULL,
-            first_seen TEXT NOT NULL,
-            last_seen TEXT NOT NULL,
-            acknowledged_by TEXT,
-            acknowledged_at TEXT,
-            UNIQUE(field_id, factor)
-        );
-        CREATE INDEX IF NOT EXISTS idx_alert_status ON alerts(status, severity);
-        CREATE TABLE IF NOT EXISTS activity (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            created_at TEXT NOT NULL,
-            username TEXT NOT NULL,
-            action TEXT NOT NULL,
-            field_id INTEGER,
-            details TEXT NOT NULL
-        );
-        CREATE INDEX IF NOT EXISTS idx_activity_time ON activity(id DESC);
-        CREATE TABLE IF NOT EXISTS forecast_archives (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            field_id INTEGER NOT NULL,
-            archived_day TEXT NOT NULL,
-            recorded_at TEXT NOT NULL,
-            source TEXT NOT NULL,
-            current_temperature_c REAL,
-            forecast_json TEXT NOT NULL,
-            UNIQUE(field_id, archived_day)
-        );
-        CREATE INDEX IF NOT EXISTS idx_forecast_archive_field_day
-            ON forecast_archives(field_id, archived_day DESC);
-    """)
     try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout=10000")
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                field_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                created_epoch INTEGER NOT NULL,
+                level TEXT NOT NULL,
+                source TEXT NOT NULL,
+                min_temperature_c REAL,
+                current_temperature_c REAL,
+                known_factors INTEGER NOT NULL DEFAULT 0,
+                unknown_factors INTEGER NOT NULL DEFAULT 4,
+                fingerprint TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_snapshots_field_time
+                ON snapshots(field_id, id DESC);
+            CREATE TABLE IF NOT EXISTS alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                field_id INTEGER NOT NULL,
+                field_name TEXT NOT NULL,
+                factor TEXT NOT NULL,
+                title TEXT NOT NULL,
+                severity TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
+                reason TEXT NOT NULL,
+                action TEXT NOT NULL,
+                source TEXT NOT NULL,
+                first_seen TEXT NOT NULL,
+                last_seen TEXT NOT NULL,
+                acknowledged_by TEXT,
+                acknowledged_at TEXT,
+                UNIQUE(field_id, factor)
+            );
+            CREATE INDEX IF NOT EXISTS idx_alert_status ON alerts(status, severity);
+            CREATE TABLE IF NOT EXISTS activity (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT NOT NULL,
+                username TEXT NOT NULL,
+                action TEXT NOT NULL,
+                field_id INTEGER,
+                details TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_activity_time ON activity(id DESC);
+            CREATE TABLE IF NOT EXISTS forecast_archives (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                field_id INTEGER NOT NULL,
+                archived_day TEXT NOT NULL,
+                recorded_at TEXT NOT NULL,
+                source TEXT NOT NULL,
+                current_temperature_c REAL,
+                forecast_json TEXT NOT NULL,
+                UNIQUE(field_id, archived_day)
+            );
+            CREATE INDEX IF NOT EXISTS idx_forecast_archive_field_day
+                ON forecast_archives(field_id, archived_day DESC);
+        """)
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
     finally:
         conn.close()
-
 
 def _row(item: sqlite3.Row) -> dict:
     return dict(item)
