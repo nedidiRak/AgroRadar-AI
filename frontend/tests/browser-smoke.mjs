@@ -15,7 +15,7 @@ const viewports = [
   { width: 390, height: 844 },
 ]
 
-const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] })
+const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--no-sandbox'] })
 
 try {
   for (const viewport of viewports) {
