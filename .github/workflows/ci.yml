@@ -67,6 +67,25 @@ jobs:
         env:
           VITE_YANDEX_MAPS_API_KEY: ''
 
+  laptop_node22:
+    name: Laptop frontend build (Windows, Node 22)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: node --test tests/ui-preferences.test.mjs
+      - run: npm run build
+        env:
+          VITE_YANDEX_MAPS_API_KEY: ''
+
   wifi_windows:
     name: Wi-Fi demo smoke (Windows)
     runs-on: windows-latest
