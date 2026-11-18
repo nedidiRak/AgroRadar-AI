@@ -55,11 +55,13 @@ def download_backup(request: Request):
     """
     # The auth middleware enforces admin role for the entire /api/admin prefix.
     payload = io.BytesIO()
+    included: list[str] = []
     with zipfile.ZipFile(payload, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
         for name in ("fields.json", "field_geometries.json"):
             source = DATA_DIR / name
             if source.exists():
                 bundle.write(source, arcname=f"data/{name}")
+                included.append(name)
         monitoring = DATA_DIR / "monitoring.sqlite3"
         if monitoring.exists():
             # sqlite backup API creates transactionally consistent copy even
@@ -74,10 +76,11 @@ def download_backup(request: Request):
                     target.close()
                     original.close()
                 bundle.write(copy, arcname="data/monitoring.sqlite3")
+                included.append("monitoring.sqlite3")
         manifest = {
             "created_at_utc": datetime.now(timezone.utc).isoformat(),
             "product": "AgroRadar AI",
-            "included": ["fields.json", "field_geometries.json", "monitoring.sqlite3"],
+            "included": included,
             "excluded_secrets": ["admin_access.txt", "viewer_accounts.json", ".env", ".env.local"],
             "restoration": "Close backend, back up existing backend/data, copy files from data/ folder, then restart.",
             "notice": "Contains private field coordinates and agronomist observations. Keep this archive private.",
@@ -93,7 +96,7 @@ def download_backup(request: Request):
 
 @router.get("/system")
 def system_info():
-    return {"version": "3.5-final-candidate",
+    return {"version": "4.0.0",
             "backup_count": len(list(BACKUP_DIR.glob("*.bak"))) if BACKUP_DIR.exists() else 0,
             "history_available": (DATA_DIR / "monitoring.sqlite3").exists(),
             "field_catalog_exists": (DATA_DIR / "fields.json").exists(),
