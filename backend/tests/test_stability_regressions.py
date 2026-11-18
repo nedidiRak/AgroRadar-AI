@@ -2,6 +2,10 @@
 
 All writes are isolated in pytest tmp_path. No real API keys or Internet used.
 """
+import io
+import json
+import zipfile
+
 from fastapi.testclient import TestClient
 from app import main, monitoring, backups
 
@@ -51,3 +55,32 @@ def test_task_date_rejects_noncanonical_iso_while_accepting_standard(monkeypatch
     valid = client.post("/api/operations/tasks", json=payload)
     assert valid.status_code == 201, valid.text
     assert valid.json()["task"]["due_date"] == "2026-11-20"
+
+
+def test_backup_manifest_matches_files_really_in_archive(monkeypatch, tmp_path):
+    monkeypatch.setattr(backups, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(backups, "BACKUP_DIR", tmp_path / "backups")
+    client = TestClient(main.app)
+
+    empty = client.get("/api/admin/backup")
+    assert empty.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(empty.content)) as bundle:
+        manifest = json.loads(bundle.read("BACKUP_README.json"))
+        assert manifest["included"] == []
+        assert bundle.namelist() == ["BACKUP_README.json"]
+
+    (tmp_path / "fields.json").write_text('{"version":1,"fields":[],"next_id":1}', encoding="utf-8")
+    populated = client.get("/api/admin/backup")
+    assert populated.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(populated.content)) as bundle:
+        manifest = json.loads(bundle.read("BACKUP_README.json"))
+        assert manifest["included"] == ["fields.json"]
+        assert "data/fields.json" in bundle.namelist()
+        assert "data/monitoring.sqlite3" not in bundle.namelist()
+
+
+def test_system_endpoint_reports_running_api_version():
+    client = TestClient(main.app)
+    response = client.get("/api/admin/system")
+    assert response.status_code == 200
+    assert response.json()["version"] == main.app.version
