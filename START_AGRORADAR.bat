@@ -5,13 +5,51 @@ set "PYTHON=%ROOT%backend\.venv\Scripts\python.exe"
 
 if not exist "%PYTHON%" (
   echo [ERROR] Python environment missing: backend\.venv
-  echo Open terminal in backend and run: python -m venv .venv
+  echo Open terminal in backend and run: py -3.12 -m venv .venv
   pause
   exit /b 1
 )
+
+rem GitHub Desktop / Explorer starts this batch in CMD, not PowerShell.
+rem fnm may be installed, but its Node.js is not on CMD's PATH yet.
+where npm.cmd >nul 2>&1
+if errorlevel 1 (
+  where fnm >nul 2>&1
+  if errorlevel 1 (
+    echo [ERROR] npm.cmd was not found and fnm is not available.
+    echo Install Node.js or add fnm to PATH, then restart Explorer.
+    pause
+    exit /b 1
+  )
+
+  echo [INFO] npm.cmd not found. Activating Node.js 22 via fnm...
+  for /f "delims=" %%Z in ('fnm env --shell cmd') do call %%Z
+  fnm use 22
+  if errorlevel 1 (
+    echo [ERROR] Could not activate Node.js 22 with fnm.
+    echo Run in PowerShell: fnm install 22
+    pause
+    exit /b 1
+  )
+)
+
+where npm.cmd >nul 2>&1
+if errorlevel 1 (
+  echo [ERROR] npm.cmd is still unavailable after Node.js setup.
+  pause
+  exit /b 1
+)
+node --version >nul 2>&1
+if errorlevel 1 (
+  echo [ERROR] node.exe is not available on PATH.
+  pause
+  exit /b 1
+)
+echo [OK] Node.js and npm.cmd are available.
+
 if not exist "%ROOT%frontend\node_modules" (
   echo [ERROR] Frontend packages are missing.
-  echo Open terminal in frontend and run: npm.cmd install
+  echo Open PowerShell in frontend and run: npm.cmd ci
   pause
   exit /b 1
 )
