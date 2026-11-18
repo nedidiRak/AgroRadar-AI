@@ -1,0 +1,134 @@
+/* Laptop/workstation responsive refinements for AgroRadar AI.
+   Keep real map credits, map actions and field controls accessible.
+   A map's *actual panel width* matters more than the screen width. */
+
+.agr-main-map {
+  container: agr-gis / inline-size;
+}
+
+/* The map and the details card must never force the entire workspace wider. */
+.agr-shell .agr-map-workspace > *,
+.agr-shell .agr-content,
+.agr-shell .agr-page--fields,
+.agr-shell .agr-geo-tools__inner {
+  min-width: 0;
+}
+.agr-shell .agr-map-sidebar .agr-selected-card__actions,
+.agr-shell .agr-main-map .map-foot,
+.agr-shell .agr-geo-tools__inner,
+.agr-shell .agr-geo-tools__inner .gis-actions {
+  flex-wrap: wrap;
+}
+.agr-shell .agr-map-sidebar .agr-selected-card__actions button {
+  min-width: 0;
+}
+
+/* Within a narrow map, keep every control visible instead of clipping the
+   last action (in particular "Изменить контур") outside the panel. */
+@container agr-gis (max-width: 960px) {
+  .agr-map-shell .agr-map-toolbar {
+    align-items: stretch;
+    gap: 9px;
+  }
+  .agr-map-shell .agr-map-toolbar__mode {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .agr-map-shell .agr-map-toolbar__actions {
+    width: 100%;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .agr-map-shell .agr-map-toolbar__set {
+    max-width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .agr-map-shell .agr-map-toolbar__set--compact {
+    flex-wrap: nowrap;
+    margin-left: auto;
+  }
+  .agr-map-shell .agr-map-toolbar__divider {
+    display: none;
+  }
+}
+@container agr-gis (max-width: 620px) {
+  .agr-map-shell .agr-map-toolbar {
+    padding: 9px;
+  }
+  .agr-map-shell .agr-map-toolbar__set {
+    gap: 5px;
+  }
+  .agr-map-shell .agr-map-toolbar__actions {
+    gap: 7px;
+  }
+  .agr-map-shell .agr-map-action {
+    padding: 8px;
+  }
+}
+
+/* Mid-sized notebooks: reclaim unused gutters, keep labels legible and
+   let long headers use a second line instead of creating horizontal scroll. */
+@media (min-width: 651px) and (max-width: 1700px) {
+  .agr-shell .agr-sidebar {
+    width: clamp(190px, 14vw, 232px);
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+  .agr-shell .agr-content {
+    padding: 27px clamp(16px, 2vw, 30px) 28px;
+  }
+  .agr-shell .agr-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .agr-shell .agr-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .agr-shell .agr-map-workspace {
+    grid-template-columns: minmax(0, 1.65fr) minmax(285px, .7fr);
+    gap: 14px;
+    align-items: start;
+  }
+  .agr-shell .agr-main-map .map-wrap {
+    height: clamp(580px, 69vh, 750px);
+  }
+  /* The field details can contain arbitrarily many observations. Do not
+     crop their controls using the old fixed maximum panel height. */
+  .agr-shell .agr-map-sidebar {
+    max-height: none;
+  }
+  .agr-shell .agr-map-field-list {
+    flex: 0 1 auto;
+    max-height: 235px;
+  }
+  .agr-shell .agr-selected-card {
+    padding: 15px;
+  }
+}
+
+/* Small notebook, tablet and browser at 125–150% scaling:
+   full-width map first, complete details below it. */
+@media (min-width: 651px) and (max-width: 1350px) {
+  .agr-shell .agr-map-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .agr-shell .agr-overview-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .agr-shell .agr-map-sidebar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .agr-shell .agr-map-field-list {
+    max-height: 200px;
+  }
+  .agr-shell .agr-geo-tools__inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
