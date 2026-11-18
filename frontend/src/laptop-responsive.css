@@ -73,11 +73,6 @@
 /* Mid-sized notebooks: reclaim unused gutters, keep labels legible and
    let long headers use a second line instead of creating horizontal scroll. */
 @media (min-width: 651px) and (max-width: 1700px) {
-  .agr-shell .agr-sidebar {
-    width: clamp(190px, 14vw, 232px);
-    padding-left: 13px;
-    padding-right: 13px;
-  }
   .agr-shell .agr-content {
     padding: 27px clamp(16px, 2vw, 30px) 28px;
   }
@@ -130,5 +125,14 @@
   .agr-shell .agr-geo-tools__inner {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+/* Preserve the existing compact/icon-only navigation on <= 1050px. */
+@media (min-width: 1101px) and (max-width: 1700px) {
+  .agr-shell .agr-sidebar {
+    width: clamp(190px, 14vw, 232px);
+    padding-left: 13px;
+    padding-right: 13px;
   }
 }
