@@ -64,7 +64,10 @@ def _iso_date(value: str | None) -> str | None:
     if not value:
         return None
     try:
-        return date.fromisoformat(value).isoformat()
+        parsed = date.fromisoformat(value)
+        if parsed.isoformat() != value:
+            raise ValueError("Date must be in canonical YYYY-MM-DD format")
+        return parsed.isoformat()
     except (TypeError, ValueError) as exc:
         raise HTTPException(422, "Дата выполнения должна быть YYYY-MM-DD.") from exc
 
