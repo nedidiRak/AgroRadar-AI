@@ -67,6 +67,59 @@ jobs:
         env:
           VITE_YANDEX_MAPS_API_KEY: ''
 
+  browser_smoke:
+    name: Chromium five-viewport UX and GIS smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: python -m pip install -r backend/requirements.txt
+      - name: Install frontend and headless Chromium
+        working-directory: frontend
+        run: |
+          npm ci
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Test real local FastAPI + React in Chromium
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/agro-browser-data"
+          env AGRORADAR_DATA_DIR="$RUNNER_TEMP/agro-browser-data" \
+            AGRORADAR_ADMIN_PASSWORD='AgroRadar-Test-Only-Password!2026' \
+            OPENWEATHER_API_KEY='' DEEPSEEK_API_KEY='' \
+            AGRORADAR_AUTO_MONITOR='0' AGRORADAR_WATER_CONTEXT='0' \
+            python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 \
+            > "$RUNNER_TEMP/agro-browser-api.log" 2>&1 &
+          api_pid=$!
+          npm --prefix frontend run dev > "$RUNNER_TEMP/agro-browser-vite.log" 2>&1 &
+          ui_pid=$!
+          trap 'kill "$api_pid" "$ui_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 45); do
+            if curl -sf http://127.0.0.1:8000/api/health >/dev/null &&
+               curl -sf http://127.0.0.1:5173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8000/api/health >/dev/null
+          curl -sf http://127.0.0.1:5173/ >/dev/null
+          node frontend/tests/browser-smoke.mjs
+      - name: Upload browser debug screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AgroRadar-browser-failures
+          path: browser-failure-*.png
+          if-no-files-found: ignore
+
   laptop_node22:
     name: Laptop frontend build (Windows, Node 22)
     runs-on: windows-latest
