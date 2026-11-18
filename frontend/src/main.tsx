@@ -27,6 +27,7 @@ import './agronomy-v2.1.css'
 import './ui-mobile-fixes.css'
 import './ui-palette-coverage.css'
 import './ui-appearance.css'
+import './laptop-responsive.css'
 
 type Weather = { temperature_c:number|null;humidity_pct:number|null;wind_ms:number|null;source:string;observed_at:string|null }
 type ForecastPoint = {timestamp:number;temperature_c:number;precipitation_probability_pct:number|null;rain_mm_3h:number|null}
