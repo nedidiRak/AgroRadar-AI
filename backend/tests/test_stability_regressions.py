@@ -5,6 +5,8 @@ All writes are isolated in pytest tmp_path. No real API keys or Internet used.
 import io
 import json
 import zipfile
+import sqlite3
+import pytest
 
 from fastapi.testclient import TestClient
 from app import main, monitoring, backups
@@ -84,3 +86,26 @@ def test_system_endpoint_reports_running_api_version():
     response = client.get("/api/admin/system")
     assert response.status_code == 200
     assert response.json()["version"] == main.app.version
+
+
+def test_sqlite_connection_closes_if_schema_setup_fails(monkeypatch, tmp_path):
+    monkeypatch.setattr(monitoring, "DATABASE_FILE", tmp_path / "broken.sqlite3")
+    events = []
+
+    class BrokenConnection:
+        row_factory = None
+
+        def execute(self, _statement):
+            return None
+
+        def executescript(self, _statement):
+            raise sqlite3.DatabaseError("simulated schema failure")
+
+        def close(self):
+            events.append("closed")
+
+    monkeypatch.setattr(monitoring.sqlite3, "connect", lambda *args, **kwargs: BrokenConnection())
+    with pytest.raises(sqlite3.DatabaseError, match="simulated schema failure"):
+        with monitoring.connection():
+            pass
+    assert events == ["closed"]
