@@ -249,12 +249,31 @@ def polygon_area_center(ring: list[list[float]]) -> tuple[float, float, float]:
 
 
 def _segments_intersect(a, b, c, d) -> bool:
+    """Reject crossings, endpoint touches and collinear overlaps.
+
+    The old strict orientation test missed touching/overlapping edges. Such
+    rings may render differently on maps and produce misleading hectare data.
+    """
+    epsilon = 1e-14
+
     def cross(p, q, r):
-        return (q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0])
-    o1, o2 = cross(a,b,c), cross(a,b,d)
-    o3, o4 = cross(c,d,a), cross(c,d,b)
-    return ((o1 > 0 > o2 or o1 < 0 < o2) and
-            (o3 > 0 > o4 or o3 < 0 < o4))
+        return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+
+    def sign(value):
+        return 1 if value > epsilon else -1 if value < -epsilon else 0
+
+    def on_segment(p, q, r):
+        return (min(p[0], r[0]) - 1e-10 <= q[0] <= max(p[0], r[0]) + 1e-10
+                and min(p[1], r[1]) - 1e-10 <= q[1] <= max(p[1], r[1]) + 1e-10)
+
+    o1, o2, o3, o4 = (cross(a, b, c), cross(a, b, d),
+                       cross(c, d, a), cross(c, d, b))
+    if sign(o1) * sign(o2) < 0 and sign(o3) * sign(o4) < 0:
+        return True
+    return (sign(o1) == 0 and on_segment(a, c, b)
+            or sign(o2) == 0 and on_segment(a, d, b)
+            or sign(o3) == 0 and on_segment(c, a, d)
+            or sign(o4) == 0 and on_segment(c, b, d))
 
 
 def validate_ring(coords: list[list[float]]) -> list[list[float]]:
@@ -273,6 +292,18 @@ def validate_ring(coords: list[list[float]]) -> list[list[float]]:
         ring.pop()
     if len(ring) < 3:
         raise HTTPException(422, 'Необходимо хотя бы три разные вершины')
+    if len({tuple(vertex) for vertex in ring}) != len(ring):
+        raise HTTPException(422, 'Контур не может повторно проходить через вершину')
+    # Consecutive collinear segments may be extended, but must not backtrack
+    # over the same edge (which would create overlapping geometry).
+    for i, current in enumerate(ring):
+        prev, following = ring[i - 1], ring[(i + 1) % len(ring)]
+        incoming = (prev[0] - current[0], prev[1] - current[1])
+        outgoing = (following[0] - current[0], following[1] - current[1])
+        cross = incoming[0] * outgoing[1] - incoming[1] * outgoing[0]
+        dot = incoming[0] * outgoing[0] + incoming[1] * outgoing[1]
+        if abs(cross) < 1e-14 and dot > 0:
+            raise HTTPException(422, 'Контур не может накладывать соседние стороны')
     ring.append(ring[0][:])
     edge_count = len(ring)-1
     for i in range(edge_count):
