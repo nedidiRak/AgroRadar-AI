@@ -27,6 +27,8 @@ try {
     $html = (Invoke-WebRequest $address).Content
     if ($html -notmatch 'src/main.tsx') { throw 'Expected AgroRadar React application entry point' }
     Write-Host "START_AGRORADAR.bat verified on Windows: UI, API proxy, login, personal layouts."
+    & node (Join-Path $PSScriptRoot 'browser-responsive.mjs') --system-dpi
+    if ($LASTEXITCODE -ne 0) { throw 'Windows display DPI regression in the running application' }
 } finally {
     # Only terminate listeners created in this disposable runner checkout.
     foreach ($portToStop in @($port, 5173)) {
