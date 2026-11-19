@@ -83,7 +83,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: node --test tests/ui-preferences.test.mjs
+      - run: npm test
       - run: npm run build
         env:
           VITE_YANDEX_MAPS_API_KEY: ''
@@ -107,7 +107,7 @@ jobs:
         working-directory: frontend
 
   browser_smoke:
-    name: Chromium five-viewport UX and GIS smoke
+    name: Chromium dashboard, six viewports, zoom and GIS
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -125,9 +125,7 @@ jobs:
       - run: python -m pip install -r backend/requirements.txt
       - name: Install frontend and Playwright controller
         working-directory: frontend
-        run: |
-          npm ci
-          npm install --no-save playwright@1.56.1
+        run: npm ci
       - name: Verify preinstalled Chrome
         run: google-chrome --version
       - name: Test real local FastAPI + React in Chromium
@@ -152,6 +150,9 @@ jobs:
           curl -sf http://127.0.0.1:8000/api/health >/dev/null
           curl -sf http://127.0.0.1:5173/ >/dev/null
           node frontend/tests/browser-smoke.mjs
+          node frontend/tests/browser-responsive.mjs
+          node frontend/tests/browser-workspace.mjs
+          node frontend/tests/browser-widgets.mjs
       - name: Upload browser debug screenshots
         if: failure()
         uses: actions/upload-artifact@v4
@@ -174,10 +175,23 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: node --test tests/ui-preferences.test.mjs
+      - run: npm test
       - run: npm run build
         env:
           VITE_YANDEX_MAPS_API_KEY: ''
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare Windows launcher environment
+        working-directory: .
+        run: |
+          python -m venv backend/.venv
+          backend/.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
+      - name: Start the normal Windows application and verify its services
+        working-directory: .
+        shell: pwsh
+        run: ./frontend/tests/windows-launcher.ps1
 
   wifi_windows:
     name: Wi-Fi demo smoke (Windows)

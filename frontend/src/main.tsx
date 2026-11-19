@@ -1,9 +1,13 @@
+import { TemperatureTimeline, type Forecast } from './TemperaturePlot'
 import AuthGate from './AuthGate'
 import UserManager from './UserManager'
 import UiSettings from './UiSettings'
 import { loadPreferences, savePreferences, presetPreferences, presetOf, type UiPreferences, type UiFlag, type UiPreset } from './uiPreferences'
 import { loadAppearance, saveAppearance, type UiAppearance } from './uiAppearance'
-import OperationsCenter from './OperationsCenter'
+import OperationsCenter, { AlertCenter } from './OperationsCenter'
+import FieldTasks, { type SuggestedInspection } from './FieldTasks'
+import DashboardWorkspace from './DashboardWorkspace'
+import type { RenderWidget } from './WorkspaceGrid'
 import AgronomyInsights from './AgronomyInsights'
 import { apiFetch } from './authClient'
 import { setCsrfToken, setCurrentUser, getCurrentUser } from './authClient'
@@ -11,7 +15,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import GeoFieldsMap from './GeoFieldsMap'
 import AiAgronom from './AiAgronom'
-import RiskDashboard from './RiskDashboard'
+import RiskDashboard, { Recommendations } from './RiskDashboard'
 import CropRiskPanel from './CropRiskPanel'
 import type { CropRiskAnalysis } from './CropRiskPanel'
 import FiveDayForecast from './FiveDayForecast'
@@ -28,10 +32,9 @@ import './ui-mobile-fixes.css'
 import './ui-palette-coverage.css'
 import './ui-appearance.css'
 import './laptop-responsive.css'
+import './workspace.css'
 
 type Weather = { temperature_c:number|null;humidity_pct:number|null;wind_ms:number|null;source:string;observed_at:string|null }
-type ForecastPoint = {timestamp:number;temperature_c:number;precipitation_probability_pct:number|null;rain_mm_3h:number|null}
-type Forecast = { min_temperature_next_24h_c:number|null;source:string;sample_count:number;period_hours:number;points?:ForecastPoint[] }
 type Risk = {level:'high'|'medium'|'low'|'unknown';label:string;reason:string;basis:string;rule:string;min_temperature_next_24h_c:number|null}
 type Observation = {id:string;observed_on:string;recorded_at:string;text:string;source:'manual'}
 type CropChoice = {crop_id:string;name_ru:string;group:string;stages:{code:string;label:string;bbch:null}[]}
@@ -47,34 +50,6 @@ const navigation: {id: View; label:string; Icon: typeof Activity}[] = [
 const riskLabel = {high:'Высокий',medium:'Умеренный',low:'Низкий',unknown:'Нет данных'} as const
 const riskOrder = {high:0,medium:1,low:2,unknown:3} as const
 const weatherText = (value:number|null|undefined, unit:string) => value == null ? '—' : `${value} ${unit}`
-
-function TemperatureTimeline({forecast}:{forecast:Forecast}) {
-  const points = (forecast.points ?? []).slice(0, 9)
-  if (!points.length) return <div className="timeline-empty">Нет данных по временным точкам прогноза.</div>
-  const temps = points.map(p => p.temperature_c)
-  const minT = Math.min(...temps, ...(forecast.min_temperature_next_24h_c == null ? [] : [forecast.min_temperature_next_24h_c])) - 1
-  const maxT = Math.max(...temps, ...(forecast.min_temperature_next_24h_c == null ? [] : [forecast.min_temperature_next_24h_c])) + 1
-  const height = 84
-  const x = (i:number) => 16 + i * (320 / Math.max(1, points.length - 1))
-  const y = (t:number) => 14 + (maxT - t) / Math.max(0.1, maxT - minT) * height
-  const path = points.map((p,i) => `${i ? 'L' : 'M'} ${x(i).toFixed(1)} ${y(p.temperature_c).toFixed(1)}`).join(' ')
-  const zeroY = y(0)
-  const time = (stamp:number) => new Date(stamp*1000).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})
-  const demo = forecast.source === 'demo'
-  return <section className="forecast-timeline" aria-label="Прогноз температуры на 24 часа">
-    <div className="timeline-header"><div><strong>Температура на 24 часа</strong><span>Шаг прогноза — 3 часа</span></div><span className={demo?'timeline-demo':'timeline-live'}>{demo?'ДЕМО · НЕ РЕАЛЬНЫЙ ПРОГНОЗ':'OPENWEATHER · ПРОГНОЗ'}</span></div>
-    <svg viewBox="0 0 352 122" className="timeline-chart" role="img" aria-label="График температуры по временным точкам">
-      {zeroY >= 0 && zeroY <= 122 && <><line x1="12" x2="342" y1={zeroY} y2={zeroY} stroke="#f6c65b" strokeDasharray="4 4" opacity=".7"/><text x="13" y={Math.max(12,zeroY-4)} fill="#e6c176" fontSize="10">0°C</text></>}
-      <path d={path} fill="none" stroke="#72e1b4" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      {points.map((p,i)=><g key={p.timestamp}><circle cx={x(i)} cy={y(p.temperature_c)} r="4" stroke="#113c2e" strokeWidth="2" fill={p.temperature_c <= 0?'#fb817b':'#72e1b4'}/><title>{`${time(p.timestamp)}: ${p.temperature_c} °C${p.precipitation_probability_pct===null?'':`, осадки ${p.precipitation_probability_pct}%`}`}</title></g>)}
-      <text x="14" y="116" fill="#95b5a5" fontSize="10">{time(points[0].timestamp)}</text>
-      <text x="338" y="116" fill="#95b5a5" fontSize="10" textAnchor="end">{time(points[points.length-1].timestamp)}</text>
-    </svg>
-    <div className="timeline-legend" aria-label="Обозначения прогноза"><span>°C — температура воздуха</span><span>☔ % — вероятность осадков</span></div>
-    <div className="timeline-data">{points.map(p=><div key={p.timestamp} title={p.precipitation_probability_pct===null?'Нет данных о вероятности осадков':`Вероятность осадков: ${p.precipitation_probability_pct}%`}><small>{time(p.timestamp)}</small><strong>{p.temperature_c > 0 ? '+' : ''}{p.temperature_c}°</strong><span>{p.precipitation_probability_pct===null?'—':`☔ ${p.precipitation_probability_pct}%`}</span></div>)}</div>
-    <p className="timeline-disclaimer">Значения — прогнозные точки модели, не измерения на поле. Минимум риска рассчитан по температурным минимумам 3-часовых интервалов.</p>
-  </section>
-}
 
 function App() {
   const [data,setData] = useState<Dashboard|null>(null)
@@ -124,6 +99,7 @@ function App() {
   const [view,setView] = useState<View>('overview')
   const [visitedMap,setVisitedMap] = useState(false)
   const [visitedAi,setVisitedAi] = useState(false)
+  const [inspection, setInspection] = useState<SuggestedInspection | null>(null)
   const [fieldQuery,setFieldQuery] = useState('')
   const [showFieldDetails,setShowFieldDetails] = useState(false)
   const [observationText,setObservationText] = useState('')
@@ -133,6 +109,7 @@ function App() {
   function navigate(to:View) {
     if(to==='fields') setVisitedMap(true)
     if(to==='assistant') setVisitedAi(true)
+    if (to !== 'operations') setInspection(null)
     setView(to)
     window.scrollTo({top:0,behavior:'auto'})
   }
@@ -322,6 +299,88 @@ function App() {
     {!active && <option value="">Нет полей</option>}
     {data?.fields.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
   </select>
+
+  const mapPanel = <section className="map-panel agr-main-map"><div className="panel-head"><h2>Карта хозяйства</h2><span>Яндекс Карты · GeoJSON</span></div><div className="map-wrap"><GeoFieldsMap fields={data?.fields??[]} geojson={geojson} activeId={active?.id} onSelect={setSelected} onSaveGeometry={saveGeometry} onCreateOutline={openCreate} canEdit={canEdit} theme={appearance.theme}/></div><div className="map-foot"><span><i className="dot green"/> Низкий</span><span><i className="dot yellow"/> Умеренный</span><span><i className="dot red"/> Высокий</span></div></section>
+  const fieldInfo = active && <><div className="agr-selected-card__title"><h3>{active.name}</h3><span className={`agr-risk-pill agr-risk-pill--${active.risk.level}`}>{riskLabel[active.risk.level]}</span></div>
+    <p className="agr-selected-card__meta">{active.crop} · {active.area_ha} га</p>
+    <div className="agr-selected-card__numbers"><span><Thermometer size={14}/> {active.weather.temperature_c} °C</span><span><Droplets size={14}/> {weatherText(active.weather.humidity_pct,'%')}</span><span><Wind size={14}/> {active.weather.wind_ms} м/с</span></div>
+    {canEdit && <div className="agr-selected-card__actions"><button onClick={()=>openEdit(active)} disabled={busy}><Pencil size={14}/> Изменить</button><button className="agr-delete-button" onClick={()=>void deleteField(active)} disabled={busy}><Trash2 size={14}/> Удалить</button></div>}
+    <details className="agr-disclosure agr-field-extra" open={showFieldDetails} onToggle={e=>setShowFieldDetails(e.currentTarget.open)}><summary><span>Описание и координаты</span><ChevronDown size={15}/></summary><div className="agr-field-extra__body"><p>{active.description||'Описание ещё не добавлено.'}</p><small>{active.lat.toFixed(5)}° N, {active.lon.toFixed(5)}° E</small><small>{active.geometry_source==='user_drawn'?'Граница сохранена вручную':'Граница демонстрационная'}</small></div></details></>
+  const passport = active && <details className="agr-disclosure agr-agronomy-details"><summary><span><Leaf size={15}/> Агрономический паспорт</span><ChevronDown size={15}/></summary>
+      <div className="agr-agronomy-grid">
+        <div><small>Дата посева</small><strong>{active.sowing_date || 'Не указана'}</strong></div>
+        <div><small>Фаза развития</small><strong>{active.growth_stage || 'Не указана'}</strong></div>
+        <div><small>Тип почвы</small><strong>{active.soil_type || 'Не указан'}</strong></div>
+      </div>
+      <p className="agr-agronomy-notice">Указано агрономом вручную. Погодные пороги v2.0 пока не калиброваны под культуру.</p>
+      {canEdit && <button className="agr-agronomy-action" type="button" onClick={()=>openEdit(active)}><Pencil size={14}/> Заполнить паспорт</button>}
+    </details>
+  const observations = (scope: string) => active && <details className="agr-disclosure agr-agronomy-details"><summary><span><Info size={15}/> Журнал наблюдений ({active.observations?.length ?? 0})</span><ChevronDown size={15}/></summary>
+      <div className="agr-observations">
+        {canEdit && <form onSubmit={e=>void addObservation(e)} className="agr-observations-form">
+          <label htmlFor={scope + '-observation-date'}>Дата наблюдения</label>
+          <input id={scope + '-observation-date'} type="date" value={observationDate} onChange={e=>setObservationDate(e.target.value)} />
+          <label htmlFor={scope + '-observation-text'}>Что заметили на поле?</label>
+          <textarea id={scope + '-observation-text'} rows={3} maxLength={1000} placeholder="Например: осмотр после дождя, состояние всходов, почва влажная на поверхности…" value={observationText} onChange={e=>setObservationText(e.target.value)}/>
+          <button type="submit" disabled={observationBusy || !observationText.trim()}>+ Добавить запись</button>
+        </form>}
+        {(active.observations ?? []).length === 0 ? <p className="agr-observations-empty">Записей пока нет.</p> :
+          <div className="agr-observations-list">{[...(active.observations ?? [])].reverse().map(item=><article key={item.id} className="agr-observation-item"><div><time dateTime={item.observed_on}>{item.observed_on}</time>{canEdit && <button type="button" aria-label={`Удалить наблюдение ${item.observed_on}`} title="Удалить наблюдение" onClick={()=>void removeObservation(active.id,item)} disabled={observationBusy}><Trash2 size={14}/></button>}</div><p>{item.text}</p></article>)}</div>}
+      </div>
+    </details>
+  const weatherSummary = (active: Field) => <div className="agr-weather-summary">
+      <div><span>Сейчас</span><strong>{weatherText(active.weather.temperature_c,'°C')}</strong></div>
+      <div><span>Минимум за 24 ч</span><strong>{weatherText(active.forecast.min_temperature_next_24h_c,'°C')}</strong></div>
+      <div><span>Ветер</span><strong>{weatherText(active.weather.wind_ms,'м/с')}</strong></div>
+    </div>
+  const emptyField = <p className="agr-empty">Выбери участок, чтобы посмотреть данные.</p>
+  const renderWidget: RenderWidget = (type, _id, fieldId) => {
+    const field = fieldId ? data?.fields.find(f => f.id === fieldId) : active
+    if (fieldId && !field) return <p className="agr-empty">Закреплённое поле недоступно. Выбери другое поле в параметрах виджета.</p>
+    switch (type) {
+      case 'map': return mapPanel
+      case 'field': return active ? <div className="agr-selected-card">{fieldInfo}</div> : emptyField
+      case 'passport': return passport || emptyField
+      case 'observations': return observations('overview') || emptyField
+      case 'stats': return <div className="agr-stats">
+          <div className="agr-stat"><div className="agr-stat__icon"><MapPinned size={19}/></div><span>Поля хозяйства</span><strong>{data?.count ?? '—'}</strong><small>Участков на карте</small></div>
+          <div className="agr-stat"><div className="agr-stat__icon agr-stat__icon--warning"><ShieldAlert size={19}/></div><span>Высокий погодный риск</span><strong className={(data?.high_risk_count??0)>0?'agr-text-danger':''}>{data?.high_risk_count??'—'}</strong><small>По погодным факторам за 24 часа</small></div>
+          <div className="agr-stat"><div className="agr-stat__icon"><Thermometer size={19}/></div><span>Температура · {active?.name??'поле'}</span><strong>{active?weatherText(active.weather.temperature_c,'°C'):'—'}</strong><small>{active?.weather.source==='demo'?'Демо-данные':'OpenWeather'}</small></div>
+        </div>
+      case 'fields': return <article className="agr-card agr-field-list-card">
+          <div className="agr-card-heading"><div><div className="agr-overline">СОСТОЯНИЕ УЧАСТКОВ</div><h2>Поля и риски</h2></div><button className="agr-text-link" onClick={()=>navigate('fields')}>Открыть карту <ArrowRight size={16}/></button></div>
+          <div className="agr-summary-strip"><CheckCircle2 size={18}/><span>{!data?'Загрузка показателей…':data.high_risk_count>0?`Есть поля с высоким погодным риском: ${data.high_risk_count}`:'По доступным погодным данным высокий риск не выявлен (проверь полноту прогноза)'}</span></div>
+          <div className="agr-field-rows">{sortedFields.length===0?<div className="agr-empty">Полей пока нет. Создай первый участок на карте.</div>:sortedFields.slice(0,8).map(field=><button key={field.id} type="button" className={`agr-field-row ${active?.id===field.id?'is-selected':''}`} onClick={()=>setSelected(field.id)}>
+            <span className={`agr-field-row__mark agr-risk-${field.risk.level}`} />
+            <span className="agr-field-row__text"><strong>{field.name}</strong><small>{field.crop} · {field.area_ha} га</small></span>
+            <span className={`agr-risk-pill agr-risk-pill--${field.risk.level}`}>{riskLabel[field.risk.level]}</span>
+          </button>)}</div>
+          {sortedFields.length>8&&<button className="agr-text-link agr-more-fields" onClick={()=>navigate('fields')}>Показать ещё {sortedFields.length-8} полей <ArrowRight size={15}/></button>}
+        </article>
+      case 'forecast': return <article className="agr-card agr-forecast-card">
+        <div className="agr-card-heading"><div><div className="agr-overline">ПРОГНОЗ ДЛЯ ПОЛЯ</div><h2>{active?.name ?? 'Выбери поле'}</h2></div></div>
+        {active ? <>{weatherSummary(active)}<TemperatureTimeline forecast={active.forecast}/>
+          <div className={`agr-risk-note agr-risk-note--${active.risk.level}`}><span className={`agr-risk-pill agr-risk-pill--${active.risk.level}`}>{riskLabel[active.risk.level]}</span><p>{active.risk.reason}</p></div>
+          <button className="agr-ai-link" onClick={()=>navigate('assistant')}><Bot size={17}/> Спросить ИИ об этом поле <ArrowRight size={16}/></button>
+        </> : emptyField}
+      </article>
+      case 'weather':
+      case 'temperature':
+      case 'hourly':
+        return field ? <article className="agr-card agr-forecast-card">
+          <div className="agr-card-heading"><div><div className="agr-overline">{type === 'weather' ? 'ПОГОДА СЕЙЧАС' : 'ПРОГНОЗ ДЛЯ ПОЛЯ'}</div><h2>{field.name}</h2></div></div>
+          {type === 'weather' ? weatherSummary(field) : <TemperatureTimeline forecast={field.forecast} part={type === 'hourly' ? 'hourly' : 'chart'}/>}
+        </article> : emptyField
+      case 'fiveDay': return <>{fieldId && <strong>{field?.name}</strong>}<FiveDayForecast fieldId={field?.id ?? null} forecast={field?.five_day_forecast}/></>
+      case 'risk': return <RiskDashboard fieldName={active?.name ?? 'не выбрано'} analysis={active?.risk_analysis}/>
+      case 'cropRisk': return <CropRiskPanel analysis={active?.crop_risk_analysis}/>
+      case 'analytics': return <AgronomyInsights fieldId={active?.id ?? null}/>
+      case 'recommendations': return <div className="agr-risk-engine"><Recommendations actions={active?.risk_analysis?.priority_actions}/></div>
+      case 'tasks': return <FieldTasks fields={data?.fields ?? []} canEdit={canEdit} suggested={null}/>
+      case 'alerts': return <AlertCenter canEdit={canEdit} onSuggest={suggestion => {setInspection(suggestion); navigate('operations')}}/>
+      case 'help': return <details className="agr-disclosure agr-data-info"><summary><Info size={15}/> Как читать показатели <ChevronDown size={15}/></summary><p>{demo?'Погода и прогноз приведены для демонстрации.':'Погодные данные и прогноз получены от OpenWeather; это модельные данные, не датчики непосредственно на участке.'} AgroRisk Engine v4.0 оценивает заморозки, осадки, ветер и сухую жару, показывает неполные данные и проверяемые действия по открытым учебным порогам. Это не подтверждённый прогноз ущерба культуре и не диагноз засухи. Отсутствующие погодные показатели помечаются как «Нет данных». Сценарии для жюри не влияют на реальные поля или контекст DeepSeek. Границы исходных полей могут быть демонстрационными.</p></details>
+    }
+  }
   return <div className={`shell agr-shell ${view === 'assistant' ? 'agr-shell--assistant' : ''} ${ui.navLabels ? '' : 'agr-shell--hide-nav-labels'} agr-density--${presetOf(ui)} agr-theme--${appearance.theme} agr-font--${appearance.fontSize}`}>
     <aside className="sidebar agr-sidebar">
       <div className="brand agr-brand"><div className="brand-icon"><Leaf size={23}/></div><div><strong>AgroRadar <span>AI</span></strong><small>Аналитика сельхозполей</small></div></div>
@@ -344,73 +403,18 @@ function App() {
       {geoError && view==='fields' && <div className="error" role="alert">{geoError}. Точечные маркеры продолжат работать, если есть данные полей.</div>}
 
       <section className="agr-page agr-page--overview" hidden={view!=='overview'} aria-label="Сводка хозяйства">
-        {ui.overviewStats && <div className="agr-stats">
-          <div className="agr-stat"><div className="agr-stat__icon"><MapPinned size={19}/></div><span>Поля хозяйства</span><strong>{data?.count ?? '—'}</strong><small>Участков на карте</small></div>
-          <div className="agr-stat"><div className="agr-stat__icon agr-stat__icon--warning"><ShieldAlert size={19}/></div><span>Высокий погодный риск</span><strong className={(data?.high_risk_count??0)>0?'agr-text-danger':''}>{data?.high_risk_count??'—'}</strong><small>По погодным факторам за 24 часа</small></div>
-          <div className="agr-stat"><div className="agr-stat__icon"><Thermometer size={19}/></div><span>Температура · {active?.name??'поле'}</span><strong>{active?weatherText(active.weather.temperature_c,'°C'):'—'}</strong><small>{active?.weather.source==='demo'?'Демо-данные':'OpenWeather'}</small></div>
-        </div>}
-        <div className="agr-overview-columns">
-          {ui.overviewFieldList && <article className="agr-card agr-field-list-card">
-            <div className="agr-card-heading"><div><div className="agr-overline">СОСТОЯНИЕ УЧАСТКОВ</div><h2>Поля и риски</h2></div><button className="agr-text-link" onClick={()=>navigate('fields')}>Открыть карту <ArrowRight size={16}/></button></div>
-            <div className="agr-summary-strip"><CheckCircle2 size={18}/><span>{!data?'Загрузка показателей…':data.high_risk_count>0?`Есть поля с высоким погодным риском: ${data.high_risk_count}`:'По доступным погодным данным высокий риск не выявлен (проверь полноту прогноза)'}</span></div>
-            <div className="agr-field-rows">{sortedFields.length===0?<div className="agr-empty">Полей пока нет. Создай первый участок на карте.</div>:sortedFields.slice(0,8).map(field=><button key={field.id} type="button" className={`agr-field-row ${active?.id===field.id?'is-selected':''}`} onClick={()=>setSelected(field.id)}>
-              <span className={`agr-field-row__mark agr-risk-${field.risk.level}`} />
-              <span className="agr-field-row__text"><strong>{field.name}</strong><small>{field.crop} · {field.area_ha} га</small></span>
-              <span className={`agr-risk-pill agr-risk-pill--${field.risk.level}`}>{riskLabel[field.risk.level]}</span>
-            </button>)}</div>
-            {sortedFields.length>8&&<button className="agr-text-link agr-more-fields" onClick={()=>navigate('fields')}>Показать ещё {sortedFields.length-8} полей <ArrowRight size={15}/></button>}
-          </article>}
-          {ui.overviewForecast && <article className="agr-card agr-forecast-card">
-            <div className="agr-card-heading"><div><div className="agr-overline">ПРОГНОЗ ДЛЯ ПОЛЯ</div><h2>{active?.name??'Выбери поле'}</h2></div>{picker('agr-overview-picker')}</div>
-            {active ? <>
-              <div className="agr-weather-summary">
-                <div><span>Сейчас</span><strong>{weatherText(active.weather.temperature_c,'°C')}</strong></div>
-                <div><span>Минимум за 24 ч</span><strong>{weatherText(active.forecast.min_temperature_next_24h_c,'°C')}</strong></div>
-                <div><span>Ветер</span><strong>{weatherText(active.weather.wind_ms,'м/с')}</strong></div>
-              </div>
-              <TemperatureTimeline forecast={active.forecast}/>
-              <div className={`agr-risk-note agr-risk-note--${active.risk.level}`}><span className={`agr-risk-pill agr-risk-pill--${active.risk.level}`}>{riskLabel[active.risk.level]}</span><p>{active.risk.reason}</p></div>
-              <button className="agr-ai-link" onClick={()=>navigate('assistant')}><Bot size={17}/> Спросить ИИ об этом поле <ArrowRight size={16}/></button>
-            </>:<p className="agr-empty">Выбери участок, чтобы посмотреть прогноз.</p>}
-          </article>}
-        </div>
-        {ui.overviewForecast && <FiveDayForecast fieldId={active?.id ?? null} forecast={active?.five_day_forecast}/>}
-        {ui.overviewRiskDetails && <><RiskDashboard fieldName={active?.name ?? 'не выбрано'} analysis={active?.risk_analysis}/><CropRiskPanel analysis={active?.crop_risk_analysis}/><AgronomyInsights fieldId={active?.id??null}/></>}
-        {ui.overviewHelp && <details className="agr-disclosure agr-data-info"><summary><Info size={15}/> Как читать показатели <ChevronDown size={15}/></summary><p>{demo?'Погода и прогноз приведены для демонстрации.':'Погодные данные и прогноз получены от OpenWeather; это модельные данные, не датчики непосредственно на участке.'} AgroRisk Engine v4.0 оценивает заморозки, осадки, ветер и сухую жару, показывает неполные данные и проверяемые действия по открытым учебным порогам. Это не подтверждённый прогноз ущерба культуре и не диагноз засухи. Отсутствующие погодные показатели помечаются как «Нет данных». Сценарии для жюри не влияют на реальные поля или контекст DeepSeek. Границы исходных полей могут быть демонстрационными.</p></details>}
+        <DashboardWorkspace key={username} preferences={ui} render={renderWidget} fields={data?.fields ?? []}
+          picker={picker('agr-overview-picker')}/>
       </section>
 
       <section className="agr-page agr-page--fields" hidden={view!=='fields'} aria-label="Карта и управление полями">
         {visitedMap && <div className="agr-map-workspace">
-          <section className="map-panel agr-main-map"><div className="panel-head"><h2>Карта хозяйства</h2><span>Яндекс Карты · GeoJSON</span></div><div className="map-wrap"><GeoFieldsMap fields={data?.fields??[]} geojson={geojson} activeId={active?.id} onSelect={setSelected} onSaveGeometry={saveGeometry} onCreateOutline={openCreate} canEdit={canEdit} theme={appearance.theme}/></div><div className="map-foot"><span><i className="dot green"/> Низкий</span><span><i className="dot yellow"/> Умеренный</span><span><i className="dot red"/> Высокий</span></div></section>
+          {mapPanel}
           <aside className="agr-map-sidebar"><div className="agr-map-sidebar__head"><h2>Участки <span>{data?.count??0}</span></h2><div className="agr-search"><Search size={15}/><input value={fieldQuery} onChange={e=>setFieldQuery(e.target.value)} placeholder="Найти поле или культуру" aria-label="Поиск поля" /></div></div>
             <div className="agr-map-field-list">{filteredFields.map(field=><button key={field.id} type="button" className={`agr-map-field ${active?.id===field.id?'is-selected':''}`} onClick={()=>setSelected(field.id)}><span className={`agr-map-field__indicator agr-risk-${field.risk.level}`}/><span><strong>{field.name}</strong><small>{field.crop} · {field.area_ha} га</small></span></button>)}{!filteredFields.length&&<div className="agr-empty">Участки не найдены.</div>}</div>
-            <div className="agr-selected-card">{active?<><div className="agr-selected-card__title"><h3>{active.name}</h3><span className={`agr-risk-pill agr-risk-pill--${active.risk.level}`}>{riskLabel[active.risk.level]}</span></div>
-              <p className="agr-selected-card__meta">{active.crop} · {active.area_ha} га</p>
-              <div className="agr-selected-card__numbers"><span><Thermometer size={14}/> {active.weather.temperature_c} °C</span><span><Droplets size={14}/> {weatherText(active.weather.humidity_pct,'%')}</span><span><Wind size={14}/> {active.weather.wind_ms} м/с</span></div>
-              {canEdit && <div className="agr-selected-card__actions"><button onClick={()=>openEdit(active)} disabled={busy}><Pencil size={14}/> Изменить</button><button className="agr-delete-button" onClick={()=>void deleteField(active)} disabled={busy}><Trash2 size={14}/> Удалить</button></div>}
-              <details className="agr-disclosure agr-field-extra" open={showFieldDetails} onToggle={e=>setShowFieldDetails(e.currentTarget.open)}><summary><span>Описание и координаты</span><ChevronDown size={15}/></summary><div className="agr-field-extra__body"><p>{active.description||'Описание ещё не добавлено.'}</p><small>{active.lat.toFixed(5)}° N, {active.lon.toFixed(5)}° E</small><small>{active.geometry_source==='user_drawn'?'Граница сохранена вручную':'Граница демонстрационная'}</small></div></details>
-              <details className="agr-disclosure agr-agronomy-details"><summary><span><Leaf size={15}/> Агрономический паспорт</span><ChevronDown size={15}/></summary>
-                <div className="agr-agronomy-grid">
-                  <div><small>Дата посева</small><strong>{active.sowing_date || 'Не указана'}</strong></div>
-                  <div><small>Фаза развития</small><strong>{active.growth_stage || 'Не указана'}</strong></div>
-                  <div><small>Тип почвы</small><strong>{active.soil_type || 'Не указан'}</strong></div>
-                </div>
-                <p className="agr-agronomy-notice">Указано агрономом вручную. Погодные пороги v2.0 пока не калиброваны под культуру.</p>
-                {canEdit && <button className="agr-agronomy-action" type="button" onClick={()=>openEdit(active)}><Pencil size={14}/> Заполнить паспорт</button>}
-              </details>
-              <details className="agr-disclosure agr-agronomy-details"><summary><span><Info size={15}/> Журнал наблюдений ({active.observations?.length ?? 0})</span><ChevronDown size={15}/></summary>
-                <div className="agr-observations">
-                  {canEdit && <form onSubmit={e=>void addObservation(e)} className="agr-observations-form">
-                    <label htmlFor="agr-observation-date">Дата наблюдения</label>
-                    <input id="agr-observation-date" type="date" value={observationDate} onChange={e=>setObservationDate(e.target.value)} />
-                    <label htmlFor="agr-observation-text">Что заметили на поле?</label>
-                    <textarea id="agr-observation-text" rows={3} maxLength={1000} placeholder="Например: осмотр после дождя, состояние всходов, почва влажная на поверхности…" value={observationText} onChange={e=>setObservationText(e.target.value)}/>
-                    <button type="submit" disabled={observationBusy || !observationText.trim()}>+ Добавить запись</button>
-                  </form>}
-                  {(active.observations ?? []).length === 0 ? <p className="agr-observations-empty">Записей пока нет.</p> :
-                    <div className="agr-observations-list">{[...(active.observations ?? [])].reverse().map(item=><article key={item.id} className="agr-observation-item"><div><time dateTime={item.observed_on}>{item.observed_on}</time>{canEdit && <button type="button" aria-label={`Удалить наблюдение ${item.observed_on}`} title="Удалить наблюдение" onClick={()=>void removeObservation(active.id,item)} disabled={observationBusy}><Trash2 size={14}/></button>}</div><p>{item.text}</p></article>)}</div>}
-                </div>
-              </details>
+            <div className="agr-selected-card">{active?<>{fieldInfo}
+              {passport}
+              {observations('map')}
               <button className="agr-selected-card__ask" onClick={()=>navigate('assistant')}><Bot size={16}/> Обсудить с ИИ <ArrowRight size={14}/></button>
             </>:<p className="agr-empty">Создай поле кнопкой «Новое поле» на карте.</p>}</div>
           </aside>
@@ -427,7 +431,7 @@ function App() {
       </section>
       <section className="agr-page agr-page--operations" hidden={view!=='operations'} aria-label="Центр аналитики и предупреждений">
         {view==='operations' && <OperationsCenter fields={data?.fields ?? []} activeId={active?.id ?? 0}
-          onPick={setSelected} canEdit={canEdit} mode={data?.mode ?? 'demo'}/>}
+          onPick={setSelected} canEdit={canEdit} mode={data?.mode ?? 'demo'} initialInspection={inspection}/>}
       </section>
       {canEdit && <section className="agr-page agr-page--users" hidden={view!=='users'} aria-label="Управление пользователями">{view==='users' && <UserManager/>}</section>}
       {ui.footer && <footer className="agr-footer">AgroRadar AI · Конкурсный прототип · Карта: Яндекс Карты · Данные исходных участков могут быть демонстрационными</footer>}

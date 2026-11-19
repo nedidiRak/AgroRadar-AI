@@ -104,6 +104,7 @@ function boundsOf(fields: Field[]): LatLon[] | null {
 }
 
 export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSaveGeometry, onCreateOutline, canEdit = true, theme = 'forest' }: Props) {
+  const shell = useRef<HTMLDivElement>(null)
   const host = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const drawnObjectsRef = useRef<any>(null)
@@ -182,6 +183,12 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
 
   useEffect(() => {
     if (!expanded) return
+    // The top layer spans the viewport even inside a transformed grid item.
+    const surface = shell.current
+    if (surface && typeof surface.showPopover === 'function') {
+      surface.setAttribute('popover', 'manual')
+      surface.showPopover()
+    }
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const onEscape = (event: KeyboardEvent) => {
@@ -189,6 +196,10 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
     }
     window.addEventListener('keydown', onEscape)
     return () => {
+      if (surface?.hasAttribute('popover')) {
+        surface.hidePopover()
+        surface.removeAttribute('popover')
+      }
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', onEscape)
     }
@@ -198,7 +209,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
   // React keeps the Yandex map mounted inside a hidden section to preserve
   // its state. The fullscreen map must release the body scroll lock at once.
   useEffect(() => {
-    const page = host.current?.closest<HTMLElement>('.agr-page--fields')
+    const page = host.current?.closest<HTMLElement>('.agr-page')
     if (!page) return
 
     const closeFullscreenIfHidden = () => {
@@ -381,7 +392,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
     { id: 'map', title: 'Схема', Icon: MapIcon },
   ]
 
-  return <div className={`geo-map agr-map-shell ${drawing ? 'geo-map--drawing' : ''} ${expanded ? 'agr-map-shell--expanded' : ''}`} aria-label="Карта полей Яндекс">
+  return <div ref={shell} className={`geo-map agr-map-shell ${drawing ? 'geo-map--drawing' : ''} ${expanded ? 'agr-map-shell--expanded' : ''}`} aria-label="Карта полей Яндекс">
     <div className="agr-map-toolbar" role="toolbar" aria-label="Управление геокартой">
       <div className="agr-map-toolbar__mode" aria-label="Картографическая подложка">
         <span className="agr-map-toolbar__label">ПОДЛОЖКА</span>
