@@ -182,7 +182,7 @@ export function AlertCenter({ canEdit, onSuggest, revision = 0 }: {
   return (
     <div className="agr-ops-panel">
       <div className="agr-ops-panel-title"><div><h2><ShieldAlert size={19}/> Центр предупреждений</h2><p>Основания и статусы угроз, полученных только из реального прогноза.</p></div>
-        <select value={status} onChange={e=>setStatus(e.target.value as typeof status)} aria-label="Статус предупреждений">
+        <select data-learn="alert-filter" value={status} onChange={e=>setStatus(e.target.value as typeof status)} aria-label="Статус предупреждений">
           <option value="all">Все статусы</option><option value="open">Открытые</option>
           <option value="acknowledged">Приняты</option><option value="resolved">Завершённые</option>
         </select></div>

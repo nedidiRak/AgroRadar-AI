@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "node --test tests/ui-preferences.test.mjs tests/workspace-layout.test.mjs"
+    "test": "node --test tests/ui-preferences.test.mjs tests/workspace-layout.test.mjs tests/training.test.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

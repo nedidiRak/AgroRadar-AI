@@ -419,7 +419,7 @@ export default function GeoFieldsMap({ fields, activeId, onSelect, geojson, onSa
           <button type="button" className={`agr-map-action ${showContours ? 'is-toggled' : ''}`} onClick={() => setShowContours(x => !x)} disabled={!loaded || drawing || fallbackActive} aria-pressed={showContours} title={showContours ? 'Скрыть контуры' : 'Показать контуры'}>
             <Layers size={16} strokeWidth={1.9} /><span>Контуры</span>
           </button>
-          {canEdit && !drawing && <button type="button" className="agr-map-action agr-map-action--primary" onClick={() => beginDrawing('new')} disabled={!loaded || fallbackActive} title="Нарисовать новый участок и создать отдельное поле">
+          {canEdit && !drawing && <button type="button" className="agr-map-action agr-map-action--primary" data-learn="map-new" onClick={() => beginDrawing('new')} disabled={!loaded || fallbackActive} title="Нарисовать новый участок и создать отдельное поле">
             <Plus size={16} strokeWidth={1.9} /><span>Новое поле</span>
           </button>}
           {canEdit && !drawing && <button type="button" className="agr-map-action" onClick={() => beginDrawing('edit')} disabled={!loaded || fallbackActive || !activeId} title="Изменить границы выбранного существующего поля">

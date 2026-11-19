@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { apiFetch } from './authClient'
 import { decodeWorkspace, freshWorkspace, type Workspace } from './workspaceLayout'
 
-export function useWorkspaceStore() {
+export function useWorkspaceStore(connected = true) {
   const [saved, setSaved] = useState(freshWorkspace)
   const [revision, setRevision] = useState<number | null>(null)
   const [error, setError] = useState('')
@@ -11,6 +11,7 @@ export function useWorkspaceStore() {
   const [reload, setReload] = useState(0)
   const pending = useRef(false)
   useEffect(() => {
+    if (!connected) return
     const ctrl = new AbortController()
     async function load() {
       try {
@@ -40,9 +41,9 @@ export function useWorkspaceStore() {
     }
     void load()
     return () => ctrl.abort()
-  }, [reload])
+  }, [reload,connected])
   async function save(workspace: Workspace) {
-    if (revision === null || pending.current || problem === 'newer' || problem === 'conflict') return false
+    if (!connected || revision === null || pending.current || problem === 'newer' || problem === 'conflict') return false
     pending.current = true
     setSaving(true)
     setError('')
@@ -67,6 +68,6 @@ export function useWorkspaceStore() {
       setSaving(false)
     }
   }
-  return { saved, saving, error, problem, ready: revision !== null && !problem,
+  return { saved, saving, error, problem, ready: !connected || (revision !== null && !problem),
     save, retry: () => { setRevision(null); setReload(n => n + 1) } }
 }

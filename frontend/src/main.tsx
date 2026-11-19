@@ -1,3 +1,7 @@
+import { TrainingContext, useTraining } from './training/useTraining'
+import { TrainingWelcome, TrainingOverlay } from './training/TrainingUI'
+import { ContextHelp } from './training/ContextHelp'
+import { practiceStages } from './training/scenarios'
 import { TemperatureTimeline, type Forecast } from './TemperaturePlot'
 import AuthGate from './AuthGate'
 import UserManager from './UserManager'
@@ -106,13 +110,18 @@ function App() {
   const [observationDate,setObservationDate] = useState('')
   const [observationBusy,setObservationBusy] = useState(false)
   useEffect(()=>{ setObservationText(''); setObservationDate('') },[selected])
-  function navigate(to:View) {
+  const [requestedAi,setRequestedAi] = useState(false)
+  const navigate = useCallback((to:View, guided=false) => {
+    if(to==='assistant' && !guided) setRequestedAi(true)
     if(to==='fields') setVisitedMap(true)
     if(to==='assistant') setVisitedAi(true)
     if (to !== 'operations') setInspection(null)
     setView(to)
     window.scrollTo({top:0,behavior:'auto'})
-  }
+  }, [])
+  const navigateTraining = useCallback((to:View)=>{if(to!==view) navigate(to,true)},[view,navigate])
+  const training = useTraining(canEdit,navigateTraining)
+  const practice = training.step && practiceStages.has(training.step.id) ? training.step.id : null
   async function logout() {
     try {
       await apiFetch('/api/auth/logout', { method: 'POST' })
@@ -300,7 +309,7 @@ function App() {
     {data?.fields.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
   </select>
 
-  const mapPanel = <section className="map-panel agr-main-map"><div className="panel-head"><h2>Карта хозяйства</h2><span>Яндекс Карты · GeoJSON</span></div><div className="map-wrap"><GeoFieldsMap fields={data?.fields??[]} geojson={geojson} activeId={active?.id} onSelect={setSelected} onSaveGeometry={saveGeometry} onCreateOutline={openCreate} canEdit={canEdit} theme={appearance.theme}/></div><div className="map-foot"><span><i className="dot green"/> Низкий</span><span><i className="dot yellow"/> Умеренный</span><span><i className="dot red"/> Высокий</span></div></section>
+  const mapPanel = <section className="map-panel agr-main-map"><div className="panel-head"><h2>Карта хозяйства</h2><span>Яндекс Карты · GeoJSON</span></div><div className="map-wrap"><GeoFieldsMap fields={data?.fields??[]} geojson={geojson} activeId={active?.id} onSelect={setSelected} onSaveGeometry={saveGeometry} onCreateOutline={openCreate} canEdit={canEdit} theme={appearance.theme}/></div><div className="map-foot" data-learn="risk-legend"><span><i className="dot green"/> Низкий</span><span><i className="dot yellow"/> Умеренный</span><span><i className="dot red"/> Высокий</span></div></section>
   const fieldInfo = active && <><div className="agr-selected-card__title"><h3>{active.name}</h3><span className={`agr-risk-pill agr-risk-pill--${active.risk.level}`}>{riskLabel[active.risk.level]}</span></div>
     <p className="agr-selected-card__meta">{active.crop} · {active.area_ha} га</p>
     <div className="agr-selected-card__numbers"><span><Thermometer size={14}/> {active.weather.temperature_c} °C</span><span><Droplets size={14}/> {weatherText(active.weather.humidity_pct,'%')}</span><span><Wind size={14}/> {active.weather.wind_ms} м/с</span></div>
@@ -312,11 +321,12 @@ function App() {
         <div><small>Фаза развития</small><strong>{active.growth_stage || 'Не указана'}</strong></div>
         <div><small>Тип почвы</small><strong>{active.soil_type || 'Не указан'}</strong></div>
       </div>
+      <ContextHelp topic="passport"/>
       <p className="agr-agronomy-notice">Указано агрономом вручную. Погодные пороги v2.0 пока не калиброваны под культуру.</p>
       {canEdit && <button className="agr-agronomy-action" type="button" onClick={()=>openEdit(active)}><Pencil size={14}/> Заполнить паспорт</button>}
     </details>
-  const observations = (scope: string) => active && <details className="agr-disclosure agr-agronomy-details"><summary><span><Info size={15}/> Журнал наблюдений ({active.observations?.length ?? 0})</span><ChevronDown size={15}/></summary>
-      <div className="agr-observations">
+  const observations = (scope: string) => active && <details className="agr-disclosure agr-agronomy-details"><summary data-learn="field-journal"><span><Info size={15}/> Журнал наблюдений ({active.observations?.length ?? 0})</span><ChevronDown size={15}/></summary>
+      <div className="agr-observations"><ContextHelp topic="observation"/>
         {canEdit && <form onSubmit={e=>void addObservation(e)} className="agr-observations-form">
           <label htmlFor={scope + '-observation-date'}>Дата наблюдения</label>
           <input id={scope + '-observation-date'} type="date" value={observationDate} onChange={e=>setObservationDate(e.target.value)} />
@@ -342,7 +352,7 @@ function App() {
       case 'field': return active ? <div className="agr-selected-card">{fieldInfo}</div> : emptyField
       case 'passport': return passport || emptyField
       case 'observations': return observations('overview') || emptyField
-      case 'stats': return <div className="agr-stats">
+      case 'stats': return <div className="agr-stats" data-learn="overview-stats">
           <div className="agr-stat"><div className="agr-stat__icon"><MapPinned size={19}/></div><span>Поля хозяйства</span><strong>{data?.count ?? '—'}</strong><small>Участков на карте</small></div>
           <div className="agr-stat"><div className="agr-stat__icon agr-stat__icon--warning"><ShieldAlert size={19}/></div><span>Высокий погодный риск</span><strong className={(data?.high_risk_count??0)>0?'agr-text-danger':''}>{data?.high_risk_count??'—'}</strong><small>По погодным факторам за 24 часа</small></div>
           <div className="agr-stat"><div className="agr-stat__icon"><Thermometer size={19}/></div><span>Температура · {active?.name??'поле'}</span><strong>{active?weatherText(active.weather.temperature_c,'°C'):'—'}</strong><small>{active?.weather.source==='demo'?'Демо-данные':'OpenWeather'}</small></div>
@@ -381,10 +391,10 @@ function App() {
       case 'help': return <details className="agr-disclosure agr-data-info"><summary><Info size={15}/> Как читать показатели <ChevronDown size={15}/></summary><p>{demo?'Погода и прогноз приведены для демонстрации.':'Погодные данные и прогноз получены от OpenWeather; это модельные данные, не датчики непосредственно на участке.'} AgroRisk Engine v4.0 оценивает заморозки, осадки, ветер и сухую жару, показывает неполные данные и проверяемые действия по открытым учебным порогам. Это не подтверждённый прогноз ущерба культуре и не диагноз засухи. Отсутствующие погодные показатели помечаются как «Нет данных». Сценарии для жюри не влияют на реальные поля или контекст DeepSeek. Границы исходных полей могут быть демонстрационными.</p></details>
     }
   }
-  return <div className={`shell agr-shell ${view === 'assistant' ? 'agr-shell--assistant' : ''} ${ui.navLabels ? '' : 'agr-shell--hide-nav-labels'} agr-density--${presetOf(ui)} agr-theme--${appearance.theme} agr-font--${appearance.fontSize}`}>
+  return <TrainingContext.Provider value={training}><div data-learn-app className={`shell agr-shell ${view === 'assistant' ? 'agr-shell--assistant' : ''} ${ui.navLabels ? '' : 'agr-shell--hide-nav-labels'} agr-density--${presetOf(ui)} agr-theme--${appearance.theme} agr-font--${appearance.fontSize}`}>
     <aside className="sidebar agr-sidebar">
       <div className="brand agr-brand"><div className="brand-icon"><Leaf size={23}/></div><div><strong>AgroRadar <span>AI</span></strong><small>Аналитика сельхозполей</small></div></div>
-      <button type="button" className="agr-settings-launch agr-settings-launch--brand" aria-label="Настройки интерфейса" title="Настройки интерфейса" onClick={()=>setSettingsOpen(true)}><Settings2 size={19}/></button>
+      <button type="button" data-learn="settings" className="agr-settings-launch agr-settings-launch--brand" aria-label="Настройки интерфейса" title="Настройки интерфейса" onClick={()=>setSettingsOpen(true)}><Settings2 size={19}/></button>
       <div className="menu-title">НАВИГАЦИЯ</div>
       <nav aria-label="Разделы приложения" className="agr-navigation" style={{'--agr-nav-count':canEdit?5:4} as React.CSSProperties}>
         {[...navigation,...(canEdit ? [{id:'users' as View,label:'Пользователи',Icon:Users}] : [])].map(({id,label,Icon})=><button key={id} type="button" className={`menu agr-nav-item ${view===id?'active':''}`} aria-label={label} title={label} aria-current={view===id?'page':undefined} onClick={()=>navigate(id)}><Icon size={19}/><span>{label}</span></button>)}
@@ -393,8 +403,8 @@ function App() {
     </aside>
     <main className="content agr-content">
       <header className="agr-header">
-        <div><div className="eyebrow">АГРОМОНИТОРИНГ / {view==='overview'?'СВОДКА':view==='fields'?'ГЕОДАННЫЕ':view==='operations'?'АНАЛИТИКА':view==='users'?'УЧЁТНЫЕ ЗАПИСИ':'ПОМОЩНИК'}</div><h1>{pageInfo[0]}</h1><p>{pageInfo[1]}</p></div>
-        <div className="agr-header-actions">{ui.weatherBadge && <span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':data.degraded_count?'OpenWeather · частично недоступен':'OpenWeather · LIVE'):'Загрузка данных'}</span>}<button type="button" className="agr-settings-launch agr-settings-launch--header" title="Настройки интерфейса" aria-label="Настройки интерфейса" onClick={()=>setSettingsOpen(true)}><Settings2 size={17}/> Настройки</button><button className="agr-refresh" onClick={()=>void logout()} title="Выйти из системы"><LogOut size={16}/><span>Выйти</span></button><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
+        <div><div className="eyebrow">АГРОМОНИТОРИНГ / {view==='overview'?'СВОДКА':view==='fields'?'ГЕОДАННЫЕ':view==='operations'?'АНАЛИТИКА':view==='users'?'УЧЁТНЫЕ ЗАПИСИ':'ПОМОЩНИК'}</div><h1 data-learn="page-heading">{pageInfo[0]}</h1><p>{pageInfo[1]}</p></div>
+        <div className="agr-header-actions">{ui.weatherBadge && <span className={`agr-source-status ${demo?'agr-source-status--demo':''}`}><span className="agr-pulse" />{data?(demo?'Демо-погода':data.degraded_count?'OpenWeather · частично недоступен':'OpenWeather · LIVE'):'Загрузка данных'}</span>}<button type="button" data-learn="settings" className="agr-settings-launch agr-settings-launch--header" title="Настройки интерфейса" aria-label="Настройки интерфейса" onClick={()=>setSettingsOpen(true)}><Settings2 size={17}/> Настройки</button><button className="agr-refresh" onClick={()=>void logout()} title="Выйти из системы"><LogOut size={16}/><span>Выйти</span></button><button className="agr-refresh" onClick={()=>void refresh()} disabled={loading}><RefreshCcw size={16} className={loading?'agr-spin':''}/><span>{loading?'Обновляем…':'Обновить'}</span></button></div>
       </header>
       {!canEdit && ui.viewerNotice && <div className="agr-viewer-banner" role="status">Режим наблюдателя: просмотр полей, карты и рисков, а также диалог с ИИ. Изменение данных отключено.</div>}
       {error && <div className="error" role="alert">{error}. Проверь, что FastAPI запущен через START_AGRORADAR.bat.</div>}
@@ -402,16 +412,18 @@ function App() {
       {actionMessage && <div className="action-message" role="status">{actionMessage}</div>}
       {geoError && view==='fields' && <div className="error" role="alert">{geoError}. Точечные маркеры продолжат работать, если есть данные полей.</div>}
 
-      <section className="agr-page agr-page--overview" hidden={view!=='overview'} aria-label="Сводка хозяйства">
-        <DashboardWorkspace key={username} preferences={ui} render={renderWidget} fields={data?.fields ?? []}
-          picker={picker('agr-overview-picker')}/>
+      <section data-learn-view="overview" className="agr-page agr-page--overview" hidden={view!=='overview'} aria-label="Сводка хозяйства">
+        <TrainingWelcome/>
+        <div hidden={!!practice}><DashboardWorkspace key={username} preferences={ui} render={renderWidget} fields={data?.fields ?? []}
+          picker={picker('agr-overview-picker')}/></div>
+        {practice && <DashboardWorkspace practiceStep={practice} onPractice={training.action} preferences={ui} render={renderWidget} fields={data?.fields ?? []} picker={null}/>}
       </section>
 
-      <section className="agr-page agr-page--fields" hidden={view!=='fields'} aria-label="Карта и управление полями">
+      <section data-learn-view="fields" className="agr-page agr-page--fields" hidden={view!=='fields'} aria-label="Карта и управление полями">
         {visitedMap && <div className="agr-map-workspace">
           {mapPanel}
           <aside className="agr-map-sidebar"><div className="agr-map-sidebar__head"><h2>Участки <span>{data?.count??0}</span></h2><div className="agr-search"><Search size={15}/><input value={fieldQuery} onChange={e=>setFieldQuery(e.target.value)} placeholder="Найти поле или культуру" aria-label="Поиск поля" /></div></div>
-            <div className="agr-map-field-list">{filteredFields.map(field=><button key={field.id} type="button" className={`agr-map-field ${active?.id===field.id?'is-selected':''}`} onClick={()=>setSelected(field.id)}><span className={`agr-map-field__indicator agr-risk-${field.risk.level}`}/><span><strong>{field.name}</strong><small>{field.crop} · {field.area_ha} га</small></span></button>)}{!filteredFields.length&&<div className="agr-empty">Участки не найдены.</div>}</div>
+            <div className="agr-map-field-list">{filteredFields.map(field=><button data-learn="field-choice" key={field.id} type="button" className={`agr-map-field ${active?.id===field.id?'is-selected':''}`} onClick={()=>setSelected(field.id)}><span className={`agr-map-field__indicator agr-risk-${field.risk.level}`}/><span><strong>{field.name}</strong><small>{field.crop} · {field.area_ha} га</small></span></button>)}{!filteredFields.length&&<div className="agr-empty">Участки не найдены.</div>}</div>
             <div className="agr-selected-card">{active?<>{fieldInfo}
               {passport}
               {observations('map')}
@@ -422,14 +434,14 @@ function App() {
         <details className="agr-disclosure agr-geo-tools"><summary><span><SlidersHorizontal size={16}/> Дополнительные инструменты GeoJSON</span><ChevronDown size={16}/></summary><div className="agr-geo-tools__inner"><p>Импорт заменяет границу выбранного поля, экспорт сохраняет все контуры в GeoJSON. Для добавления отдельного поля нажми «Новое поле» на карте.</p><div className="gis-actions">{canEdit && <label className="file-btn">↑ Импорт контура<input type="file" accept=".json,.geojson,application/geo+json" onChange={e=>void importGeoJSON(e)} hidden/></label>}<button type="button" onClick={exportGeoJSON} disabled={!geojson}>↓ Экспорт GeoJSON</button>{canEdit && active?.kind==='demo' && active?.geometry_source==='user_drawn' && <button type="button" className="outline-danger" onClick={()=>void resetGeometry(active.id)}>Сбросить контур</button>}</div></div></details>
       </section>
 
-      <section className="agr-page agr-page--ai" hidden={view!=='assistant'} aria-label="ИИ-агроном">
+      <section data-learn-view="assistant" className="agr-page agr-page--ai" hidden={view!=='assistant'} aria-label="ИИ-агроном">
         {(ui.aiFieldPicker || ui.aiMapShortcut) && <div className="agr-ai-context-switch">
           {ui.aiFieldPicker && picker('agr-assistant-picker')}
           {ui.aiMapShortcut && <button className="agr-text-link" onClick={()=>navigate('fields')}><MapPinned size={15}/> На карте</button>}
         </div>}
-        {visitedAi && <AiAgronom key={active?.id ?? 0} field={active} ui={ui} onOpenSettings={()=>setSettingsOpen(true)}/>}
+        {visitedAi && <AiAgronom key={active?.id ?? 0} field={active} ui={ui} allowHealthCheck={requestedAi && view==='assistant' && !training.running} onOpenSettings={()=>setSettingsOpen(true)}/>}
       </section>
-      <section className="agr-page agr-page--operations" hidden={view!=='operations'} aria-label="Центр аналитики и предупреждений">
+      <section data-learn-view="operations" className="agr-page agr-page--operations" hidden={view!=='operations'} aria-label="Центр аналитики и предупреждений">
         {view==='operations' && <OperationsCenter fields={data?.fields ?? []} activeId={active?.id ?? 0}
           onPick={setSelected} canEdit={canEdit} mode={data?.mode ?? 'demo'} initialInspection={inspection}/>}
       </section>
@@ -486,6 +498,7 @@ function App() {
         </div>
       </div>}
     </main>
-  </div>
+    {training.step && <TrainingOverlay tour={training} theme={`agr-theme--${appearance.theme} agr-font--${appearance.fontSize}`}/>}
+  </div></TrainingContext.Provider>
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><AuthGate><App/></AuthGate></React.StrictMode>)

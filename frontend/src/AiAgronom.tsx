@@ -1,3 +1,5 @@
+import {useCoach} from './training/useTraining'
+import {ContextHelp} from './training/ContextHelp'
 import { apiFetch } from './authClient'
 import { useEffect, useRef, useState } from 'react'
 import type { UiPreferences } from './uiPreferences'
@@ -61,9 +63,10 @@ function formatAgronomAnswer(answer: string): string {
   )
 }
 
-export default function AiAgronom({ field, ui, onOpenSettings }: {
+export default function AiAgronom({ field, ui, onOpenSettings, allowHealthCheck }: {
   field?: FieldContext
   ui: UiPreferences
+  allowHealthCheck:boolean
   onOpenSettings: () => void
 }) {
   const [status, setStatus] = useState<AiStatus | null>(null)
@@ -71,6 +74,10 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
   const [health, setHealth] = useState<AiHealth | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [prompt, setPrompt] = useState('')
+  const tour=useCoach()
+  const practice=tour?.step?.id==='question'
+  const [exercise,setExercise]=useState('')
+  const input=practice?exercise:prompt
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [contextOpen, setContextOpen] = useState(false)
@@ -89,7 +96,7 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
     return () => { mounted = false }
   }, [])
   useEffect(() => {
-    if (!status?.configured) return
+    if (!status?.configured || !allowHealthCheck || health) return
     const controller = new AbortController()
     apiFetch('/api/ai/check', {signal:controller.signal})
       .then(async response => {
@@ -99,11 +106,11 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
       .then(data => { if (!controller.signal.aborted) setHealth(data) })
       .catch(() => { if (!controller.signal.aborted) setHealth({availability:'unavailable',description:'Проверка доступности не удалась.'}) })
     return () => controller.abort()
-  }, [status?.configured])
+  }, [status?.configured, allowHealthCheck, health])
 
   const providerText = !status ? statusError || 'Проверка настройки…'
     : !status.configured ? 'Нет API-ключа'
-    : !health ? 'Ключ настроен · проверка…'
+    : !health ? (allowHealthCheck?'Ключ настроен · проверка…':'Ключ настроен')
     : health.availability === 'online' ? 'DeepSeek доступен'
     : health.availability === 'offline_demo' ? 'Демо-диалог · не DeepSeek'
     : health.availability === 'model_unknown' ? 'Проверить модель'
@@ -115,6 +122,10 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
 
   async function send(text: string) {
     const question = text.trim()
+    if (tour?.running) {
+      if (practice && question && field) {setExercise('');tour.action('question')}
+      return
+    }
     if (!question || !field || busy || !status?.configured) return
     const history = messages.slice(-10).map(({role,content})=>({role,content}))
     setMessages([...messages, { role: 'user', content: question }])
@@ -237,7 +248,7 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
             <button type="button" className="agro-ai__clear" onClick={exportDialog} disabled={busy || !messages.length}><Download size={14}/> Экспорт</button>
             <button type="button" className="agro-ai__clear" onClick={clearConversation} disabled={busy || messages.length===0}><RotateCcw size={14}/> Новый диалог</button>
           </div></div>}
-        <div className="agro-ai__messages" ref={messagesRef} aria-live="polite">
+        <div className="agro-ai__messages" data-learn="ai-conversation" ref={messagesRef} aria-live="polite">
           {messages.length === 0 && <div className="agro-ai__welcome">
             <div className="agro-ai__welcome-icon"><Sparkles size={27}/></div>
             <strong>С чего начнём анализ?</strong>
@@ -252,12 +263,13 @@ export default function AiAgronom({ field, ui, onOpenSettings }: {
           </div>)}
           {busy && <div className="agro-ai__thinking"><Sparkles size={15}/> Анализирую прогноз и данные поля…</div>}
         </div>
+        <ContextHelp topic="ai"/>
         {error && <div role="alert" className="agro-ai__error">{error}</div>}
         {!status?.configured && !statusError && status && <div className="agro-ai__setup">Добавь <code>DEEPSEEK_API_KEY</code> в <code>backend/.env</code> и перезапусти FastAPI.</div>}
         {statusError && <div className="agro-ai__setup">{statusError}</div>}
-        <form className="agro-ai__composer" onSubmit={e => { e.preventDefault(); void send(prompt) }}>
-          <textarea aria-label="Вопрос ИИ-агроному" placeholder={field ? `Спроси о поле «${field.name}»…` : 'Сначала выбери поле'} value={prompt} maxLength={2000} rows={2} disabled={!field || !status?.configured || busy} onChange={e => setPrompt(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(prompt) } }} />
-          <button type="submit" title="Отправить вопрос" disabled={!prompt.trim() || !field || !status?.configured || busy}><Send size={17}/> Отправить</button>
+        <form className="agro-ai__composer" data-learn={field?'ai-composer':undefined} onSubmit={e => { e.preventDefault(); void send(input) }}>
+          <textarea aria-label="Вопрос ИИ-агроному" placeholder={field ? `Спроси о поле «${field.name}»…` : 'Сначала выбери поле'} value={input} maxLength={2000} rows={2} disabled={!field || (!practice && !status?.configured) || busy} onChange={e => (practice?setExercise:setPrompt)(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(input) } }} />
+          <button type="submit" title={practice?'Проверить учебный вопрос':'Отправить вопрос'} disabled={!input.trim() || !field || (!practice && !status?.configured) || busy}><Send size={17}/>{practice?'Проверить вопрос':'Отправить'}</button>
         </form>
         {ui.aiTechnicalInfo && <div className="agro-ai__footer">
           <span className="agro-ai__footer-long">DeepSeek · {status?.model ?? 'ожидание'} · Контекст запрашивается у FastAPI перед каждым ответом · Внешний ИИ-сервис получает данные выбранного поля и историю отправляемого диалога.</span>

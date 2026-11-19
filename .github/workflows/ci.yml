@@ -149,6 +149,7 @@ jobs:
           done
           curl -sf http://127.0.0.1:8000/api/health >/dev/null
           curl -sf http://127.0.0.1:5173/ >/dev/null
+          node frontend/tests/browser-training.mjs
           node frontend/tests/browser-smoke.mjs
           node frontend/tests/browser-responsive.mjs
           node frontend/tests/browser-workspace.mjs

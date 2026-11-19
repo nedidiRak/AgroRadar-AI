@@ -1,3 +1,4 @@
+import { ContextHelp } from './training/ContextHelp'
 import { apiFetch } from './authClient'
 import { useEffect, useState } from 'react'
 import { AlertTriangle, CloudRain, Flame, Info, Snowflake, Wind } from 'lucide-react'
@@ -107,7 +108,7 @@ export default function RiskDashboard({ fieldName, analysis }: {fieldName: strin
   const current = scenario === 'live' ? analysis : simulation?.analysis
   const demo = scenario !== 'live'
   return <section className="agr-risk-engine" aria-label="Анализ погодных рисков">
-    <div className="agr-risk-engine__header">
+    <ContextHelp topic="risk"/><div className="agr-risk-engine__header">
       <div>
         <span className="agr-risk-engine__eyebrow">AGRORISK ENGINE · V3.0</span>
         <h2>Погодные риски на 24 часа</h2>

@@ -330,7 +330,7 @@ async def auth_guard(request: Request, call_next):
                     headers={"Cache-Control": "no-store"})
             if role == "viewer" and not (
                 (request.method.upper() == "POST" and path in ("/api/ai/chat", "/api/auth/logout"))
-                or (request.method.upper() == "PUT" and path == "/api/me/layouts")
+                or (request.method.upper() == "PUT" and path in ("/api/me/layouts", "/api/me/onboarding"))
             ):
                 return JSONResponse(status_code=403,
                     content={"detail": "Роль «Наблюдатель»: разрешены просмотр и диалог с ИИ, изменение данных запрещено."},

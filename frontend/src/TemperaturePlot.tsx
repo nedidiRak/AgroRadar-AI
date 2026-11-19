@@ -1,9 +1,10 @@
+import { ContextHelp } from './training/ContextHelp'
 import { useLayoutEffect, useRef, useState } from 'react'
 
 export type Sample = { id: number; value: number; label: string; title: string; color?: string }
 
-export function TemperaturePlot({ points, minimum, padding = 1, label }: {
-  points: Sample[]; minimum?: number | null; padding?: number; label: string
+export function TemperaturePlot({ points, minimum, padding = 1, label, trainingTarget }: {
+  points: Sample[]; minimum?: number | null; padding?: number; label: string; trainingTarget?:string
 }) {
   const plot = useRef<HTMLDivElement>(null)
   const probe = useRef<HTMLSpanElement>(null)
@@ -55,7 +56,7 @@ export function TemperaturePlot({ points, minimum, padding = 1, label }: {
   for (const value of [0, Math.floor(high), Math.ceil(low)]) {
     if (value >= low && value <= high && yTicks.every(old => Math.abs(y(old) - y(value)) > lineHeight + 3)) yTicks.push(value)
   }
-  return <div className="temperature-plot" ref={plot}>
+  return <div className="temperature-plot" ref={plot} data-learn={trainingTarget}>
     <span aria-hidden="true" ref={probe} className="plot-probe">{points.reduce((a,b) => a.label.length >= b.label.length ? a : b).label}</span>
     <svg className="timeline-chart" role="img" aria-label={label} viewBox={`0 0 ${width} ${height}`}>
       {yTicks.map(value => <g key={value}>
@@ -86,7 +87,7 @@ export function TemperatureTimeline({ forecast, part = 'both' }: {
   return <section className="forecast-timeline" aria-label={part === 'hourly' ? 'Почасовой прогноз' : 'Прогноз температуры на 24 часа'}>
     <div className="timeline-header"><div><strong>{part === 'hourly' ? 'Почасовой прогноз' : 'Температура на 24 часа'}</strong><span>Шаг прогноза — 3 часа</span></div>
       <span className={demo ? 'timeline-demo' : 'timeline-live'}>{demo ? 'ДЕМО · НЕ РЕАЛЬНЫЙ ПРОГНОЗ' : 'OPENWEATHER · ПРОГНОЗ'}</span></div>
-    {part !== 'hourly' && <TemperaturePlot label="График температуры по временным точкам" minimum={forecast.min_temperature_next_24h_c}
+    {part !== 'hourly' && <TemperaturePlot trainingTarget="forecast-chart" label="График температуры по временным точкам" minimum={forecast.min_temperature_next_24h_c}
       points={points.map(p => ({ id:p.timestamp, value:p.temperature_c, label:time(p.timestamp),
         title:`${time(p.timestamp)} · ${p.temperature_c} °C${p.precipitation_probability_pct == null ? '' : ', осадки ' + p.precipitation_probability_pct + '%'}` }))}/>}
     <div className="timeline-legend" aria-label="Обозначения прогноза"><span>°C — температура воздуха</span>{part !== 'chart' && <span>☔ % — вероятность осадков</span>}</div>
@@ -94,6 +95,6 @@ export function TemperatureTimeline({ forecast, part = 'both' }: {
       <small>{time(p.timestamp)}</small><strong>{p.temperature_c > 0 ? '+' : ''}{p.temperature_c}°</strong>
       <span title={p.precipitation_probability_pct === null ? 'Нет данных о вероятности осадков' : 'Вероятность осадков'}>{p.precipitation_probability_pct === null ? '—' : `☔ ${p.precipitation_probability_pct}%`}</span>
     </div>)}</div>}
-    <p className="timeline-disclaimer">Значения — прогнозные точки модели. Минимум риска рассчитан по температурным минимумам 3-часовых интервалов.</p>
+    <ContextHelp topic="source"/><p className="timeline-disclaimer">Значения — прогнозные точки модели. Минимум риска рассчитан по температурным минимумам 3-часовых интервалов.</p>
   </section>
 }

@@ -33,7 +33,7 @@ function Frame({ tile, editing, controls, children, measure }: FrameProps) {
     return () => { observer.disconnect(); cancelAnimationFrame(frame) }
   }, [tile.h, tile.id, editing, measure])
   return <div className={'studio-frame' + (tile.h === null ? ' studio-frame--auto' : ' studio-frame--sized')}>
-    {editing && <div ref={tools} className="studio-tools">{controls}</div>}
+    {editing && <div ref={tools} className="studio-tools" data-learn={tile.id==='lesson-temperature'?'practice-tools':undefined}>{controls}</div>}
     <div className="studio-scroll"><div className="studio-content" ref={body}>{children}</div></div>
   </div>
 }
@@ -44,7 +44,8 @@ const WidgetContent = memo(function WidgetContent({ render, type, id, fieldId }:
 }) { return <>{render(type, id, fieldId)}</> })
 export type RenderWidget = (type: Tile['type'], id: string, fieldId?: number | null) => ReactNode
 
-export default function WorkspaceGrid({ tiles, device, editing, onChange, render, onInspect, onHide }: {
+export default function WorkspaceGrid({ tiles, device, editing, onChange, render, onInspect, onHide, onPractice }: {
+  onPractice?:(step:string)=>void
   tiles: Tile[]; device: Device; editing: boolean; onChange: (next: Tile[]) => void
   render: RenderWidget; onInspect: (id: string) => void; onHide: (id: string) => void
 }) {
@@ -82,16 +83,16 @@ export default function WorkspaceGrid({ tiles, device, editing, onChange, render
       gridConfig={{cols, rowHeight:row, margin:[gap,gap], containerPadding:[0,0]}}
       dragConfig={{enabled:editing, handle:'.studio-grip', allowMobileScroll:true}}
       resizeConfig={{enabled:editing, handles:device === 'mobile' ? ['s'] : ['se','e','s']}}
-      onDragStop={next => commit(next)}
-      onResizeStop={(next, _, item) => commit(next, item?.i)}>
+      onDragStop={(next,old,item) => {commit(next); if(item?.i==='lesson-temperature' && old && (old.x!==item.x || old.y!==item.y)) onPractice?.('move-widget')}}
+      onResizeStop={(next,old,item) => {commit(next,item?.i); if(item?.i==='lesson-temperature' && old && (old.h!==item.h || old.w!==item.w)) onPractice?.('resize-widget')}}>
       {sorted.map((tile, index) => {
         const title = widgets[tile.type].title
         return <div key={tile.id} className="studio-tile" data-widget={tile.type} data-instance={tile.id} aria-label={title}>
           <Frame tile={tile} editing={editing} measure={measure} controls={<>
             <span className="studio-grip" title={'Перетащить: ' + title}><GripVertical size={17}/>{title}</span>
             <div className="studio-tile-actions">
-              <button type="button" aria-label={'Выше: ' + title} title="Выше" disabled={!index} onClick={() => onChange(reorder(tiles,tile.id,-1))}><ArrowUp/></button>
-              <button type="button" aria-label={'Ниже: ' + title} title="Ниже" disabled={index === sorted.length-1} onClick={() => onChange(reorder(tiles,tile.id,1))}><ArrowDown/></button>
+              <button type="button" aria-label={'Выше: ' + title} title="Выше" disabled={!index} onClick={() => {onChange(reorder(tiles,tile.id,-1));if(tile.id==='lesson-temperature') onPractice?.('move-widget')}}><ArrowUp/></button>
+              <button type="button" aria-label={'Ниже: ' + title} title="Ниже" disabled={index === sorted.length-1} onClick={() => {onChange(reorder(tiles,tile.id,1));if(tile.id==='lesson-temperature') onPractice?.('move-widget')}}><ArrowDown/></button>
               <button type="button" aria-label={'Параметры: ' + title} title="Размер и поле" onClick={() => onInspect(tile.id)}><SlidersHorizontal/></button>
               <button type="button" aria-label={'Скрыть: ' + title} title="Скрыть виджет" onClick={() => onHide(tile.id)}><EyeOff/></button>
             </div>
