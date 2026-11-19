@@ -603,11 +603,11 @@
 
 /* When the software keyboard takes most of a phone screen, prioritize writing. */
 @media (max-width: 650px) {
-  .agr-shell--assistant:has(.agro-ai__composer textarea:focus) .agr-navigation {
+  .agr-shell--assistant:has(.agro-ai__composer:is(:focus-within,[data-training-draft])) .agr-navigation {
     visibility: hidden;
     pointer-events: none;
   }
-  .agr-shell--assistant:has(.agro-ai__composer textarea:focus) .agr-content {
+  .agr-shell--assistant:has(.agro-ai__composer:is(:focus-within,[data-training-draft])) .agr-content {
     padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   }
 }

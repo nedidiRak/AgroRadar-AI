@@ -1,3 +1,4 @@
+import { TrainingSettings } from './training/TrainingUI'
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Eye, RotateCcw, Settings2, X } from 'lucide-react'
@@ -91,7 +92,7 @@ export default function UiSettings({value,appearance,onAppearance,onChange,onPre
         <button type="button" ref={close} className="agr-settings-close"
           aria-label="Закрыть настройки" title="Закрыть настройки" onClick={onClose}><X size={20}/></button>
       </header>
-      <div className="agr-settings-scroll">
+      <div className="agr-settings-scroll"><TrainingSettings close={onClose}/>
         <div className="agr-settings-subheading">
           <strong>Готовый режим</strong>
           <span>{current==='custom'?'Твои настройки':'Выбран готовый режим'}</span>

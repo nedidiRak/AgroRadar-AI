@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { checkCard,openedTarget } from './training-geometry.mjs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -89,7 +90,22 @@ for (const zoom of [1,1.25,1.5]) {
         }
         if(name==='Карта и поля') await page.locator('.agr-page--fields .leaflet-container').waitFor()
       }
-      console.log(`PASS ${width}x${height} at ${zoom*100}% ${scaleName} (${actual.width} CSS px), five views, editor, chart labels and hourly values`)
+      await page.locator('[data-learn="settings"]:visible').first().click()
+      const reset=button(page,'Сбросить прогресс')
+      if(await reset.isVisible()) await reset.click()
+      await button(page,'Пройти обучение').click()
+      await page.locator('[data-training-step="welcome"]').waitFor()
+      await checkCard(page)
+      await button(page,'Далее').click()
+      await page.locator('[data-training-step="overview"]').waitFor()
+      const advance=page.locator('[data-training-step] button').filter({hasText:/Далее|Пропустить шаг/}).last()
+      await advance.click()
+      await page.locator('[data-training-step="choose-field"]').waitFor()
+      await openedTarget(page,'field-choice')
+      await checkCard(page)
+      await page.keyboard.press('Escape')
+      await page.locator('[data-training-layer]').waitFor({state:'detached'})
+      console.log(`PASS ${width}x${height} at ${zoom*100}% ${scaleName} (${actual.width} CSS px), five views, editor, chart labels, hourly values and training spotlight`)
     }
     assert.deepEqual(errors,[])
   } catch(error) {

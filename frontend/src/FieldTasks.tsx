@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, ClipboardCheck, ClipboardList, Plus, RefreshCcw } from 'lucide-react'
+import {useCoach} from './training/useTraining'
 import { apiFetch } from './authClient'
 import './FieldTasks.css'
 
@@ -13,6 +14,7 @@ export type SuggestedInspection = {field_id:number;alert_id:number;title:string;
 type Props = {fields:Field[];canEdit:boolean;suggested:SuggestedInspection|null}
 const labels:Record<Task['status'],string>={planned:'Запланировано',in_progress:'В работе',done:'Выполнено'}
 export default function FieldTasks({fields,canEdit,suggested}:Props) {
+  const preview = useCoach()?.step?.id === 'task-form'
   const [tasks,setTasks]=useState<Task[]>([])
   const [loading,setLoading]=useState(true)
   const [busy,setBusy]=useState(false)
@@ -89,7 +91,7 @@ export default function FieldTasks({fields,canEdit,suggested}:Props) {
         <p>От предупреждения — к проверке на участке и зафиксированному результату.</p></div>
       <div className="agr-tasks-actions">
         <button type="button" title="Обновить задания" onClick={()=>void load()} disabled={loading}><RefreshCcw size={16}/></button>
-        {canEdit&&<button type="button" onClick={()=>{setOpen(v=>!v);setError('')}}><Plus size={16}/>{open?'Скрыть форму':'Новое задание'}</button>}
+        {canEdit&&<button type="button" data-learn="new-task" onClick={()=>{setOpen(v=>!v);setError('')}}><Plus size={16}/>{open?'Скрыть форму':'Новое задание'}</button>}
       </div>
     </div>
     <div className="agr-tasks-summary">
@@ -99,10 +101,10 @@ export default function FieldTasks({fields,canEdit,suggested}:Props) {
     </div>
     {error&&<p role="alert" className="agr-tasks-error">{error}</p>}
     {notice&&<p role="status" className="agr-tasks-ok">{notice}</p>}
-    {canEdit&&open&&<form className="agr-tasks-form" onSubmit={e=>{e.preventDefault();void postTask()}}>
+    {canEdit&&(open||preview)&&<form className="agr-tasks-form" onSubmit={e=>{e.preventDefault();if(!preview)void postTask()}}>
       <label>Поле<select required value={form.field_id} onChange={e=>setForm(f=>({...f,field_id:Number(e.target.value)}))}>
         {fields.map(field=><option key={field.id} value={field.id}>{field.name}</option>)}</select></label>
-      <label>Название<input required minLength={4} maxLength={160} value={form.title}
+      <label data-learn="task-preview">Название<input required minLength={4} maxLength={160} value={form.title}
         onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Например, осмотреть листья пшеницы"/></label>
       <label className="agr-tasks-span">Что проверить<textarea required minLength={5} maxLength={1200} value={form.action}
         onChange={e=>setForm(f=>({...f,action:e.target.value}))} rows={2}
@@ -111,7 +113,7 @@ export default function FieldTasks({fields,canEdit,suggested}:Props) {
         onChange={e=>setForm(f=>({...f,assigned_to:e.target.value}))} placeholder="Агроном"/></label>
       <label>Срок проверки<input type="date" value={form.due_date}
         onChange={e=>setForm(f=>({...f,due_date:e.target.value}))}/></label>
-      <button type="submit" disabled={busy||!fields.length}><Plus size={16}/>{busy?'Сохраняем…':'Сохранить задание'}</button>
+      <button type="submit" disabled={preview||busy||!fields.length}><Plus size={16}/>{busy?'Сохраняем…':'Сохранить задание'}</button>
     </form>}
     {loading&&!tasks.length&&<p className="agr-tasks-empty">Загружаем задания…</p>}
     {!loading&&!visible.length&&<p className="agr-tasks-empty">

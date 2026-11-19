@@ -34,11 +34,13 @@ from .monitoring import router as monitoring_router, capture_dashboard, record_e
 from .backups import router as backup_router, preserve_previous
 from .reports import report_router
 from .workspace_layouts import router as workspace_router
+from .onboarding import router as onboarding_router
 
 app = FastAPI(title='AgroRadar AI API', version='4.0.0')
 app.middleware('http')(auth_guard)
 app.include_router(auth_router)
 app.include_router(workspace_router)
+app.include_router(onboarding_router)
 app.include_router(monitoring_router)
 app.include_router(crop_risk_router)
 app.include_router(backup_router)
