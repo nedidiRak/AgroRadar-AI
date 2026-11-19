@@ -1,4 +1,4 @@
-import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { ArrowDown, ArrowUp, EyeOff, GripVertical, SlidersHorizontal } from 'lucide-react'
 import GridLayout, { useContainerWidth, type Layout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
@@ -12,6 +12,7 @@ type FrameProps = {
 function Frame({ tile, editing, controls, children, measure }: FrameProps) {
   const body = useRef<HTMLDivElement>(null)
   const tools = useRef<HTMLDivElement>(null)
+  useEffect(() => () => measure(tile.id, 0), [tile.id, measure])
   useLayoutEffect(() => {
     if (tile.h !== null) return
     const content = body.current!
@@ -50,7 +51,13 @@ export default function WorkspaceGrid({ tiles, device, editing, onChange, render
   const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true })
   const [heights, setHeights] = useState<Record<string, number>>({})
   const measure = useCallback((id: string, height: number) => {
-    setHeights(prev => prev[id] === height ? prev : { ...prev, [id]: height })
+    setHeights(prev => {
+      if ((prev[id] ?? 0) === height) return prev
+      const next = {...prev}
+      if (height) next[id] = height
+      else delete next[id]
+      return next
+    })
   }, [])
   const cols = columns(device)
   const layout = useMemo(() => tiles.map(tile => {

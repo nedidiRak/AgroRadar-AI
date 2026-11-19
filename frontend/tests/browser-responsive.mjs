@@ -19,7 +19,15 @@ async function controls(page, label) {
       Math.round(el.getBoundingClientRect().x),Math.round(el.getBoundingClientRect().right)])
   })
   assert.deepEqual(outside,[],label+' controls outside viewport')
-  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth<=2),label+' horizontal overflow')
+  const overflow = await page.evaluate(() => {
+    const {scrollWidth,clientWidth} = document.documentElement
+    if (scrollWidth <= clientWidth + 2) return null
+    const beyond = [...document.querySelectorAll('body *')].filter(el => {
+      return el.checkVisibility() && el.getBoundingClientRect().right > clientWidth + 2
+    }).slice(0,12).map(el => [el.tagName,String(el.className),el.textContent?.trim().slice(0,24)])
+    return {scrollWidth,clientWidth,beyond}
+  })
+  assert.equal(overflow,null,label+' horizontal overflow: '+JSON.stringify(overflow))
 }
 for (const zoom of [1,1.25,1.5]) {
   const dir = await mkdtemp(join(tmpdir(),'agroradar-zoom-'))

@@ -156,3 +156,27 @@
   .agr-main-map .agr-map-shell:not(.agr-map-shell--expanded) { height: auto; }
   .agr-main-map .agr-map-viewport { min-height: 240px; }
 }
+.studio-frame--sized .studio-content { display: flex; flex-direction: column; min-height: 100%; }
+.studio-frame--sized .studio-content > :only-child { flex-grow: 1; }
+
+@media (max-width: 365px) {
+  .agr-shell .agr-sidebar { padding-inline-end: 62px; }
+  .agr-shell .agr-brand { min-width: 0; flex: 1 1 auto; }
+  .agr-shell .agr-brand > div:last-child { min-width: 0; overflow-wrap: anywhere; }
+  .agr-shell .agr-source-status { white-space: normal; max-width: 100%; }
+  .agr-shell .agr-sidebar .agr-navigation {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    height: auto;
+  }
+  .agr-shell .agr-sidebar .agr-navigation:has(> :nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .agr-shell .agr-sidebar .agr-nav-item { min-height: 37px; flex-direction: row; flex-wrap: wrap; }
+  .agr-shell .agr-sidebar .agr-nav-item span {
+    display: block; white-space: normal; overflow: visible; overflow-wrap: anywhere;
+    max-height: none; line-height: 1.15;
+  }
+  .agr-shell.agr-shell--hide-nav-labels .agr-sidebar .agr-nav-item span { display: none; }
+  .agr-shell .agr-content { padding-bottom: calc(135px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 290px) {
+  .agr-shell .agr-brand .brand-icon { display: none; }
+}
