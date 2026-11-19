@@ -37,7 +37,7 @@
 .learn-card .learn-back:disabled {opacity:.35;cursor:default;}
 .learn-card-body {min-width:0;overflow-wrap:anywhere; animation:learn-appear .18s ease-out;}
 .learn-card .learn-instruction {margin-bottom:0;padding:6px 9px;border-left:2px solid var(--learn-accent);color:var(--learn-accent);font-size:calc(12px * var(--agr-font-scale,1));}
-.learn-card footer {align-items:stretch;flex-direction:column;border-top:1px solid var(--learn-edge);padding-top:8px;}
+.learn-card footer {color:inherit;margin:0;align-items:stretch;flex-direction:column;border-top:1px solid var(--learn-edge);padding-top:8px;}
 .learn-meter span {flex:none;font-size:calc(11px * var(--agr-font-scale,1));color:var(--learn-muted);}
 .learn-meter progress {appearance:none;display:block;flex:1;min-width:12px;width:100%;height:4px;border:0;border-radius:6px;background:var(--learn-edge);accent-color:var(--learn-accent);}
 .learn-meter progress::-webkit-progress-bar {background:var(--learn-edge);border-radius:6px;}

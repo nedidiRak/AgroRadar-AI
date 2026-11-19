@@ -5,6 +5,8 @@ export async function checkCard(page) {
     const found=[],rect=card.getBoundingClientRect(),w=document.documentElement.clientWidth,h=innerHeight
     if(rect.left < -1 || rect.top < -1 || rect.right>w+1 || rect.bottom>h+1) found.push('card outside viewport')
     if(card.scrollWidth>card.clientWidth+1) found.push('card content overflows width')
+    const quiet=card.querySelector('footer .learn-quiet')
+    if(quiet && getComputedStyle(quiet).color!==getComputedStyle(card).color) found.push('footer action text loses its high-contrast color')
     const controls=[...card.querySelectorAll('button')].map(b=>b.getBoundingClientRect())
     for(const [i,a] of controls.entries()){
       if(a.left < rect.left-1 || a.top < rect.top-1 || a.right > rect.right+1 || a.bottom > rect.bottom+1) found.push('clipped button '+i)
