@@ -144,8 +144,8 @@
 .studio .timeline-header > * { min-width: 0; max-width: 100%; }
 .studio .timeline-header :is(.timeline-demo,.timeline-live) { white-space: normal; }
 @media (max-width: 430px) {
-  .agr-shell :is(.agr-ops, .agr-header, .agr-users) { overflow-wrap: anywhere; }
-  .agr-shell :is(.agr-ops-banner, .agr-ops-panel-title, .agr-users-list-head, .agr-users-item, .agr-header) > * { min-width: 0; max-width: 100%; }
+  .agr-shell :is(.agr-ops, .agr-header, .agr-users-page) { overflow-wrap: anywhere; }
+  .agr-shell :is(.agr-ops-banner, .agr-ops-panel-title, .agr-users-header, .agr-users-list-head, .agr-users-item, .agr-header) > * { min-width: 0; max-width: 100%; }
   .agr-shell :is(.agr-users-list-head, .agr-users-item, .agr-ops-banner > div) { flex-wrap: wrap; }
   .agr-shell .agr-ops select { min-width: 0; max-width: 100%; }
   .agr-shell .agr-ops button { white-space: normal; }
@@ -179,4 +179,5 @@
 }
 @media (max-width: 290px) {
   .agr-shell .agr-brand .brand-icon { display: none; }
+  .agr-shell .agr-users-header { flex-direction: column; align-items: flex-start; padding: 12px; gap: 6px; }
 }
