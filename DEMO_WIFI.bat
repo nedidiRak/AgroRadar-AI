@@ -1,6 +1,8 @@
 @echo off
 setlocal EnableExtensions
 chcp 65001 >nul
+rem Keep Russian messages printable even when CMD output is redirected in CI.
+set "PYTHONIOENCODING=utf-8"
 title AgroRadar AI - Wi-Fi Demo
 set "ROOT=%~dp0"
 set "PYTHON=%ROOT%backend\.venv\Scripts\python.exe"
@@ -18,6 +20,42 @@ if not exist "%PYTHON%" (
   pause
   exit /b 1
 )
+
+rem Double-click launches CMD without the PowerShell profile that activates fnm.
+rem Reuse the same Node 22 activation as START_AGRORADAR.bat.
+where npm.cmd >nul 2>&1
+if errorlevel 1 (
+  where fnm >nul 2>&1
+  if errorlevel 1 (
+    echo [ERROR] Node.js/npm are not available in this CMD session.
+    echo Install Node.js, or install fnm, and reopen the terminal.
+    echo If fnm is installed: open PowerShell and run "fnm install 22".
+    pause
+    exit /b 1
+  )
+  echo [INFO] Activating fnm-managed Node.js 22 for Wi-Fi Demo...
+  for /f "delims=" %%Z in ('fnm env --shell cmd') do call %%Z
+  call fnm use 22
+  if errorlevel 1 (
+    echo [ERROR] Unable to activate Node.js 22 via fnm.
+    echo Open PowerShell, run "fnm install 22", and retry.
+    pause
+    exit /b 1
+  )
+)
+where npm.cmd >nul 2>&1
+if errorlevel 1 (
+  echo [ERROR] npm.cmd is still missing after Node.js initialization.
+  pause
+  exit /b 1
+)
+where node.exe >nul 2>&1
+if errorlevel 1 (
+  echo [ERROR] node.exe is missing from PATH.
+  pause
+  exit /b 1
+)
+echo [OK] Node.js and npm are ready for Wi-Fi Demo.
 
 "%PYTHON%" "%ROOT%backend\demo_wifi.py" %*
 set "EXITCODE=%ERRORLEVEL%"

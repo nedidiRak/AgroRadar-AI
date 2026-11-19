@@ -188,6 +188,10 @@ jobs:
         run: |
           python -m venv backend/.venv
           backend/.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
+      - name: Wi-Fi batch launcher auto-activates fnm when npm is absent from CMD
+        working-directory: .
+        shell: pwsh
+        run: ./frontend/tests/windows-wifi-fnm.ps1
       - name: Start the normal Windows application and verify UI at three display DPI settings
         working-directory: .
         shell: pwsh
