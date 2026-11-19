@@ -1,3 +1,4 @@
+import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -43,6 +44,17 @@ def test_private_checkpoint_persists_and_recreated_account_starts_fresh(accounts
     assert admin.delete("/api/auth/users/trainee").status_code == 200
     assert admin.post("/api/auth/users", json={"username": "trainee", "password": "different-password"}).status_code == 201
     assert login("trainee", "different-password").get(PATH).json()["revision"] == 0
+
+
+def test_new_course_version_leaves_old_progress_archived(accounts):
+    admin, _ = accounts
+    assert admin.get(PATH).status_code == 200
+    with sqlite3.connect(workspace_layouts.DATABASE) as db:
+        db.execute("INSERT INTO onboarding VALUES ('admin','admin',0,8,'completed','finish')")
+    assert admin.get(PATH).json()["status"] == "new"
+    assert admin.put(PATH, json=update()).status_code == 200
+    with sqlite3.connect(workspace_layouts.DATABASE) as db:
+        assert db.execute("SELECT status FROM onboarding WHERE version=0").fetchone() == ("completed",)
 
 
 def test_viewer_cannot_escalate_through_training(accounts):

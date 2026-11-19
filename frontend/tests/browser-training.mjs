@@ -66,6 +66,12 @@ async function course(role){
     await at('move-widget')
     await target('practice-tools').getByRole('button',{name:'Выше: График температуры'}).click()
     await at('resize-widget')
+    if(page.viewportSize().width===320){
+      await sync('active','resize-widget')
+      await page.reload()
+      await button(page,'Продолжить обучение').click()
+      await at('resize-widget')
+    }
     const height=target('size-controls').getByRole('spinbutton')
     await height.fill('12');await height.press('Enter')
     await at('save-layout');await target('save-layout').click()
@@ -149,14 +155,15 @@ try {
   await reset()
   let deliver
   const barrier=new Promise(resolve=>{deliver=resolve})
-  await page.route('**/api/dashboard',async route=>{await barrier;await route.continue()},{times:1})
+  const delayDashboard=async route=>{await barrier;await route.continue()}
+  await page.route('**/api/dashboard',delayDashboard)
   await page.reload({waitUntil:'domcontentloaded'})
   await button(page,'Начать обучение').click();await next()
   await at('choose-field')
   await card.getByText('Элемент сейчас недоступен',{exact:false}).waitFor()
   assert.ok(await page.getByText('Доступных полей пока нет.',{exact:true}).isVisible())
   deliver()
-  await target('field-choice').click();await at('weather');await page.keyboard.press('Escape')
+  await target('field-choice').click();await at('weather');await page.unroute('**/api/dashboard',delayDashboard);await page.keyboard.press('Escape')
   await sync('paused','weather')
   console.log('PASS missing field list, delayed dashboard and live target recovery')
   await page.getByTitle('Выйти из системы').click();await page.locator('#agro-admin-password').waitFor()

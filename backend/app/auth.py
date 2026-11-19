@@ -303,7 +303,7 @@ def delete_user(username: str):
 
 
 async def auth_guard(request: Request, call_next):
-    """Server-enforced RBAC: viewer writes are restricted to chat, logout and personal layouts."""
+    """Server-enforced RBAC: viewer writes are restricted to chat, logout and their own UI settings."""
     path = request.url.path
     protected = (path.startswith("/api/") and path not in (
         "/api/health", "/api/auth/login", "/api/auth/status",

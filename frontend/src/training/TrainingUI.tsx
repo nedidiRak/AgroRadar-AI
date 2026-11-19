@@ -76,6 +76,7 @@ export function TrainingOverlay({tour,theme}:{tour:Training;theme:string}) {
         <button className="learn-close" aria-label="Продолжить позже" title="Продолжить позже (Esc)" onClick={tour.pause}><X size={18}/></button></header>
       <div className="learn-card-body" key={step.id}><h2 id="learn-step-title">{step.title}</h2>
         <p id="learn-step-text">{step.text}</p>
+        {tour.notice && <p role="status">{tour.notice}</p>}
         {scene.missing ? <p className="learn-instruction" role="status">{step.optional?'Виджет скрыт или пока нет данных. Можно пропустить этот шаг.':'Элемент сейчас недоступен. Можно подождать или пропустить шаг.'}</p> :
           step.action && <p className="learn-instruction">{scene.anchor?step.hint:'Ищем элемент на странице…'}</p>}
       </div>
