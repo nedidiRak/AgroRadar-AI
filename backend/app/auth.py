@@ -174,7 +174,8 @@ def session_principal(session: tuple[str, str]) -> dict | None:
         if not record:
             return None
         username = record[2]
-        return {"username": username, "role": "admin" if username == "admin" else "viewer"}
+        return {"username": username, "role": "admin" if username == "admin" else "viewer",
+                "account_id": record[3]}
 
 
 def _check_login_limit(client_ip: str) -> None:
@@ -302,7 +303,7 @@ def delete_user(username: str):
 
 
 async def auth_guard(request: Request, call_next):
-    """Server-enforced RBAC: viewer can GET data and POST AI chat/logout only."""
+    """Server-enforced RBAC: viewer writes are restricted to chat, logout and personal layouts."""
     path = request.url.path
     protected = (path.startswith("/api/") and path not in (
         "/api/health", "/api/auth/login", "/api/auth/status",
@@ -328,7 +329,8 @@ async def auth_guard(request: Request, call_next):
                     content={"detail": "Неверный CSRF-токен. Обнови страницу и войди снова."},
                     headers={"Cache-Control": "no-store"})
             if role == "viewer" and not (
-                request.method.upper() == "POST" and path in ("/api/ai/chat", "/api/auth/logout")
+                (request.method.upper() == "POST" and path in ("/api/ai/chat", "/api/auth/logout"))
+                or (request.method.upper() == "PUT" and path == "/api/me/layouts")
             ):
                 return JSONResponse(status_code=403,
                     content={"detail": "Роль «Наблюдатель»: разрешены просмотр и диалог с ИИ, изменение данных запрещено."},

@@ -1,3 +1,4 @@
+import { TemperaturePlot } from './TemperaturePlot'
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, AlertTriangle, CheckCircle2, ClipboardList, Download, FileDown, FileText, History, LockKeyhole, RefreshCcw, ShieldAlert } from 'lucide-react'
 import { apiFetch } from './authClient'
@@ -20,11 +21,11 @@ type Alert = {
 type Summary = { monitored_fields: number; open_alerts: number; acknowledged_alerts: number; resolved_alerts: number; activity_count: number }
 type Event = { id: number; username: string; action: string; field_id: number | null; created_at: string; details: string }
 type Monitor = {enabled:boolean;weather_configured:boolean;running:boolean;last_finished:string|null;processed_fields:number;last_error:string;degraded_fields:number}
-type Props = { fields: Field[]; activeId: number; onPick: (id: number) => void; canEdit: boolean; mode: 'demo' | 'live_forecast' }
+type Props = { fields: Field[]; activeId: number; onPick: (id: number) => void; canEdit: boolean; mode: 'demo' | 'live_forecast'; initialInspection?: SuggestedInspection | null }
 const levelNames: Record<Level, string> = { high: 'Высокий', medium: 'Умеренный', low: 'Низкий', unknown: 'Нет данных' }
 
-const getJson = async <T,>(url: string): Promise<T> => {
-  const response = await apiFetch(url)
+const getJson = async <T,>(url: string, signal?: AbortSignal): Promise<T> => {
+  const response = await apiFetch(url, {signal})
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
     throw new Error(typeof error.detail === 'string' ? error.detail : `HTTP ${response.status}`)
@@ -35,75 +36,43 @@ const getJson = async <T,>(url: string): Promise<T> => {
 function TemperatureTrend({ snapshots }: { snapshots: Snapshot[] }) {
   const points = snapshots.filter(p => p.min_temperature_c !== null)
   if (points.length < 2) return <div className="agr-ops-empty">Для графика нужны минимум два сохранённых прогноза. История накопится при обновлении сводки.</div>
-  const values = points.map(p => p.min_temperature_c as number)
-  const bottom = Math.min(...values) - 2
-  const top = Math.max(...values) + 2
-  const x = (index: number) => 40 + 660 * index / Math.max(1, values.length - 1)
-  const y = (value: number) => 165 - (value - bottom) / Math.max(0.2, top - bottom) * 135
-  const path = values.map((val, index) => `${index === 0 ? 'M' : 'L'} ${x(index).toFixed(1)} ${y(val).toFixed(1)}`).join(' ')
-  const zero = y(0)
   return <div className="agr-ops-chart">
-    <svg viewBox="0 0 750 205" role="img" aria-label="История минимальных прогнозных температур">
-      {[0,1,2,3].map(i => {
-        const value = bottom + (top - bottom) * i / 3
-        return <g key={i}><line x1="40" y1={y(value)} x2="715" y2={y(value)} stroke="#385a4a" strokeDasharray="3 5"/>
-          <text x="8" y={y(value) + 4} fontSize="12" fill="#a4bda9">{value.toFixed(0)}°</text></g>
-      })}
-      {zero >= 18 && zero <= 185 && <line x1="40" y1={zero} x2="715" y2={zero} stroke="#e5af6c" strokeDasharray="5 4"/>}
-      <path d={path} fill="none" stroke="#76d8ad" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round"/>
-      {points.map((point, index) => <circle key={point.id} cx={x(index)} cy={y(point.min_temperature_c as number)} r="4" fill={point.level === 'high' ? '#fb8685' : '#90e7b7'}>
-        <title>{`${new Date(point.created_at).toLocaleString('ru-RU')}: ${point.min_temperature_c} °C · ${levelNames[point.level]} · ${point.source}`}</title>
-      </circle>)}
-      <text x="40" y="195" fill="#a4bda9" fontSize="11">{new Date(points[0].created_at).toLocaleDateString('ru-RU')}</text>
-      <text x="715" y="195" fill="#a4bda9" textAnchor="end" fontSize="11">{new Date(points[points.length - 1].created_at).toLocaleDateString('ru-RU')}</text>
-    </svg>
+    <TemperaturePlot label="История минимальных прогнозных температур" padding={2}
+      points={points.map(point => ({id: point.id, value: point.min_temperature_c!,
+        label: new Date(point.created_at).toLocaleDateString('ru-RU'),
+        color: point.level === 'high' ? '#fb8685' : '#90e7b7',
+        title: `${new Date(point.created_at).toLocaleString('ru-RU')} · ${point.min_temperature_c} °C · ${levelNames[point.level]} · ${point.source}`}))}/>
     <p>График показывает <strong>изменение прогнозов</strong> в момент их сохранения, а не измерения температуры датчиком. Демо-прогнозы помечаются в журнале.</p>
   </div>
 }
 
-export default function OperationsCenter({ fields, activeId, onPick, canEdit, mode }: Props) {
+export default function OperationsCenter({ fields, activeId, onPick, canEdit, mode, initialInspection = null }: Props) {
   const [summary, setSummary] = useState<Summary | null>(null)
   const [history, setHistory] = useState<Snapshot[]>([])
-  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [alertRevision, setAlertRevision] = useState(0)
   const [events, setEvents] = useState<Event[]>([])
   const [monitor, setMonitor] = useState<Monitor | null>(null)
-  const [status, setStatus] = useState<'all' | 'open' | 'acknowledged' | 'resolved'>('all')
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [suggestedInspection, setSuggestedInspection] = useState<SuggestedInspection | null>(null)
+  const [suggestedInspection, setSuggestedInspection] = useState<SuggestedInspection | null>(initialInspection)
   const active = useMemo(() => fields.find(f => f.id === activeId), [fields, activeId])
 
   async function refresh() {
     setLoading(true); setError('')
     try {
-      const [a, b, c, d, m] = await Promise.all([
+      const [a, b, d, m] = await Promise.all([
         getJson<Summary>('/api/operations/summary'),
         getJson<{snapshots: Snapshot[]}>(`/api/operations/fields/${activeId}/history?limit=60`),
-        getJson<{alerts: Alert[]}>(`/api/operations/alerts?status=${status}`),
         canEdit ? getJson<{events: Event[]}>('/api/operations/activity?limit=30') : Promise.resolve({ events: [] as Event[] }),
         getJson<Monitor>('/api/operations/monitor'),
       ])
-      setSummary(a); setHistory(b.snapshots); setAlerts(c.alerts); setEvents(d.events); setMonitor(m)
+      setSummary(a); setHistory(b.snapshots); setAlertRevision(n => n + 1); setEvents(d.events); setMonitor(m)
     } catch (err) { setError(err instanceof Error ? err.message : 'Не удалось получить аналитику') }
     finally { setLoading(false) }
   }
-  useEffect(() => { void refresh() }, [activeId, status, canEdit])
-
-  async function changeAlert(alert: Alert, next: 'open' | 'acknowledged') {
-    setBusy(true); setNotice(''); setError('')
-    try {
-      const response = await apiFetch(`/api/operations/alerts/${alert.id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: next }),
-      })
-      if (!response.ok) throw new Error(await response.text())
-      setNotice(next === 'acknowledged' ? 'Предупреждение принято в работу.' : 'Предупреждение снова открыто.')
-      await refresh()
-    } catch (err) { setError(err instanceof Error ? err.message : 'Не удалось обновить предупреждение') }
-    finally { setBusy(false) }
-  }
+  useEffect(() => { void refresh() }, [activeId, canEdit])
 
   async function forceMonitor() {
     setBusy(true);setError('');setNotice('')
@@ -159,31 +128,7 @@ export default function OperationsCenter({ fields, activeId, onPick, canEdit, mo
         </div>)}
       </div>
     </div>
-    <div className="agr-ops-panel">
-      <div className="agr-ops-panel-title"><div><h2><ShieldAlert size={19}/> Центр предупреждений</h2><p>Основания и статусы угроз, полученных только из реального прогноза.</p></div>
-        <select value={status} onChange={e=>setStatus(e.target.value as typeof status)} aria-label="Статус предупреждений">
-          <option value="all">Все статусы</option><option value="open">Открытые</option>
-          <option value="acknowledged">Приняты</option><option value="resolved">Завершённые</option>
-        </select></div>
-      {!alerts.length && <p className="agr-ops-empty">Предупреждений пока нет. При реальном высоком или умеренном риске они появятся здесь автоматически.</p>}
-      <div className="agr-ops-alert-list">{alerts.map(alert => <article key={alert.id} className="agr-ops-alert">
-        <div className="agr-ops-alert-head"><strong>{alert.field_name} · {alert.title}</strong>
-          <span className={`agr-ops-risk agr-ops-risk--${alert.severity}`}>{alert.severity === 'high' ? 'Высокий' : 'Умеренный'} · {alert.status === 'open' ? 'Открыт' : alert.status === 'acknowledged' ? 'Принят' : 'Завершён'}</span></div>
-        <p>{alert.reason}</p><p><b>Проверить:</b> {alert.action}</p>
-        <small>Источник: {alert.source} · обновлено {new Date(alert.last_seen).toLocaleString('ru-RU')}</small>
-        {canEdit && <div className="agr-ops-alert-actions">
-          {alert.status !== 'resolved' && <button disabled={busy} onClick={()=>void changeAlert(alert, alert.status === 'open' ? 'acknowledged' : 'open')}>
-            <CheckCircle2 size={15}/>{alert.status === 'open' ? 'Принять в работу' : 'Переоткрыть'}
-          </button>}
-          <button type="button" disabled={busy} onClick={()=>setSuggestedInspection({
-            field_id:alert.field_id,alert_id:alert.id,
-            title:'Проверить: '+alert.title,
-            action:alert.action,
-            sequence:Date.now(),
-          })}><ClipboardList size={15}/> Создать задание</button>
-        </div>}
-      </article>)}</div>
-    </div>
+    <AlertCenter canEdit={canEdit} onSuggest={setSuggestedInspection} revision={alertRevision}/>
     <FieldTasks fields={fields} canEdit={canEdit} suggested={suggestedInspection}/>
     <div className="agr-ops-panel">
       <div className="agr-ops-panel-title"><div><h2><FileText size={19}/> Отчётность</h2><p>Отчёт содержит источник, дату, правила рисков и действия агронома.</p></div></div>
@@ -200,4 +145,67 @@ export default function OperationsCenter({ fields, activeId, onPick, canEdit, mo
       {events.map(item=><div key={item.id}><time>{new Date(item.created_at).toLocaleString('ru-RU')}</time> <strong>{item.username}</strong> · {item.action}{item.field_id == null ? '' : ` · поле #${item.field_id}`}</div>)}
     </details>}
   </section>
+}
+
+
+export function AlertCenter({ canEdit, onSuggest, revision = 0 }: {
+  canEdit: boolean; onSuggest: (value: SuggestedInspection) => void; revision?: number
+}) {
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [status, setStatus] = useState<'all' | 'open' | 'acknowledged' | 'resolved'>('all')
+  const [reload, setReload] = useState(0)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  useEffect(() => {
+    const controller = new AbortController()
+    setError('')
+    getJson<{alerts: Alert[]}>(`/api/operations/alerts?status=${status}`, controller.signal)
+      .then(result => { if (!controller.signal.aborted) setAlerts(result.alerts) })
+      .catch(err => { if (!controller.signal.aborted) setError(String(err)) })
+    return () => controller.abort()
+  }, [status, revision, reload])
+  async function changeAlert(alert: Alert, next: 'open' | 'acknowledged') {
+    setBusy(true); setNotice(''); setError('')
+    try {
+      const response = await apiFetch(`/api/operations/alerts/${alert.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: next }),
+      })
+      if (!response.ok) throw new Error(await response.text())
+      setNotice(next === 'acknowledged' ? 'Предупреждение принято в работу.' : 'Предупреждение снова открыто.')
+      setReload(n => n + 1)
+    } catch (err) { setError(err instanceof Error ? err.message : 'Не удалось обновить предупреждение') }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="agr-ops-panel">
+      <div className="agr-ops-panel-title"><div><h2><ShieldAlert size={19}/> Центр предупреждений</h2><p>Основания и статусы угроз, полученных только из реального прогноза.</p></div>
+        <select value={status} onChange={e=>setStatus(e.target.value as typeof status)} aria-label="Статус предупреждений">
+          <option value="all">Все статусы</option><option value="open">Открытые</option>
+          <option value="acknowledged">Приняты</option><option value="resolved">Завершённые</option>
+        </select></div>
+      {error && <div className="error" role="alert">{error}</div>}
+      {notice && <div className="action-message" role="status">{notice}</div>}
+      {!alerts.length && <p className="agr-ops-empty">Предупреждений пока нет. При реальном высоком или умеренном риске они появятся здесь автоматически.</p>}
+      <div className="agr-ops-alert-list">{alerts.map(alert => <article key={alert.id} className="agr-ops-alert">
+        <div className="agr-ops-alert-head"><strong>{alert.field_name} · {alert.title}</strong>
+          <span className={`agr-ops-risk agr-ops-risk--${alert.severity}`}>{alert.severity === 'high' ? 'Высокий' : 'Умеренный'} · {alert.status === 'open' ? 'Открыт' : alert.status === 'acknowledged' ? 'Принят' : 'Завершён'}</span></div>
+        <p>{alert.reason}</p><p><b>Проверить:</b> {alert.action}</p>
+        <small>Источник: {alert.source} · обновлено {new Date(alert.last_seen).toLocaleString('ru-RU')}</small>
+        {canEdit && <div className="agr-ops-alert-actions">
+          {alert.status !== 'resolved' && <button disabled={busy} onClick={()=>void changeAlert(alert, alert.status === 'open' ? 'acknowledged' : 'open')}>
+            <CheckCircle2 size={15}/>{alert.status === 'open' ? 'Принять в работу' : 'Переоткрыть'}
+          </button>}
+          <button type="button" disabled={busy} onClick={()=>onSuggest({
+            field_id:alert.field_id,alert_id:alert.id,
+            title:'Проверить: '+alert.title,
+            action:alert.action,
+            sequence:Date.now(),
+          })}><ClipboardList size={15}/> Создать задание</button>
+        </div>}
+      </article>)}</div>
+    </div>
+  )
 }

@@ -161,16 +161,7 @@ export default function RiskDashboard({ fieldName, analysis }: {fieldName: strin
           </article>
         })}
       </div>
-      {current.priority_actions && <div className="agr-risk-engine__decisions">
-        <div className="agr-risk-engine__decisions-title"><h3>Приоритетные действия агронома</h3><span>По обнаруженным погодным факторам</span></div>
-        <div className="agr-risk-engine__actions">
-          {current.priority_actions.map((item,index)=><article className={`agr-risk-action agr-risk-action--${item.level}`} key={item.id}>
-            <div className="agr-risk-action__top"><span className="agr-risk-action__number">{index+1}</span><strong>{item.title}</strong></div>
-            <p>{item.action}</p>
-            <details><summary>Основание и проверка</summary><p>{item.why}</p><small>{item.evidence}</small></details>
-          </article>)}
-        </div>
-      </div>}
+      {current.priority_actions && <Recommendations actions={current.priority_actions}/>}
       {!demo && current.field_context && <div className="agr-risk-engine__field-context">
         <strong>Контекст выбранного поля · сведения пользователя</strong>
         <div><span>Культура: {current.field_context.crop || 'не указана'}</span><span>Фаза: {current.field_context.growth_stage || 'не указана'}</span><span>Почва: {current.field_context.soil_type || 'не указана'}</span><span>Наблюдения: {current.field_context.observation_count}</span></div>
@@ -181,4 +172,18 @@ export default function RiskDashboard({ fieldName, analysis }: {fieldName: strin
       <p className="agr-risk-engine__disclaimer"><Info size={15}/>{current.disclaimer}</p>
     </>}
   </section>
+}
+
+export function Recommendations({actions}: {actions?: PriorityAction[]}) {
+  return <div className="agr-risk-engine__decisions">
+        <div className="agr-risk-engine__decisions-title"><h3>Приоритетные действия агронома</h3><span>По обнаруженным погодным факторам</span></div>
+        {!actions?.length && <p>Для выбранного поля пока нет рекомендаций.</p>}
+        <div className="agr-risk-engine__actions">
+          {(actions ?? []).map((item,index)=><article className={`agr-risk-action agr-risk-action--${item.level}`} key={item.id}>
+            <div className="agr-risk-action__top"><span className="agr-risk-action__number">{index+1}</span><strong>{item.title}</strong></div>
+            <p>{item.action}</p>
+            <details><summary>Основание и проверка</summary><p>{item.why}</p><small>{item.evidence}</small></details>
+          </article>)}
+        </div>
+      </div>
 }

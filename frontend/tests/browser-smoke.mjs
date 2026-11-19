@@ -3,7 +3,7 @@
  * a test-only password; never opens external providers or real user data.
  */
 import assert from 'node:assert/strict'
-import { chromium } from 'playwright'
+import { launch, offlineTiles } from './browser-helpers.mjs'
 
 const site = 'http://127.0.0.1:5173'
 const secret = 'AgroRadar-Test-Only-Password!2026'
@@ -15,11 +15,12 @@ const viewports = [
   { width: 390, height: 844 },
 ]
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--no-sandbox'] })
+const browser = await launch()
 
 try {
   for (const viewport of viewports) {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 1 })
+    await offlineTiles(page.context())
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
     try {

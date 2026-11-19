@@ -15,7 +15,7 @@ const sections: {title:string;hint:string;items:Entry[]}[] = [
     {key:'navLabels',label:'Подписи в навигации',hint:'Иконки и названия разделов'},
     {key:'footer',label:'Нижний служебный текст'},
   ]},
-  { title:'Обзор хозяйства', hint:'Показывай только нужные блоки', items:[
+  { title:'Обзор хозяйства', hint:'Исходный классический макет', items:[
     {key:'overviewStats',label:'Ключевые показатели'},
     {key:'overviewFieldList',label:'Список полей и рисков'},
     {key:'overviewForecast',label:'Карточка прогноза'},
