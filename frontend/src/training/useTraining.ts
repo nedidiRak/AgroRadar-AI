@@ -7,7 +7,7 @@ type Progress = {step:string; status:Status}
 const initial: Progress = {step:'welcome', status:'new'}
 const endpoint = '/api/me/onboarding'
 
-export function useTraining(admin:boolean, navigate:(view:TrainingView)=>void) {
+export function useTraining(admin:boolean, account:string|undefined, navigate:(view:TrainingView)=>void) {
   const steps = admin ? adminSteps : observerSteps
   const [progress, setProgress] = useState(initial)
   const [running, setRunning] = useState(false)
@@ -26,6 +26,8 @@ export function useTraining(admin:boolean, navigate:(view:TrainingView)=>void) {
     const token = ++generation.current
     revision.current = null
     setReady(false)
+    setRunning(false)
+    setProgress(initial)
     async function load() {
       try {
         const res = await apiFetch(endpoint, {signal:controller.signal})
@@ -44,7 +46,7 @@ export function useTraining(admin:boolean, navigate:(view:TrainingView)=>void) {
     }
     void load()
     return () => {++generation.current; controller.abort()}
-  }, [admin, steps, retry])
+  }, [admin, account, steps, retry])
 
   const record = useCallback((next:Progress) => {
     setProgress(next)
@@ -74,11 +76,12 @@ export function useTraining(admin:boolean, navigate:(view:TrainingView)=>void) {
   const restoreFocus = () => requestAnimationFrame(() => {
     const el = opener.current
     const fallback = Array.from(document.querySelectorAll<HTMLElement>('[data-learn="settings"]')).find(node=>node.getClientRects().length)
-    ;(el?.isConnected && el.getClientRects().length ? el : fallback)?.focus({preventScroll:true})
+    const target = el?.isConnected && el.getClientRects().length ? el : fallback
+    target?.focus({preventScroll:true})
   })
   function start() {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const next = progress.status==='completed' || progress.status==='declined' ? steps[0] : steps[position]
+    const next = progress.status==='completed' ? steps[0] : steps[position]
     record({step:next.id,status:'active'})
     setRunning(true)
     navigate(next.view)

@@ -40,7 +40,9 @@ export function TrainingOverlay({tour,theme}:{tour:Training;theme:string}) {
   latest.current=tour
   useLayoutEffect(()=>{panel.current?.focus({preventScroll:true})},[step])
   useEffect(()=>{
-    const allowed=(node:Element)=>!!scene.anchor?.contains(node) && !!step.action
+    const fields=()=>Array.from(document.querySelectorAll<HTMLElement>('[data-learn-view="fields"] [data-learn="field-choice"]')).filter(el=>el.getClientRects().length)
+    const allowed=(node:Element)=>!!step.action && (!!scene.anchor?.contains(node) ||
+      (step.id==='choose-field' && fields().some(el=>el.contains(node))))
     function click(e:MouseEvent) {
       if(!(e.target instanceof Element)||panel.current?.contains(e.target)) return
       if(!allowed(e.target)) { e.preventDefault();e.stopPropagation() }
@@ -52,7 +54,7 @@ export function TrainingOverlay({tour,theme}:{tour:Training;theme:string}) {
       if(e.key==='Escape'){e.preventDefault();e.stopPropagation();latest.current.pause();return}
       if(e.key!=='Tab') return
       const target=scene.anchor
-      const targets=target&&step.action?[...(target.matches(focusable)?[target]:[]),...target.querySelectorAll<HTMLElement>(focusable)]:[]
+      const targets=step.id==='choose-field'?fields():target&&step.action?[...(target.matches(focusable)?[target]:[]),...target.querySelectorAll<HTMLElement>(focusable)]:[]
       const items=[...targets,...(panel.current?.querySelectorAll<HTMLElement>(focusable)??[])].filter(el=>el.getClientRects().length)
       if(!items.length) return
       const i=items.indexOf(document.activeElement as HTMLElement)

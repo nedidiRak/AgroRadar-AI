@@ -28,6 +28,7 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
     resize.observe(surface)
     const timeout=window.setTimeout(()=>{expired=true;schedule()},1300)
     function measure() {
+      surface.style.setProperty('--learn-vh',(vv?.height??innerHeight)+'px')
       const scope=root.querySelector('[data-learn-view="'+step.view+'"]')
       const query='[data-learn="'+step.target+'"]'
       const source=step.target==='page-heading'?root:scope
@@ -53,7 +54,8 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
             }
           }
           const r=anchor.getBoundingClientRect(), height=vv?.height??innerHeight
-          const free=step.action && innerWidth<=620?height-Math.min(surface.offsetHeight,height*.54)-16:height
+          const sideFits=innerWidth>620 && Math.max(r.left,innerWidth-r.right)>=surface.offsetWidth+22
+          const free=step.action && !sideFits?Math.max(40,height-surface.offsetHeight-20):height
           const desired=(vv?.offsetTop??0)+free/2
           window.scrollBy({top:r.top+Math.min(r.height,free)/2-desired,
             behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})

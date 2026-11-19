@@ -237,7 +237,7 @@ export default function AiAgronom({ field, ui, onOpenSettings, allowHealthCheck 
           <div className="agro-ai__metric"><span>Минимум за 24 часа</span><b>{field.forecast.min_temperature_next_24h_c == null ? 'Нет данных' : `${field.forecast.min_temperature_next_24h_c} °C`}</b></div>
           <div className="agro-ai__metric"><span>Погодный риск</span><b className={`agro-ai__risk--${field.risk.level}`}>{field.risk.label}</b></div>
           <div className="agro-ai__data-source">{live ? '● OpenWeather LIVE' : field.weather.source === 'unavailable' ? '⚠ Погода недоступна' : '◌ Демо-погода'}<br/>+ локальные справочные заметки</div>
-        </> : <p>Сначала выбери или создай поле.</p>}
+        </> : <p>Выбери доступное поле, чтобы увидеть его сведения.</p>}
         <div className="agro-ai__notice"><ShieldCheck size={16}/> Советы ИИ не заменяют проверку на месте. Сведения из паспорта и журнала введены пользователем, а не подтверждены датчиками.</div>
         </div>
       </aside>}
@@ -267,7 +267,7 @@ export default function AiAgronom({ field, ui, onOpenSettings, allowHealthCheck 
         {error && <div role="alert" className="agro-ai__error">{error}</div>}
         {!status?.configured && !statusError && status && <div className="agro-ai__setup">Добавь <code>DEEPSEEK_API_KEY</code> в <code>backend/.env</code> и перезапусти FastAPI.</div>}
         {statusError && <div className="agro-ai__setup">{statusError}</div>}
-        <form className="agro-ai__composer" data-learn={field?'ai-composer':undefined} onSubmit={e => { e.preventDefault(); void send(input) }}>
+        <form className="agro-ai__composer" data-training-draft={practice?true:undefined} data-learn={field?'ai-composer':undefined} onSubmit={e => { e.preventDefault(); void send(input) }}>
           <textarea aria-label="Вопрос ИИ-агроному" placeholder={field ? `Спроси о поле «${field.name}»…` : 'Сначала выбери поле'} value={input} maxLength={2000} rows={2} disabled={!field || (!practice && !status?.configured) || busy} onChange={e => (practice?setExercise:setPrompt)(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(input) } }} />
           <button type="submit" title={practice?'Проверить учебный вопрос':'Отправить вопрос'} disabled={!input.trim() || !field || (!practice && !status?.configured) || busy}><Send size={17}/>{practice?'Проверить вопрос':'Отправить'}</button>
         </form>

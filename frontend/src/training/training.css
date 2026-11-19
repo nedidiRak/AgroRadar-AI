@@ -24,10 +24,13 @@
 .learn-spot {animation:learn-ring .36s ease-out;}
 @keyframes learn-ring {from{outline:4px solid var(--learn-accent);outline-offset:3px}to{outline:0 solid transparent;outline-offset:0}}
 .learn-dim {inset:0;background:rgb(4 11 9 / .63);}
-.learn-card { position:fixed; display:flex; flex-direction:column; width:min(346px,calc(100% - 16px)); max-height:calc(100dvh - 16px); box-sizing:border-box; margin:0; padding:16px; gap:10px;
+.learn-card { position:fixed; display:flex; flex-direction:column; width:min(346px,calc(100% - 16px)); max-height:calc(var(--learn-vh,100dvh) - 16px); box-sizing:border-box; margin:0; padding:16px; gap:10px;
   overflow:auto; overscroll-behavior:contain; border-radius:16px; background:var(--learn-panel,#172e24); border:1px solid var(--learn-edge); box-shadow:0 12px 44px rgb(0 0 0 / .36); pointer-events:auto; outline:none; }
 .learn-card header,.learn-meter,.learn-card footer {display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;}
 .learn-card header {padding:0;margin:0;}
+.learn-card[data-guided-action] {max-height:calc(var(--learn-vh,100dvh) * .54);}
+.learn-card[data-guided-action] .learn-card-body {min-height:0;overflow-y:auto;}
+.learn-card header,.learn-card footer {flex-shrink:0;}
 .learn-topic {display:inline-flex;gap:7px;align-items:center;color:var(--learn-accent);font-size:calc(13px * var(--agr-font-scale,1));font-weight:650;}
 .learn-card .learn-close,.learn-card .learn-back {flex:none; width:33px; height:33px;padding:0;}
 .learn-card .learn-close {border-color:transparent;color:var(--learn-muted);}
@@ -46,9 +49,8 @@
 @keyframes learn-appear {from{opacity:.4;transform:translateY(3px)}to{opacity:1;transform:none}}
 @media(max-width:600px){
   .learn-card {padding:12px;border-radius:14px;gap:6px;width:min(370px,calc(100% - 16px));}
-  .learn-card[data-guided-action] {max-height:54dvh;}
-  .learn-card[data-guided-action] .learn-card-body {min-height:0;overflow-y:auto;}
-  .learn-card header,.learn-card footer {flex-shrink:0;}
+  .agr-shell .agr-page--ai .agro-ai__composer[data-training-draft] {display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;}
+  .agr-shell .agr-page--ai .agro-ai__composer[data-training-draft] button {width:auto;height:auto;min-height:34px;padding:5px 9px;font-size:calc(13px * var(--agr-font-scale,1));}
   .learn-welcome {gap:10px;} .learn-welcome-mark {width:34px;height:34px;}
 }
 @media(max-width:350px),(max-height:480px){

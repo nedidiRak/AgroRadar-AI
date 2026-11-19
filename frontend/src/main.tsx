@@ -120,7 +120,7 @@ function App() {
     window.scrollTo({top:0,behavior:'auto'})
   }, [])
   const navigateTraining = useCallback((to:View)=>{if(to!==view) navigate(to,true)},[view,navigate])
-  const training = useTraining(canEdit,navigateTraining)
+  const training = useTraining(canEdit,username,navigateTraining)
   const practice = training.step && practiceStages.has(training.step.id) ? training.step.id : null
   async function logout() {
     try {
@@ -428,10 +428,10 @@ function App() {
               {passport}
               {observations('map')}
               <button className="agr-selected-card__ask" onClick={()=>navigate('assistant')}><Bot size={16}/> Обсудить с ИИ <ArrowRight size={14}/></button>
-            </>:<p className="agr-empty">Создай поле кнопкой «Новое поле» на карте.</p>}</div>
+            </>:<p className="agr-empty">{canEdit?'Создай поле кнопкой «Новое поле» на карте.':'Доступных полей пока нет.'}</p>}</div>
           </aside>
         </div>}
-        <details className="agr-disclosure agr-geo-tools"><summary><span><SlidersHorizontal size={16}/> Дополнительные инструменты GeoJSON</span><ChevronDown size={16}/></summary><div className="agr-geo-tools__inner"><p>Импорт заменяет границу выбранного поля, экспорт сохраняет все контуры в GeoJSON. Для добавления отдельного поля нажми «Новое поле» на карте.</p><div className="gis-actions">{canEdit && <label className="file-btn">↑ Импорт контура<input type="file" accept=".json,.geojson,application/geo+json" onChange={e=>void importGeoJSON(e)} hidden/></label>}<button type="button" onClick={exportGeoJSON} disabled={!geojson}>↓ Экспорт GeoJSON</button>{canEdit && active?.kind==='demo' && active?.geometry_source==='user_drawn' && <button type="button" className="outline-danger" onClick={()=>void resetGeometry(active.id)}>Сбросить контур</button>}</div></div></details>
+        <details className="agr-disclosure agr-geo-tools"><summary><span><SlidersHorizontal size={16}/> Дополнительные инструменты GeoJSON</span><ChevronDown size={16}/></summary><div className="agr-geo-tools__inner"><p>{canEdit?'Импорт заменяет границу выбранного поля, экспорт сохраняет все контуры в GeoJSON. Для добавления отдельного поля нажми «Новое поле» на карте.':'Экспорт сохраняет доступные контуры полей в GeoJSON.'}</p><div className="gis-actions">{canEdit && <label className="file-btn">↑ Импорт контура<input type="file" accept=".json,.geojson,application/geo+json" onChange={e=>void importGeoJSON(e)} hidden/></label>}<button type="button" onClick={exportGeoJSON} disabled={!geojson}>↓ Экспорт GeoJSON</button>{canEdit && active?.kind==='demo' && active?.geometry_source==='user_drawn' && <button type="button" className="outline-danger" onClick={()=>void resetGeometry(active.id)}>Сбросить контур</button>}</div></div></details>
       </section>
 
       <section data-learn-view="assistant" className="agr-page agr-page--ai" hidden={view!=='assistant'} aria-label="ИИ-агроном">
