@@ -188,10 +188,17 @@ jobs:
         run: |
           python -m venv backend/.venv
           backend/.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
-      - name: Start the normal Windows application and verify its services
+      - name: Start the normal Windows application and verify UI at three display DPI settings
         working-directory: .
         shell: pwsh
         run: ./frontend/tests/windows-launcher.ps1
+      - name: Upload Windows DPI failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AgroRadar-Windows-DPI-failures
+          path: browser-failure-dpi-*.png
+          if-no-files-found: ignore
 
   wifi_windows:
     name: Wi-Fi demo smoke (Windows)
