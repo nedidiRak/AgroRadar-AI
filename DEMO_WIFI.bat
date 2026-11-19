@@ -33,7 +33,7 @@ if errorlevel 1 (
   )
   echo [INFO] Activating fnm-managed Node.js 22 for Wi-Fi Demo...
   for /f "delims=" %%Z in ('fnm env --shell cmd') do call %%Z
-  fnm use 22
+  call fnm use 22
   if errorlevel 1 (
     echo [ERROR] Unable to activate Node.js 22 via fnm.
     echo Open PowerShell, run "fnm install 22", and retry.
