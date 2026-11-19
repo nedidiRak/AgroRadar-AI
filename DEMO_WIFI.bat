@@ -1,6 +1,8 @@
 @echo off
 setlocal EnableExtensions
 chcp 65001 >nul
+rem Keep Russian messages printable even when CMD output is redirected in CI.
+set "PYTHONIOENCODING=utf-8"
 title AgroRadar AI - Wi-Fi Demo
 set "ROOT=%~dp0"
 set "PYTHON=%ROOT%backend\.venv\Scripts\python.exe"
