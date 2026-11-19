@@ -27,9 +27,10 @@ try {
   await page.route('**/api/dashboard', async route=>{
     const data=await (await route.fetch()).json()
     const forecast=data.fields[0].forecast
-    const values=fixture==='single' ? [0] : fixture==='edge' ? [9.4,9.7,7.5,5.8,5.6,4.2,3,3.4] : [-0.7,-0.2,2,4.2,6,3.5,1,0]
+    const cases={empty:[],single:[0],edge:[9.4,9.7,7.5,5.8,5.6,4.2,3,3.4],crossing:[-0.7,-0.2,2,4.2,6,3.5,1,0]}
+    const values=cases[fixture]
     forecast.points=values.map((temperature_c,i)=>({temperature_c,timestamp:1781956800+i*10800,precipitation_probability_pct:i===0?100:0,rain_mm_3h:0}))
-    forecast.min_temperature_next_24h_c=fixture==='edge'?2.1:Math.min(...values)
+    forecast.min_temperature_next_24h_c=fixture==='empty'?null:fixture==='edge'?2.1:Math.min(...values)
     await route.fulfill({json:data})
   })
   await page.reload()
@@ -70,9 +71,14 @@ try {
   assert.equal(await page.locator('.studio-tile').count(),48)
   await button(page,'Отменить изменения').click()
   console.log(`PASS real Leaflet viewport, 48 widgets, ${frames.length} frames during resize, p95 ${p95.toFixed(1)} ms, no API calls`)
-  for (fixture of ['edge','single']) {
+  for (fixture of ['empty','edge','single']) {
     await page.setViewportSize({width:320,height:640})
     await page.reload()
+    if(fixture==='empty') {
+      await page.locator('[data-widget="temperature"] .timeline-empty').waitFor()
+      assert.equal(await page.locator('.temperature-plot').count(),0)
+      continue
+    }
     await page.waitForSelector('.temperature-plot circle')
     assert.equal(await page.locator('.temperature-plot circle').count(),fixture==='edge'?8:1)
     await chartGeometry(page)
@@ -95,6 +101,6 @@ try {
   assert.equal(await button(page,'Настроить интерфейс').isDisabled(),true)
   assert.equal(writes,0)
   assert.deepEqual(errors,[])
-  console.log('PASS chart at zero crossing, screenshot range and single point; damaged and future formats protected')
+  console.log('PASS chart at zero crossing, screenshot range, empty forecast and single point; damaged and future formats protected')
 } catch(error) {await page.screenshot({path:'browser-failure-widgets.png'});throw error}
 finally {await browser.close()}

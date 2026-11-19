@@ -7,10 +7,12 @@ export function TemperaturePlot({ points, minimum, padding = 1, label }: {
 }) {
   const plot = useRef<HTMLDivElement>(null)
   const probe = useRef<HTMLSpanElement>(null)
+  const hasPoints = points.length > 0
   const [size, setSize] = useState({ width: 320, height: 150, labelWidth: 36, lineHeight: 16 })
   useLayoutEffect(() => {
-    const box = plot.current!, text = probe.current!
-    function measure() {
+    const box = plot.current, text = probe.current
+    if (!box || !text) return
+    const measure = () => {
       const { width, height } = box.getBoundingClientRect()
       if (!width || !height) return
       const rect = text.getBoundingClientRect()
@@ -23,9 +25,9 @@ export function TemperaturePlot({ points, minimum, padding = 1, label }: {
     observer.observe(box)
     observer.observe(text)
     return () => observer.disconnect()
-  }, [])
+  }, [hasPoints])
 
-  if (!points.length) return null
+  if (!hasPoints) return null
   const { width, height, labelWidth, lineHeight } = size
   const high = Math.max(...points.map(p => p.value), minimum ?? -Infinity) + padding
   const low = Math.min(...points.map(p => p.value), minimum ?? Infinity) - padding
