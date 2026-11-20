@@ -11,7 +11,7 @@ test('both role routes have stable, unique checkpoints and a reachable finish',(
   }
 })
 test('observer steps are read-only with an AI exercise and no editor or farm writes',()=>{
-  assert.deepEqual(observerSteps.map(s=>s.id),['welcome','choose-field','weather','alerts','risk','question','interpret','finish'])
+  assert.deepEqual(observerSteps.map(s=>s.id),['welcome','choose-field','weather','precipitation','alerts','risk','question','interpret','finish'])
   assert.ok([...practiceStages].every(id=>adminSteps.some(s=>s.id===id)))
   assert.ok(adminSteps.findIndex(s=>s.id==='studio') < adminSteps.findIndex(s=>practiceStages.has(s.id)))
 })

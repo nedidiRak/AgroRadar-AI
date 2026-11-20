@@ -9,7 +9,7 @@ from . import workspace_layouts
 
 router = APIRouter(prefix="/api/me", tags=["Обучение"])
 VERSION = 1
-COMMON = {"welcome", "choose-field", "weather", "alerts", "risk", "question", "interpret", "finish"}
+COMMON = {"welcome", "choose-field", "weather", "precipitation", "alerts", "risk", "question", "interpret", "finish"}
 ADMIN = COMMON | {"overview", "boundary", "journal", "task", "task-form", "studio", "catalog",
                   "add-widget", "move-widget", "resize-widget", "save-layout"}
 

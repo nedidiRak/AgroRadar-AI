@@ -38,8 +38,8 @@ def test_private_checkpoint_persists_and_recreated_account_starts_fresh(accounts
     assert admin.get(PATH).json()["role"] == "admin"
     assert viewer.get(PATH).json() == {**update(step="welcome", status="new"), "role": "viewer"}
     assert admin.put(PATH, json=update(step="catalog")).status_code == 200
-    assert viewer.put(PATH, json=update(step="weather", status="paused")).status_code == 200
-    assert login("trainee", "sample-viewer-pass").get(PATH).json()["step"] == "weather"
+    assert viewer.put(PATH, json=update(step="precipitation", status="paused")).status_code == 200
+    assert login("trainee", "sample-viewer-pass").get(PATH).json()["step"] == "precipitation"
     assert admin.get(PATH).json()["step"] == "catalog"
     assert admin.delete("/api/auth/users/trainee").status_code == 200
     assert admin.post("/api/auth/users", json={"username": "trainee", "password": "different-password"}).status_code == 201

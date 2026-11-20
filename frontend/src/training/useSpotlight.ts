@@ -20,7 +20,9 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
   const [scene,setScene] = useState<Scene>(initial)
   useLayoutEffect(() => {
     const surface=card.current!
-    let anchor:HTMLElement|null=null, frame=0, expired=false
+    let anchor:HTMLElement|null=null, frame=0, followup=0, expired=false
+    let acquiredAt=0, userScrolled=false
+    const settleTimers:number[]=[]
     let parents:ReturnType<typeof scrollingParents>=[]
     const root=document.querySelector<HTMLElement>('[data-learn-app]')!
     const vv=window.visualViewport
@@ -40,30 +42,42 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
         if(anchor) {
           resize.observe(anchor)
           parents=scrollingParents(anchor)
-          // First expose the control inside its own list or tile. Reserving the
-          // coaching card's height inside those short scrollports clips the control.
-          for(const {el,x,y} of parents) {
-            const r=anchor.getBoundingClientRect(), p=el.getBoundingClientRect()
-            if(y && el.scrollHeight>el.clientHeight) {
-              if(r.top<p.top) el.scrollTop+=r.top-p.top-2
-              else if(r.bottom>p.bottom) el.scrollTop+=Math.min(r.top-p.top,r.bottom-p.bottom)+2
-            }
-            if(x && el.scrollWidth>el.clientWidth) {
-              if(r.left<p.left) el.scrollLeft+=r.left-p.left
-              else if(r.right>p.right) el.scrollLeft+=r.right-p.right
-            }
-          }
+          acquiredAt=performance.now()
+          userScrolled=false
+          // React Grid may move this tile after its contents are measured.
+          // Recheck the target position for a short, bounded settling period.
+          for(const delay of [120, 360, 850, 1600]) settleTimers.push(window.setTimeout(schedule,delay))
+          // scrollIntoView reveals the target through *every* scroll container,
+          // not just the window. It must complete synchronously before the
+          // spotlight rectangle is measured. Smooth scrolling left the outline
+          // hidden until the user nudged the page manually.
+          anchor.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'})
           const r=anchor.getBoundingClientRect(), height=vv?.height??innerHeight
           const sideFits=innerWidth>620 && Math.max(r.left,innerWidth-r.right)>=surface.offsetWidth+22
-          const free=step.action && !sideFits?Math.max(40,height-surface.offsetHeight-20):height
-          const desired=(vv?.offsetTop??0)+free/2
-          window.scrollBy({top:r.top+Math.min(r.height,free)/2-desired,
-            behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})
+          if(step.action && !sideFits) {
+            // Leave room below for the coaching card when a live form control
+            // must remain clickable.
+            const free=Math.max(40,height-surface.offsetHeight-20)
+            const desired=(vv?.offsetTop??0)+free/2
+            window.scrollBy({top:r.top+Math.min(r.height,free)/2-desired,behavior:'instant'})
+          }
+          // A different route/widget can finish laying out in the next frame.
+          // Remeasure even if no browser scroll event was dispatched.
+          followup=requestAnimationFrame(schedule)
         }
       }
       const left=vv?.offsetLeft??0, top=vv?.offsetTop??0
       const width=Math.min(document.documentElement.clientWidth,vv?.width??innerWidth), height=vv?.height??innerHeight
       const margin=8, right=left+width, bottom=top+height
+      // Don't rely on a user wheel event to reveal a tile which shifted after
+      // initial auto-scroll. Only auto-recenter during settling; afterwards
+      // manual scrolling is always respected.
+      const shifted=anchor?.getBoundingClientRect()
+      if(shifted && !userScrolled && performance.now()-acquiredAt<2400 &&
+          (shifted.bottom<=top+12 || shifted.top>=bottom-12 ||
+           shifted.right<=left+12 || shifted.left>=right-12)) {
+        anchor?.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'})
+      }
       const rect=anchor?.getBoundingClientRect(), panel=surface.getBoundingClientRect()
       let box:Box|null=null
       if(rect && rect.bottom>top && rect.top<bottom && rect.right>left && rect.left<right) {
@@ -95,13 +109,18 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
     function schedule(){ if(!frame) frame=requestAnimationFrame(()=>{frame=0;measure()}) }
     const changes=new MutationObserver(schedule)
     changes.observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','open','disabled','data-learn']})
+    const manualScroll=()=>{userScrolled=true}
+    window.addEventListener('wheel',manualScroll,{passive:true})
+    window.addEventListener('touchstart',manualScroll,{passive:true})
     window.addEventListener('scroll',schedule,true)
     window.addEventListener('resize',schedule)
     vv?.addEventListener('resize',schedule)
     vv?.addEventListener('scroll',schedule)
     measure()
     return ()=>{
-      clearTimeout(timeout); cancelAnimationFrame(frame); changes.disconnect(); resize.disconnect()
+      clearTimeout(timeout); cancelAnimationFrame(frame); cancelAnimationFrame(followup); changes.disconnect(); resize.disconnect()
+      for(const timer of settleTimers) clearTimeout(timer)
+      window.removeEventListener('wheel',manualScroll);window.removeEventListener('touchstart',manualScroll)
       window.removeEventListener('scroll',schedule,true); window.removeEventListener('resize',schedule)
       vv?.removeEventListener('resize',schedule);vv?.removeEventListener('scroll',schedule)
     }

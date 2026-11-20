@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import {checkCard} from './training-geometry.mjs'
+import {checkCard, visibleSpotlight} from './training-geometry.mjs'
 import {button,launch,login,offlineTiles,saved,secret,settle,site,yandexContract} from './browser-helpers.mjs'
 
 const browser=await launch()
@@ -47,8 +47,11 @@ async function course(role){
   const maps=await page.evaluate(()=>window.mapProbe.created)
   await target('field-choice').click()
   if(role==='admin'){await at('boundary');await next()}
-  await at('weather');await next()
-  await at('alerts');await target('alert-filter').selectOption('open')
+  await at('weather');await visibleSpotlight(page,'forecast-chart');await next()
+  await at('precipitation')
+  if(await target('forecast-hourly').count()) {await visibleSpotlight(page,'forecast-hourly');await next()}
+  else {await card.getByText('Виджет скрыт',{exact:false}).waitFor();await skip()}
+  await at('alerts');await visibleSpotlight(page,'alert-filter');await target('alert-filter').selectOption('open')
   await at('risk');assert.equal(await page.evaluate(()=>window.mapProbe.created),maps);await next()
   await at('question')
   await page.getByRole('textbox',{name:'Вопрос ИИ-агроному'}).fill('Какие признаки проверить на поле после холодной ночи?')
@@ -180,6 +183,8 @@ try {
   await page.keyboard.press('Tab')
   assert.ok(await target('field-choice').evaluate(el=>el===document.activeElement))
   await page.keyboard.press('Enter');await at('boundary');await next();await at('weather')
+  await card.getByText('Виджет скрыт',{exact:false}).waitFor()
+  await skip();await at('precipitation')
   await card.getByText('Виджет скрыт',{exact:false}).waitFor()
   await skip();await at('alerts');await page.keyboard.press('Escape')
   await sync('paused','alerts')

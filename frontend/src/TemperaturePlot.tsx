@@ -91,7 +91,7 @@ export function TemperatureTimeline({ forecast, part = 'both' }: {
       points={points.map(p => ({ id:p.timestamp, value:p.temperature_c, label:time(p.timestamp),
         title:`${time(p.timestamp)} · ${p.temperature_c} °C${p.precipitation_probability_pct == null ? '' : ', осадки ' + p.precipitation_probability_pct + '%'}` }))}/>}
     <div className="timeline-legend" aria-label="Обозначения прогноза"><span>°C — температура воздуха</span>{part !== 'chart' && <span>☔ % — вероятность осадков</span>}</div>
-    {part !== 'chart' && <div className="timeline-data">{points.map(p => <div key={p.timestamp}>
+    {part !== 'chart' && <div className="timeline-data" data-learn="forecast-hourly">{points.map(p => <div key={p.timestamp}>
       <small>{time(p.timestamp)}</small><strong>{p.temperature_c > 0 ? '+' : ''}{p.temperature_c}°</strong>
       <span title={p.precipitation_probability_pct === null ? 'Нет данных о вероятности осадков' : 'Вероятность осадков'}>{p.precipitation_probability_pct === null ? '—' : `☔ ${p.precipitation_probability_pct}%`}</span>
     </div>)}</div>}

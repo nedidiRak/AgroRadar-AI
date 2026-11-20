@@ -37,3 +37,34 @@ export async function openedTarget(page, name) {
   })
   return target
 }
+
+/**
+ * A guided step must reveal its highlighted control without requiring the
+ * user to scroll the page manually. This catches regressions where the ring
+ * appears only after a wheel/scroll event.
+ */
+export async function visibleSpotlight(page, targetName) {
+  await page.waitForFunction(name => {
+    const candidates=[...document.querySelectorAll('[data-learn="'+name+'"]')]
+    const target=candidates.find(el=>el.getClientRects().length && el.checkVisibility())
+    const spot=document.querySelector('.learn-spot')
+    if(!target || !spot) return false
+    const a=target.getBoundingClientRect(), b=spot.getBoundingClientRect()
+    const w=Math.max(0,Math.min(a.right,b.right)-Math.max(a.left,b.left))
+    const h=Math.max(0,Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top))
+    const smaller=Math.min(a.width*a.height,b.width*b.height)
+    return b.width>0 && b.height>0 && b.top>=-2 && b.bottom<=innerHeight+2
+      && b.left>=-2 && b.right<=document.documentElement.clientWidth+2
+      && smaller>0 && w*h/smaller>.45
+  },targetName,{timeout:5500}).catch(async error => {
+    const diagnostic=await page.evaluate(name => ({
+      target:name, scrollY, viewport:[innerWidth,innerHeight],
+      step:document.querySelector('[data-training-step]')?.getAttribute('data-training-step'),
+      spot:document.querySelector('.learn-spot')?.getBoundingClientRect().toJSON(),
+      candidates:[...document.querySelectorAll('[data-learn="'+name+'"]')].map(el=>({
+        visible:el.checkVisibility(),bounds:el.getBoundingClientRect().toJSON()
+      })),
+    }),targetName)
+    throw new Error('Training spotlight not visible without manual scrolling: '+JSON.stringify(diagnostic),{cause:error})
+  })
+}
