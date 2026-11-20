@@ -20,7 +20,7 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
   const [scene,setScene] = useState<Scene>(initial)
   useLayoutEffect(() => {
     const surface=card.current!
-    let anchor:HTMLElement|null=null, frame=0, expired=false
+    let anchor:HTMLElement|null=null, frame=0, followup=0, expired=false
     let parents:ReturnType<typeof scrollingParents>=[]
     const root=document.querySelector<HTMLElement>('[data-learn-app]')!
     const vv=window.visualViewport
@@ -56,7 +56,7 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
           }
           // A different route/widget can finish laying out in the next frame.
           // Remeasure even if no browser scroll event was dispatched.
-          requestAnimationFrame(schedule)
+          followup=requestAnimationFrame(schedule)
         }
       }
       const left=vv?.offsetLeft??0, top=vv?.offsetTop??0
@@ -99,7 +99,7 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
     vv?.addEventListener('scroll',schedule)
     measure()
     return ()=>{
-      clearTimeout(timeout); cancelAnimationFrame(frame); changes.disconnect(); resize.disconnect()
+      clearTimeout(timeout); cancelAnimationFrame(frame); cancelAnimationFrame(followup); changes.disconnect(); resize.disconnect()
       window.removeEventListener('scroll',schedule,true); window.removeEventListener('resize',schedule)
       vv?.removeEventListener('resize',schedule);vv?.removeEventListener('scroll',schedule)
     }
