@@ -56,5 +56,15 @@ export async function visibleSpotlight(page, targetName) {
     return b.width>0 && b.height>0 && b.top>=-2 && b.bottom<=innerHeight+2
       && b.left>=-2 && b.right<=document.documentElement.clientWidth+2
       && smaller>0 && w*h/smaller>.45
-  },targetName,{timeout:5500})
+  },targetName,{timeout:5500}).catch(async error => {
+    const diagnostic=await page.evaluate(name => ({
+      target:name, scrollY, viewport:[innerWidth,innerHeight],
+      step:document.querySelector('[data-training-step]')?.getAttribute('data-training-step'),
+      spot:document.querySelector('.learn-spot')?.getBoundingClientRect().toJSON(),
+      candidates:[...document.querySelectorAll('[data-learn="'+name+'"]')].map(el=>({
+        visible:el.checkVisibility(),bounds:el.getBoundingClientRect().toJSON()
+      })),
+    }),targetName)
+    throw new Error('Training spotlight not visible without manual scrolling: '+JSON.stringify(diagnostic),{cause:error})
+  })
 }
