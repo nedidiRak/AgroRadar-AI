@@ -12,6 +12,7 @@ import io
 import ipaddress
 import json
 import os
+import sys
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -19,6 +20,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 FRONTEND_DIST = Path(os.getenv('AGRORADAR_FRONTEND_DIST', str(Path(__file__).resolve().parents[2] / 'frontend' / 'dist')))
+
+
+def _launcher() -> str:
+    return "DEMO_WIFI.command" if sys.platform == "darwin" else "DEMO_WIFI.bat"
 
 
 def demo_addresses() -> list[str]:
@@ -73,14 +78,14 @@ def connect_page(port: int) -> HTMLResponse:
                            if profile.lower() == "public" else "")
         cards.append(
             f'<article class="card">{_qr_image(url)}'
-            f'<div><small>Адаптер: {alias} · Windows: {profile}</small><h2>{clean}</h2>{profile_warning}'
+            f'<div><small>Адаптер: {alias} · Сеть: {profile}</small><h2>{clean}</h2>{profile_warning}'
             f'<p>Открой этот адрес или отсканируй QR-код с телефона в той же сети.</p>'
             f'<a class="btn" href="{clean}">Проверить адрес на этом компьютере</a></div></article>'
         )
     content = (
         "\n".join(cards) if cards else
         '<div class="warning">Не обнаружен пригодный IPv4-адрес сети. '
-        'Подключи ноутбук к Wi-Fi и повторно запусти DEMO_WIFI.bat. '
+        f'Подключи ноутбук к Wi-Fi и повторно запусти {_launcher()}. '
         'При сложной сетевой конфигурации можно задать адрес вручную.</div>'
     )
     page = """<!doctype html><html lang="ru"><head><meta charset="utf-8">
@@ -109,16 +114,16 @@ ul{padding-left:22px}li{padding:4px 0}.note{color:#e6cb97}
 <h2>2. Отсканируй один из QR-кодов</h2>
 <p>Если ноутбук подключён к нескольким сетям, выбери адрес именно той сети, в которой находится телефон.</p>
 </section>
-""" + content + """
+""" + content + f"""
 <section class="panel">
 <h2>3. Войди как наблюдатель</h2>
 <p>Администратор заранее создаёт отдельных наблюдателей в разделе «Пользователи». Они видят поля и общаются с ИИ, но не могут менять информацию.</p>
 <p class="note">Администраторский вход с телефонов заблокирован в Wi-Fi-режиме. Для администрирования открой на ноутбуке адрес 127.0.0.1 с указанным портом.</p>
 <h2>Если страница на телефоне не открылась</h2>
 <ul><li>Проверь, что ноутбук и телефон действительно в одной Wi-Fi-сети.</li>
-<li>Убедись, что профиль сети Windows — «Частная» и для демо-порта разрешён брандмауэр только в локальной подсети.</li>
+<li>Если брандмауэр блокирует доступ, разреши входящие подключения только в доверенной частной сети и для выбранного порта.</li>
 <li>Если сеть изолирует клиентов, используй собственный хот-спот или отдельный маршрутизатор.</li>
-<li>Если IP-адрес изменился, перезапусти DEMO_WIFI.bat для обновления QR-кодов.</li></ul>
+<li>Если IP-адрес изменился, перезапусти {_launcher()} для обновления QR-кодов.</li></ul>
 </section>
 <footer><p>Локальная демонстрация. Соединение HTTP не шифрует трафик — не используй чувствительные реальные данные на общей сети.</p></footer>
 </main></body></html>"""
@@ -134,7 +139,7 @@ def enable_wifi_site(app: FastAPI, dist_dir: Path | None = None) -> None:
     folder = Path(dist_dir) if dist_dir is not None else FRONTEND_DIST
     if not (folder / "index.html").is_file():
         raise RuntimeError(
-            "Отсутствует frontend/dist/index.html. Запусти DEMO_WIFI.bat — "
+            f"Отсутствует frontend/dist/index.html. Запусти {_launcher()} — "
             "он собирает мобильный интерфейс перед запуском."
         )
     try:

@@ -70,6 +70,8 @@ AgroRadar AI — локальная веб-платформа для демон�
 
 **Инструкция и ограничения:** [README_WIFI.md](README_WIFI.md).
 
+На macOS запустите `DEMO_WIFI.command` из каталога проекта. [Подготовка Mac и подключение телефона](docs/LOCAL_SETUP_MAC.md).
+
 ## Запуск на Windows (сохранение существующих настроек)
 
 1. В GitHub Desktop нажать **Fetch origin**, затем **Pull origin**, чтобы получить итоговый релиз после объединения PR.
