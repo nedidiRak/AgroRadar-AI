@@ -95,12 +95,12 @@ def main():
 
                 status, index = call(opener, base, "/")
                 assert status == 200 and b'<div id="root"' in index
-                status, configuration = call(opener, base, "/api/public-config")
-                assert status == 200 and configuration == {"yandex_maps_api_key": ""}
                 status, auth = call(opener, base, "/api/auth/login", "POST", {
                     "username": "admin", "password": "AgroRadar-Expert!2026"
                 })
                 assert status == 200 and auth["role"] == "admin"
+                status, configuration = call(opener, base, "/api/public-config")
+                assert status == 200 and configuration == {"yandex_maps_api_key": ""}
                 csrf = auth["csrf_token"]
                 status, fields = call(opener, base, "/api/fields")
                 assert status == 200 and len(fields) == 4
