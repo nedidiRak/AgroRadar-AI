@@ -1,6 +1,6 @@
-"""Self-contained, localhost-only Windows evaluator launcher.
+"""Self-contained, localhost-only desktop evaluator launcher.
 
-Built as a PyInstaller onedir executable by GitHub Actions. Does not require
+Built as a PyInstaller onedir executable or macOS .app by GitHub Actions. Does not require
 Python, Node.js, npm, administrator permissions, or any cloud account to run.
 The test password is intentionally public and may ONLY be used for disposable,
 isolated demo data served on 127.0.0.1. Never bundle production data/secrets.
@@ -21,7 +21,22 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 DEFAULT_PASSWORD = "AgroRadar-Expert!2026"
-ROOT = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[1]
+def _storage_root() -> Path:
+    """Keep the signed macOS .app read-only; save user data outside the bundle.
+
+    The environment override is reserved for isolated CI smoke tests.
+    Windows keeps its original beside-EXE layout unchanged.
+    """
+    if sys.platform == "darwin":
+        selected = os.environ.get("AGRORADAR_EXPERT_HOME", "").strip()
+        return (Path(selected).expanduser() if selected else
+                Path.home() / "Library" / "Application Support" / "AgroRadar AI Expert").resolve()
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parents[1]
+
+
+ROOT = _storage_root()
 
 
 def _select_port() -> int:
@@ -57,6 +72,15 @@ def _open_when_ready(port: int) -> None:
 
 
 def main() -> None:
+    if sys.platform == "darwin":
+        ROOT.mkdir(parents=True, exist_ok=True)
+        # Place a configuration template in the writable user folder without
+        # touching any existing settings or user records on later launches.
+        template = Path(getattr(sys, "_MEIPASS", ROOT)) / "settings.env.example"
+        destination = ROOT / "settings.env.example"
+        if template.is_file() and not destination.exists():
+            import shutil
+            shutil.copyfile(template, destination)
     os.chdir(ROOT)
     load_dotenv(ROOT / "settings.env", override=False)
     # Must never publish any admin access or backend over the LAN.
@@ -85,7 +109,11 @@ def main() -> None:
     print("Доступ:   полный администратор, только этот компьютер", flush=True)
     print("Интернет: нужен для живой погоды, картографических тайлов и DeepSeek", flush=True)
     print("Без ключа DeepSeek работает ЧЕСТНО МАРКИРОВАННАЯ демоверсия диалога.", flush=True)
-    print("Для остановки закрой это окно или нажми Ctrl+C.", flush=True)
+    if sys.platform == "darwin":
+        print("Для остановки закрой приложение в Dock или нажми Cmd+Q.", flush=True)
+        print("Настройки и данные:", ROOT, flush=True)
+    else:
+        print("Для остановки закрой это окно или нажми Ctrl+C.", flush=True)
     print("=" * 67, flush=True)
 
     # Single-process Uvicorn, no development reload or additional Node server.
