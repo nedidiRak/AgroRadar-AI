@@ -4,7 +4,7 @@ import time
 
 from fastapi.testclient import TestClient
 
-from app import main, ai_assistant
+from app import main, ai_assistant, monitoring
 from app.ai_forecast_context import prepare_five_day_context
 from app.five_day import build_five_day_forecast
 
@@ -79,6 +79,7 @@ def test_missing_five_day_data_is_unknown_never_safe():
 def test_chat_sends_real_multiday_context_without_new_provider_calls(monkeypatch, tmp_path):
     monkeypatch.setattr(main, "CATALOG_FILE", tmp_path / "fields.json")
     monkeypatch.setattr(main, "GEOMETRY_FILE", tmp_path / "field_geometries.json")
+    monkeypatch.setattr(monitoring, "DATABASE_FILE", tmp_path / "monitoring.sqlite3")
     monkeypatch.setenv("DEEPSEEK_API_KEY", "FAKE_SECRET_NOT_FOR_LLM")
     monkeypatch.setenv("OPENWEATHER_API_KEY", "FAKE_OPENWEATHER_KEY")
     monkeypatch.delenv("AGRORADAR_EXPERT_PORTABLE", raising=False)
@@ -139,3 +140,21 @@ def test_chat_sends_real_multiday_context_without_new_provider_calls(monkeypatch
     assert more.status_code == 200, more.text
     context2 = json.loads(captured[1]["content"].split("\n", 1)[1])
     assert len(context2["forecast_5day"]["days"][1]["forecast_intervals_3h"]) == 8
+
+
+def test_expert_offline_five_day_is_transparent_and_does_not_mislabel_unknown():
+    now = 1800000000
+    forecast = build_five_day_forecast(make_points(now)[:10], "demo", issued_at=now)
+    field = {
+        "id": 1, "name": "Поле Северное", "crop": "Пшеница",
+        "weather": {"source": "demo", "temperature_c": 7.2, "wind_ms": 3},
+        "forecast": {"source": "demo", "min_temperature_next_24h_c": 2.5},
+        "five_day_forecast": forecast,
+        "risk": {"level": "medium", "label": "Умеренный"},
+    }
+    answer = ai_assistant._expert_offline_chat(field, "Какие риски на пять дней?")["answer"]
+    assert "НЕ DEEPSEEK" in answer
+    assert "синтетические" in answer
+    assert "Период 1" in answer and "Период 5" in answer
+    assert "Период 5: нет данных" in answer
+    assert "вероятности гибели урожая" in answer
