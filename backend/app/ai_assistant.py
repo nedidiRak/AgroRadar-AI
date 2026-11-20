@@ -189,7 +189,31 @@ def _expert_offline_chat(field: dict, question: str) -> dict:
     minimum = number(forecast.get('min_temperature_next_24h_c'), '°C')
     wind = number(weather.get('wind_ms'), 'м/с')
     lines = ['**ОФЛАЙН-ДЕМО · НЕ DEEPSEEK.** Это ответ по встроенным правилам, а не генерация нейросетью.', '']
-    if any(word in q for word in ('кто ты', 'ты кто', 'кем ты', 'что ты умеешь', 'что можешь', 'как тебя зовут', 'привет', 'здравствуй', 'здравствуйте')):
+    multi_day_question = any(term in q for term in (
+        '5 дн', '5 сут', 'пять дн', 'пять сут', 'несколько дн', 'недел',
+        'по дням', 'ближайшие дни', 'следующие дни',
+    ))
+    if multi_day_question:
+        five = prepare_five_day_context(field.get('five_day_forecast'), question)
+        lines.append(f'**Погодный обзор поля «{name}» до пяти суток.**')
+        lines.append('Это независимые 24-часовые прогнозные окна, а не оценка вероятности гибели урожая.')
+        if five['source'] == 'demo':
+            lines.append('**Источник: синтетические демонстрационные данные, не реальная погода.**')
+        if not five['has_forecast_data']:
+            lines.append('Многодневный прогноз отсутствует — оценить погодные риски по дням нельзя.')
+        for day in five['days']:
+            if not day['forecast_points']:
+                lines.append(f"Период {day['day']}: нет данных (неизвестный риск).")
+                continue
+            lines.append(
+                f"Период {day['day']} ({day['start_utc']} — {day['end_utc']}): "
+                f"риск {day['weather_risk']['level']}; "
+                f"минимум {number(day['min_temperature_c'], '°C')}, "
+                f"осадки {number(day['precipitation_mm'], 'мм')}, "
+                f"точек прогноза {day['forecast_points']}."
+            )
+        lines.append('Сравни периоды и проверь прогноз на месте; для свободного анализа нужен подключённый DeepSeek.')
+    elif any(word in q for word in ('кто ты', 'ты кто', 'кем ты', 'что ты умеешь', 'что можешь', 'как тебя зовут', 'привет', 'здравствуй', 'здравствуйте')):
         lines += [
             '**Я — демонстрационный помощник AgroRadar.**',
             'Без ключа DeepSeek могу показать известные показатели поля, рассказать о погодных факторах и подсказать, какие наблюдения собрать.',
