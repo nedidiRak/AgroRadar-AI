@@ -22,6 +22,7 @@ type FieldContext = {
   risk: { level: RiskLevel; label: string }
   weather: { source: string; temperature_c: number | null }
   forecast: { source: string; min_temperature_next_24h_c: number | null }
+  five_day_forecast?: { source: string; days: { sample_count: number }[] }
 }
 type KnowledgeNote = { id: string; text: string; source_kind?: string; expert_validated?: boolean }
 type Message = { role: 'user' | 'assistant'; content: string; knowledge?: KnowledgeNote[] }
@@ -37,6 +38,7 @@ type ChatResult = {
 }
 
 const suggested = [
+  'Сравни погодные риски на ближайшие пять суток и предложи план наблюдений.',
   'Оцени погодные риски на 24 часа и объясни причины.',
   'Что проверить агроному на этом поле сегодня?',
   'Какую информацию о культуре нужно собрать для точной оценки?',
@@ -235,7 +237,8 @@ export default function AiAgronom({ field, ui, onOpenSettings, allowHealthCheck 
           <p className="agro-ai__observation-count">Наблюдения: {field.observations?.length ?? 0}</p>
           <div className="agro-ai__metric"><span>Температура сейчас</span><b>{field.weather.temperature_c == null ? 'Нет данных' : `${field.weather.temperature_c} °C`}</b></div>
           <div className="agro-ai__metric"><span>Минимум за 24 часа</span><b>{field.forecast.min_temperature_next_24h_c == null ? 'Нет данных' : `${field.forecast.min_temperature_next_24h_c} °C`}</b></div>
-          <div className="agro-ai__metric"><span>Погодный риск</span><b className={`agro-ai__risk--${field.risk.level}`}>{field.risk.label}</b></div>
+          <div className="agro-ai__metric"><span>Погодный риск за 24 ч</span><b className={`agro-ai__risk--${field.risk.level}`}>{field.risk.label}</b></div>
+          {field.five_day_forecast && <div className="agro-ai__metric"><span>Прогноз для ИИ</span><b>{field.five_day_forecast.days.filter(day => day.sample_count > 0).length} из 5 суток</b></div>}
           <div className="agro-ai__data-source">{live ? '● OpenWeather LIVE' : field.weather.source === 'unavailable' ? '⚠ Погода недоступна' : '◌ Демо-погода'}<br/>+ локальные справочные заметки</div>
         </> : <p>Выбери доступное поле, чтобы увидеть его сведения.</p>}
         <div className="agro-ai__notice"><ShieldCheck size={16}/> Советы ИИ не заменяют проверку на месте. Сведения из паспорта и журнала введены пользователем, а не подтверждены датчиками.</div>
