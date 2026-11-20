@@ -48,7 +48,9 @@ async function course(role){
   await target('field-choice').click()
   if(role==='admin'){await at('boundary');await next()}
   await at('weather');await visibleSpotlight(page,'forecast-chart');await next()
-  await at('precipitation');await visibleSpotlight(page,'forecast-hourly');await next()
+  await at('precipitation')
+  if(await target('forecast-hourly').count()) {await visibleSpotlight(page,'forecast-hourly');await next()}
+  else {await card.getByText('Виджет скрыт',{exact:false}).waitFor();await skip()}
   await at('alerts');await visibleSpotlight(page,'alert-filter');await target('alert-filter').selectOption('open')
   await at('risk');assert.equal(await page.evaluate(()=>window.mapProbe.created),maps);await next()
   await at('question')
