@@ -40,25 +40,23 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
         if(anchor) {
           resize.observe(anchor)
           parents=scrollingParents(anchor)
-          // First expose the control inside its own list or tile. Reserving the
-          // coaching card's height inside those short scrollports clips the control.
-          for(const {el,x,y} of parents) {
-            const r=anchor.getBoundingClientRect(), p=el.getBoundingClientRect()
-            if(y && el.scrollHeight>el.clientHeight) {
-              if(r.top<p.top) el.scrollTop+=r.top-p.top-2
-              else if(r.bottom>p.bottom) el.scrollTop+=Math.min(r.top-p.top,r.bottom-p.bottom)+2
-            }
-            if(x && el.scrollWidth>el.clientWidth) {
-              if(r.left<p.left) el.scrollLeft+=r.left-p.left
-              else if(r.right>p.right) el.scrollLeft+=r.right-p.right
-            }
-          }
+          // scrollIntoView reveals the target through *every* scroll container,
+          // not just the window. It must complete synchronously before the
+          // spotlight rectangle is measured. Smooth scrolling left the outline
+          // hidden until the user nudged the page manually.
+          anchor.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'})
           const r=anchor.getBoundingClientRect(), height=vv?.height??innerHeight
           const sideFits=innerWidth>620 && Math.max(r.left,innerWidth-r.right)>=surface.offsetWidth+22
-          const free=step.action && !sideFits?Math.max(40,height-surface.offsetHeight-20):height
-          const desired=(vv?.offsetTop??0)+free/2
-          window.scrollBy({top:r.top+Math.min(r.height,free)/2-desired,
-            behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})
+          if(step.action && !sideFits) {
+            // Leave room below for the coaching card when a live form control
+            // must remain clickable.
+            const free=Math.max(40,height-surface.offsetHeight-20)
+            const desired=(vv?.offsetTop??0)+free/2
+            window.scrollBy({top:r.top+Math.min(r.height,free)/2-desired,behavior:'instant'})
+          }
+          // A different route/widget can finish laying out in the next frame.
+          // Remeasure even if no browser scroll event was dispatched.
+          requestAnimationFrame(schedule)
         }
       }
       const left=vv?.offsetLeft??0, top=vv?.offsetTop??0
