@@ -47,8 +47,9 @@ async function course(role){
   const maps=await page.evaluate(()=>window.mapProbe.created)
   await target('field-choice').click()
   if(role==='admin'){await at('boundary');await next()}
-  await at('weather');await next()
-  await at('alerts');await target('alert-filter').selectOption('open')
+  await at('weather');await visibleSpotlight(page,'forecast-chart');await next()
+  await at('precipitation');await visibleSpotlight(page,'forecast-hourly');await next()
+  await at('alerts');await visibleSpotlight(page,'alert-filter');await target('alert-filter').selectOption('open')
   await at('risk');assert.equal(await page.evaluate(()=>window.mapProbe.created),maps);await next()
   await at('question')
   await page.getByRole('textbox',{name:'Вопрос ИИ-агроному'}).fill('Какие признаки проверить на поле после холодной ночи?')
