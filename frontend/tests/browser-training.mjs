@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import {checkCard} from './training-geometry.mjs'
+import {checkCard, visibleSpotlight} from './training-geometry.mjs'
 import {button,launch,login,offlineTiles,saved,secret,settle,site,yandexContract} from './browser-helpers.mjs'
 
 const browser=await launch()
