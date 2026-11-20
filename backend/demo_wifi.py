@@ -1,4 +1,4 @@
-"""One-command Windows LAN demo launcher for AgroRadar AI.
+"""One-command Windows and macOS LAN demo launcher for AgroRadar AI.
 
 Builds frontend/dist, discovers IPv4 adapters, selects an unrestricted wildcard
 port, optionally requests a Private/LocalSubnet Windows Firewall rule, and runs
@@ -12,6 +12,7 @@ import importlib.util
 import ipaddress
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -48,6 +49,44 @@ def valid_lan_ip(value: str) -> bool:
                 (address.is_private or address in ipaddress.IPv4Network("100.64.0.0/10")))
     except ipaddress.AddressValueError:
         return False
+
+
+def _mac_network_output(*command: str) -> str:
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, errors="replace", timeout=4)
+        return result.stdout if result.returncode == 0 else ""
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+
+
+def _mac_adapters() -> list[dict[str, str]]:
+    # One snapshot for every interface, including aliases. Querying ipconfig
+    # once per hardware port makes launch time grow with the number of ports.
+    interfaces = _mac_network_output("/sbin/ifconfig", "-a")
+    labels = _mac_network_output("/usr/sbin/networksetup", "-listallhardwareports")
+    aliases = {}
+    alias = ""
+    for line in labels.splitlines():
+        key, _, value = line.partition(":")
+        if key == "Hardware Port":
+            alias = value.strip()
+        elif key == "Device" and alias:
+            aliases[value.strip()] = alias
+
+    found = []
+    for block in re.split(r"\n(?=\S)", interfaces.strip()):
+        header, _, details = block.partition("\n")
+        device, _, settings = header.partition(":")
+        if not re.fullmatch(r"en[0-9]+", device):
+            continue
+        flags = settings.partition("<")[2].partition(">")[0].split(",")
+        if not {"UP", "RUNNING"}.issubset(flags) or "status: inactive" in details:
+            continue
+        for address in re.findall(r"^\s+inet\s+(\S+)", details, re.MULTILINE):
+            if valid_lan_ip(address):
+                found.append({"ip": address, "alias": aliases.get(device, device),
+                              "gateway": "", "profile": "macOS"})
+    return found
 
 
 def discover_ipv4() -> list[dict[str, str]]:
@@ -94,9 +133,11 @@ ConvertTo-Json -InputObject $result -Depth 4 -Compress
                         })
         except (OSError, subprocess.TimeoutExpired, ValueError, TypeError):
             pass
+    elif sys.platform == "darwin":
+        found = _mac_adapters()
 
-    # Fallback is useful for systems whose PowerShell network cmdlets are blocked.
-    if not found:
+    # The macOS snapshot above already covers active physical interfaces.
+    if not found and sys.platform != "darwin":
         guesses: set[str] = set()
         try:
             for record in socket.getaddrinfo(socket.gethostname(), None, family=socket.AF_INET):
@@ -131,6 +172,27 @@ ConvertTo-Json -InputObject $result -Depth 4 -Compress
     return sorted(unique.values(), key=preference)
 
 
+def print_terminal_qrs(addresses: list[dict[str, str]], port: int) -> None:
+    """Print local-only QR codes for phone access without a QR website."""
+    try:
+        import qrcode
+    except ImportError:
+        print("[QR] Модуль qrcode не установлен; используй адреса выше.", flush=True)
+        return
+    for item in addresses:
+        url = f"http://{item['ip']}:{port}/"
+        code = qrcode.QRCode(border=4, box_size=1)
+        code.add_data(url)
+        code.make(fit=True)
+        print(f"\n[QR] {url}  ({item.get('alias', 'локальная сеть')})", flush=True)
+        try:
+            code.print_ascii(out=sys.stdout, tty=sys.stdout.isatty(), invert=True)
+        except UnicodeEncodeError:
+            # Older redirected Windows consoles may not encode QR block glyphs.
+            print("[QR] Use the URL above or open /wifi/connect.", flush=True)
+            return
+
+
 def choose_port(preferred: int | None = None) -> int:
     values = (preferred,) if preferred is not None else PORT_CANDIDATES
     for port in values:
@@ -145,8 +207,8 @@ def choose_port(preferred: int | None = None) -> int:
         except OSError:
             continue
     raise RuntimeError(
-        "Windows не разрешает открывать ни один из демонстрационных портов. "
-        "Проверь зарезервированные порты и правила безопасности, либо укажи --port."
+        "Система не разрешает открыть ни один из демонстрационных портов. "
+        "Проверь занятые порты и правила безопасности либо укажи --port."
     )
 
 
@@ -302,11 +364,15 @@ def launch(preferred_port: int | None, addresses: list[dict[str, str]]) -> int:
         for item in addresses:
             label = item["alias"]
             print(f"  Телефон (viewer): http://{item['ip']}:{port}/  [{label}]")
-        if not qr_installed:
+        if qr_installed:
+            print_terminal_qrs(addresses, port)
+        else:
             print("  [QR] QR отсутствует; используй адрес из строки выше.")
         print("  Важно: телефон и ноутбук должны быть в одной сети без client isolation.")
         print("  ВАЖНО: администратор с телефонов входить не может, используй viewer.")
-        print("  Закрой это окно (Ctrl+C), чтобы завершить демонстрацию.")
+        if sys.platform == "darwin":
+            print("  macOS может запросить разрешение на входящие подключения Python.")
+        print("  Нажми Ctrl+C, чтобы завершить демонстрацию.")
         print("=" * 67 + "\n", flush=True)
         webbrowser.open(f"http://127.0.0.1:{port}/wifi/connect")
         try:
@@ -320,12 +386,12 @@ def launch(preferred_port: int | None, addresses: list[dict[str, str]]) -> int:
                 process.kill()
             return 0
     raise RuntimeError("Не удалось запустить Wi-Fi сервер ни на одном доступном порту. "
-                       "Возможно, Windows/антивирус блокирует внешний bind.")
+                       "Проверь доступность выбранного TCP-порта.")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="AgroRadar AI secure Wi-Fi demo")
-    parser.add_argument("--port", type=int, help="Фиксированный LAN порт, если разрешён Windows")
+    parser.add_argument("--port", type=int, help="Фиксированный LAN порт, для демонстрации")
     parser.add_argument("--ip", help="Вручную указать IPv4 подключённого Wi-Fi адаптера")
     options = parser.parse_args()
     print("AgroRadar AI | Режим демонстрации по Wi-Fi", flush=True)
@@ -338,9 +404,10 @@ def main() -> int:
     else:
         addresses = discover_ipv4()
     if not addresses:
+        launcher = "DEMO_WIFI.command" if sys.platform == "darwin" else "DEMO_WIFI.bat"
         raise RuntimeError(
             "Не найден адрес IPv4 активного Wi-Fi/Ethernet. Подключись к сети и "
-            "повтори запуск или укажи DEMO_WIFI.bat --ip 192.168.1.50."
+            f"повтори запуск или укажи {launcher} --ip 192.168.1.50."
         )
     print("\n[NETWORK] Обнаружены локальные адреса:")
     for item in addresses:

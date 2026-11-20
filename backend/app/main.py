@@ -32,11 +32,15 @@ from .crop_risk import (router as crop_risk_router, evaluate_crop_risk,
 from .auth import router as auth_router, auth_guard
 from .monitoring import router as monitoring_router, capture_dashboard, record_event
 from .backups import router as backup_router, preserve_previous
+from .compression import ReadGZipMiddleware
 from .reports import report_router
 from .workspace_layouts import router as workspace_router
 from .onboarding import router as onboarding_router
 
 app = FastAPI(title='AgroRadar AI API', version='4.0.0')
+# Register inside auth_guard: its streaming response wrapper otherwise hides
+# the final body size, so even tiny health and status responses get compressed.
+app.add_middleware(ReadGZipMiddleware, minimum_size=1024, compresslevel=4)
 app.middleware('http')(auth_guard)
 app.include_router(auth_router)
 app.include_router(workspace_router)

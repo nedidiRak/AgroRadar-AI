@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import socket
+from types import SimpleNamespace
 from pathlib import Path
 
 import httpx
@@ -25,6 +26,48 @@ def test_lan_ipv4_validation_and_wildcard_port_collision():
         selected = listener.getsockname()[1]
         with pytest.raises(RuntimeError):
             demo_wifi.choose_port(selected)
+
+
+@pytest.mark.parametrize("labels_available", [True, False])
+def test_macos_lists_active_lan_addresses_with_two_commands(monkeypatch, labels_available):
+    monkeypatch.setattr(demo_wifi.sys, "platform", "darwin")
+    commands = []
+    interfaces = (
+        "en1: flags=8863<UP,BROADCAST,RUNNING> mtu 1500\n"
+        "\tinet 192.168.1.15 netmask 0xffffff00\n\tstatus: active\n"
+        "en0: flags=8863<UP,BROADCAST,RUNNING> mtu 1500\n"
+        "\tinet 192.168.1.24 netmask 0xffffff00\n\tstatus: active\n"
+        "utun0: flags=8051<UP,POINTOPOINT,RUNNING> mtu 1380\n\tinet 10.8.1.1\n"
+        "bridge0: flags=8863<UP,BROADCAST,RUNNING> mtu 1500\n\tinet 192.168.64.1\n"
+        "en5: flags=8863<UP,BROADCAST,RUNNING> mtu 1500\n"
+        "\tinet 192.168.1.65\n\tstatus: inactive\n"
+    )
+    labels = "Hardware Port: Ethernet\nDevice: en1\n\nHardware Port: Wi-Fi\nDevice: en0\n"
+
+    def fake_run(command, **_kwargs):
+        commands.append(tuple(command))
+        if command[0] == "/sbin/ifconfig":
+            return SimpleNamespace(stdout=interfaces, returncode=0)
+        if not labels_available:
+            raise FileNotFoundError("networksetup")
+        return SimpleNamespace(stdout=labels, returncode=0)
+
+    monkeypatch.setattr(demo_wifi.subprocess, "run", fake_run)
+    adapters = demo_wifi.discover_ipv4()
+    addresses = {item["alias"]: item["ip"] for item in adapters}
+    if labels_available:
+        assert addresses == {"Wi-Fi": "192.168.1.24", "Ethernet": "192.168.1.15"}
+        assert adapters[0]["alias"] == "Wi-Fi"
+    else:
+        assert addresses == {"en0": "192.168.1.24", "en1": "192.168.1.15"}
+    assert commands == [("/sbin/ifconfig", "-a"), ("/usr/sbin/networksetup", "-listallhardwareports")]
+
+
+def test_terminal_qr_contains_phone_url(capsys):
+    demo_wifi.print_terminal_qrs([{"ip": "192.168.1.24", "alias": "Wi-Fi"}], 18765)
+    output = capsys.readouterr().out
+    assert "http://192.168.1.24:18765/" in output
+    assert output.count("\n") > 5
 
 
 def test_lan_connect_page_sanitizes_addresses_and_renders_offline_qr(monkeypatch, tmp_path):
@@ -54,6 +97,14 @@ def test_lan_connect_page_sanitizes_addresses_and_renders_offline_qr(monkeypatch
     assert client.get("/backend/.env").status_code == 404
     assert client.get("/../../backend/app/auth.py").status_code == 404
     assert client.get("/assets/does-not-exist.js").status_code == 404
+
+
+@pytest.mark.parametrize(("platform", "launcher"), [("darwin", "DEMO_WIFI.command"), ("win32", "DEMO_WIFI.bat")])
+def test_connect_page_shows_the_launchers_for_this_system(monkeypatch, platform, launcher):
+    monkeypatch.setattr(wifi_web.sys, "platform", platform)
+    monkeypatch.delenv("AGRORADAR_WIFI_IPS", raising=False)
+    page = wifi_web.connect_page(18765).body.decode()
+    assert page.count(launcher) == 2
 
 
 def test_missing_frontend_bundle_fails_loudly(monkeypatch, tmp_path):
