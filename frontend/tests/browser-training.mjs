@@ -182,6 +182,8 @@ try {
   assert.ok(await target('field-choice').evaluate(el=>el===document.activeElement))
   await page.keyboard.press('Enter');await at('boundary');await next();await at('weather')
   await card.getByText('Виджет скрыт',{exact:false}).waitFor()
+  await skip();await at('precipitation')
+  await card.getByText('Виджет скрыт',{exact:false}).waitFor()
   await skip();await at('alerts');await page.keyboard.press('Escape')
   await sync('paused','alerts')
   assert.deepEqual(await saved(page),personal)
