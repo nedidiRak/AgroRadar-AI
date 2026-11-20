@@ -21,6 +21,8 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
   useLayoutEffect(() => {
     const surface=card.current!
     let anchor:HTMLElement|null=null, frame=0, followup=0, expired=false
+    let acquiredAt=0, userScrolled=false
+    const settleTimers:number[]=[]
     let parents:ReturnType<typeof scrollingParents>=[]
     const root=document.querySelector<HTMLElement>('[data-learn-app]')!
     const vv=window.visualViewport
@@ -40,6 +42,11 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
         if(anchor) {
           resize.observe(anchor)
           parents=scrollingParents(anchor)
+          acquiredAt=performance.now()
+          userScrolled=false
+          // React Grid may move this tile after its contents are measured.
+          // Recheck the target position for a short, bounded settling period.
+          for(const delay of [120, 360, 850, 1600]) settleTimers.push(window.setTimeout(schedule,delay))
           // scrollIntoView reveals the target through *every* scroll container,
           // not just the window. It must complete synchronously before the
           // spotlight rectangle is measured. Smooth scrolling left the outline
@@ -62,6 +69,15 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
       const left=vv?.offsetLeft??0, top=vv?.offsetTop??0
       const width=Math.min(document.documentElement.clientWidth,vv?.width??innerWidth), height=vv?.height??innerHeight
       const margin=8, right=left+width, bottom=top+height
+      // Don't rely on a user wheel event to reveal a tile which shifted after
+      // initial auto-scroll. Only auto-recenter during settling; afterwards
+      // manual scrolling is always respected.
+      const shifted=anchor?.getBoundingClientRect()
+      if(shifted && !userScrolled && performance.now()-acquiredAt<2400 &&
+          (shifted.bottom<=top+12 || shifted.top>=bottom-12 ||
+           shifted.right<=left+12 || shifted.left>=right-12)) {
+        anchor?.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'})
+      }
       const rect=anchor?.getBoundingClientRect(), panel=surface.getBoundingClientRect()
       let box:Box|null=null
       if(rect && rect.bottom>top && rect.top<bottom && rect.right>left && rect.left<right) {
@@ -93,6 +109,9 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
     function schedule(){ if(!frame) frame=requestAnimationFrame(()=>{frame=0;measure()}) }
     const changes=new MutationObserver(schedule)
     changes.observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','open','disabled','data-learn']})
+    const manualScroll=()=>{userScrolled=true}
+    window.addEventListener('wheel',manualScroll,{passive:true})
+    window.addEventListener('touchstart',manualScroll,{passive:true})
     window.addEventListener('scroll',schedule,true)
     window.addEventListener('resize',schedule)
     vv?.addEventListener('resize',schedule)
@@ -100,6 +119,8 @@ export function useSpotlight(step:Step, card:RefObject<HTMLElement>) {
     measure()
     return ()=>{
       clearTimeout(timeout); cancelAnimationFrame(frame); cancelAnimationFrame(followup); changes.disconnect(); resize.disconnect()
+      for(const timer of settleTimers) clearTimeout(timer)
+      window.removeEventListener('wheel',manualScroll);window.removeEventListener('touchstart',manualScroll)
       window.removeEventListener('scroll',schedule,true); window.removeEventListener('resize',schedule)
       vv?.removeEventListener('resize',schedule);vv?.removeEventListener('scroll',schedule)
     }
