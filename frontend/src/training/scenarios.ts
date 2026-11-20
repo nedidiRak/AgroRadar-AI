@@ -15,7 +15,9 @@ const choose: Step = {id:'choose-field',topic:'map',view:'fields',target:'field-
   text:'Нажмите название поля в списке рядом с картой. Выбранный участок станет контекстом для прогноза и диалога с ИИ.',
   action:'click',hint:'Нажмите на поле'}
 const weather: Step = {id:'weather',topic:'weather',view:'overview',target:'forecast-chart',title:'Прочитайте прогноз',
-  text:'По горизонтали указано местное для браузера время, по вертикали — температура. Найдите самый холодный интервал. В почасовых карточках процент означает вероятность осадков.',optional:true}
+  text:'По горизонтали указано местное для браузера время, по вертикали — температура воздуха. Найдите самый холодный интервал на графике.',optional:true}
+const precipitation: Step = {id:'precipitation',topic:'weather',view:'overview',target:'forecast-hourly',title:'Проверьте осадки по часам',
+  text:'Каждая карточка показывает время, прогнозную температуру и вероятность осадков. Например, 80% — вероятность осадков в этом интервале, а не количество выпавшей воды. Прочерк означает отсутствие данных.',optional:true}
 const alerts: Step = {id:'alerts',topic:'weather',view:'operations',target:'alert-filter',title:'Отберите предупреждения',
   text:'Выберите другой статус в списке. Каждая запись связывает прогноз с полем и причиной угрозы. При демонстрационных данных список может быть пуст.',
   action:'change',hint:'Смените статус в списке'}
@@ -43,13 +45,13 @@ const studio: Step[] = [
     text:'Нажмите «Сохранить». В рабочем режиме эта кнопка записывает персональный макет в аккаунт. Сейчас она завершит упражнение и вернёт ваш интерфейс.',action:'practice',hint:'Нажмите «Сохранить» в конструкторе'},
 ]
 export const practiceStages = new Set(studio.slice(1).map(step => step.id))
-export const observerSteps: Step[] = [welcome, choose, weather, alerts, risk, question, interpret, finish]
+export const observerSteps: Step[] = [welcome, choose, weather, precipitation, alerts, risk, question, interpret, finish]
 export const adminSteps: Step[] = [welcome,
   {id:'overview',topic:'overview',view:'overview',target:'overview-stats',title:'Оцените ситуацию в хозяйстве',
     text:'Сравните число полей и участков с высоким риском. Для проверки конкретного участка перейдите к карте через меню.',optional:true},
   choose, {id:'boundary',topic:'map',view:'fields',target:'map-new',title:'Как добавить границу',
     text:'На доступной карте Яндекса кнопка «Новое поле» включает рисование. Отметьте минимум три вершины, затем укажите название и культуру и подтвердите сохранение. Сейчас мы только рассматриваем кнопку.'},
-  weather,alerts,risk,question,interpret,
+  weather,precipitation,alerts,risk,question,interpret,
   {id:'journal',topic:'work',view:'fields',target:'field-journal',title:'Откройте журнал наблюдений',
     text:'В журнале хранятся датированные записи осмотров. Раскройте его у выбранного поля. На практике сюда вносят то, что увидели на участке.',action:'click',hint:'Нажмите «Журнал наблюдений»'},
   {id:'task',topic:'work',view:'operations',target:'new-task',title:'Откройте форму задания',
